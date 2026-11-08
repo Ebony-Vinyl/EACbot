@@ -170,6 +170,8 @@ export function verificationServerEnvironment(parentEnv: NodeJS.ProcessEnv, data
   }
   // Enables POST /api/testing/org-library; the route does not exist without it.
   if (parentEnv.EAC_TEST_ORG_LIBRARY_KEY) childEnv.EAC_TEST_ORG_LIBRARY_KEY = parentEnv.EAC_TEST_ORG_LIBRARY_KEY;
+  // The opt-in plugin process runtime, so a fixture can verify process plugins end to end.
+  if (parentEnv.EAC_PLUGIN_PROCESS === "1") childEnv.EAC_PLUGIN_PROCESS = "1";
   // One log line per browser call and preview frame.
   if (parentEnv.EAC_BROWSER_TIMING === "1") childEnv.EAC_BROWSER_TIMING = "1";
   // Warm summaries' minutes as seconds (server/warm-summary.ts), and the switch that turns them off.
@@ -189,6 +191,8 @@ export function verificationServerEnvironment(parentEnv: NodeJS.ProcessEnv, data
     childEnv.EAC_COMPOSIO_BROKER_URL = brokerUrl;
     childEnv.EAC_COMPOSIO_BROKER_TOKEN = parentEnv.EAC_COMPOSIO_BROKER_TOKEN;
   }
+  // The operator-run announcement source: a read-only GET of the JSON the operator chose to serve.
+  if (parentEnv.EAC_ANNOUNCEMENTS_URL?.trim()) childEnv.EAC_ANNOUNCEMENTS_URL = parentEnv.EAC_ANNOUNCEMENTS_URL.trim();
   // Research against loopback stubs only (server/x-research.e2e.test.ts): the relay token crosses only with its stub,
   // and a treg stand-in replaces treg.to, so no test reaches a real relay or treg.
   const xUrl = parentEnv.EAC_CLOUD_X_URL?.trim() ?? "";

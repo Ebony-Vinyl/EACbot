@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { Archive, ChartNoAxesColumn, Cloud, CloudDownload, Coins, Download, FlaskConical, KeyRound, LockKeyhole, Monitor, Palette, ScrollText, Search, Settings, Sparkles, TabletSmartphone, Terminal, User, Users, X, Building2, Zap, BookOpen, ImagePlus } from "lucide-react";
+import { Archive, ChartNoAxesColumn, Cloud, CloudDownload, Coins, Download, FlaskConical, KeyRound, LockKeyhole, Megaphone, Monitor, Palette, ScrollText, Search, Settings, Sparkles, TabletSmartphone, Terminal, User, Users, X, Building2, Zap, BookOpen, ImagePlus } from "lucide-react";
 import { useStore, type AppSettingsSection } from "@/state/store";
 import { skillsLibraryEnabled } from "@/lib/feature-flags";
 import { type LocaleKey } from "@/locales";
 import { t } from "@/lib/i18n";
 import { AdminOnly } from "./AdminOnly";
+import { AnnouncementsSettings } from "./AnnouncementsSettings";
 import { KeysPage } from "./keys/KeysPage";
 import { KEY_CATALOG, keyMatches, keySection, type KeyEntry } from "./keys/key-catalog";
 import { openKeySettings, useKeyFocus } from "./keys/key-focus";
@@ -108,6 +109,7 @@ export const SECTIONS: Array<{
   { id: "activity", group: "account", labelKey: "settings.section.activity", icon: ScrollText, keywords: ["activity", "audit", "log", "history", "who changed", "approvals", "decisions", "admin"] },
   { id: "workspaces", group: "account", labelKey: "settings.section.workspaces", icon: Building2, keywords: ["clients", "tenants", "fleet", "workspaces", "installation", "installations"] },
   { id: "experimental", group: "account", labelKey: "settings.section.experimental", icon: FlaskConical, keywords: ["early", "preview", "learn", "skill", "authoring"] },
+  { id: "announcements", group: "account", labelKey: "settings.section.announcements", icon: Megaphone, keywords: ["announcements", "notice", "bulletin", "news", "banner", "broadcast"] },
 ];
 
 export type SimpleSettingsPage = {
@@ -427,6 +429,8 @@ export function SettingsModal() {
         return <AccessOverview />;
       case "workspaces":
         return <WorkspacesSection />;
+      case "announcements":
+        return <AdminOnly note="settings.adminOnly.change"><AnnouncementsSettings /></AdminOnly>;
       default:
         return null;
     }

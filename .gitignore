@@ -43,3 +43,6 @@ deploy/podman/.env.*
 
 # build scratch
 .tmpexp/
+
+# ZCode workspace-local scratch (plans, fixture logs, temp scripts)
+.zcode/

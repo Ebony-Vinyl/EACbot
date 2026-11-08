@@ -27,7 +27,7 @@ beforeAll(async () => {
   url = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
 });
 afterAll(async () => { server.closeAllConnections(); await new Promise<void>((resolve) => server.close(() => resolve())); });
-const connection = (kind: "browser" | "computer" | "data" | "email" | "device" = "browser") => ({ url, token: "scoped-capability", kind });
+const connection = (kind: "browser" | "computer" | "data" | "email" | "device" | "plugins" = "browser") => ({ url, token: "scoped-capability", kind });
 const frame = (method: string, params: unknown = {}) => ({ jsonrpc: "2.0", id: 1, method, params });
 
 describe("harness MCP capability proxy", () => {
@@ -74,10 +74,23 @@ describe("harness MCP capability proxy", () => {
     expect(refused.result.content[0].text).toContain(PHONE_RECOVERY.trim());
   });
 
+  it("forwards plugin calls to their own harness route with the plugin instructions", async () => {
+    status = 200;
+    payload = { result: { tools: [{ name: "plugin_eac_library__search" }], instructions: "installed EACbot plugins" } };
+    await expect(harnessMcpRequest(frame("initialize"), connection("plugins"))).resolves.toMatchObject({ result: { serverInfo: { name: "eacbot-plugins" }, instructions: expect.stringContaining("plugins") } });
+    await harnessMcpRequest(frame("tools/list"), connection("plugins"));
+    expect(requests.at(-1)).toEqual({ path: "/api/internal/plugins/mcp", auth: "Bearer scoped-capability", body: { method: "tools/list", params: {} } });
+    status = 401;
+    payload = { error: "the internal turn capability has expired" };
+    const refused = await harnessMcpRequest(frame("tools/call", { name: "plugin_eac_library__search", arguments: {} }), connection("plugins")) as any;
+    expect(refused.result.isError).toBe(true);
+    expect(refused.result.content[0].text).toContain("owner must issue a grant");
+  });
+
   it("sends the cloud computer's calls to its own harness route", async () => {
     status = 200;
     payload = { result: { tools: [{ name: "screenshot" }] } };
-    await expect(harnessMcpRequest(frame("initialize"), connection("computer"))).resolves.toMatchObject({ result: { serverInfo: { name: "openmausbot-computer" } } });
+    await expect(harnessMcpRequest(frame("initialize"), connection("computer"))).resolves.toMatchObject({ result: { serverInfo: { name: "eacbot-computer" } } });
     await expect(harnessMcpRequest(frame("tools/list"), connection("computer"))).resolves.toEqual({ jsonrpc: "2.0", id: 1, result: { tools: [{ name: "screenshot" }] } });
     expect(requests.at(-1)).toEqual({ path: "/api/internal/computer/mcp", auth: "Bearer scoped-capability", body: { method: "tools/list", params: {} } });
     status = 401;

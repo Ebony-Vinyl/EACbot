@@ -17,6 +17,7 @@ import { reorderStable } from "../../shared/bot-order";
 import { withOneChief } from "../../shared/bot-owner";
 import { DATA_ROUTES, type DataSheet, type DataTable } from "../../shared/data-surface";
 import type { NotificationLogEntry } from "../../shared/notification";
+import type { Announcement } from "../../shared/announcement";
 import { isNotificationFeedAction, reduceNotificationFeed, type NotificationFeedAction } from "./notification-feed";
 import { bumpThreadUpdatedAt, mergeTaskStamps, rewindThreadUpdatedAt } from "./thread-stamps";
 import { botOpensTo, closeTrayUnlessShown, closeUnpinnedTray, openBot, openThread, visibleNotificationThread, withRememberedTrayPin } from "./thread-navigation";
@@ -313,7 +314,7 @@ export interface Bot extends DefaultBotFields, Pick<WireBot, "mascotFaceColor" |
   memoryEnabled?: boolean;
   pinned?: boolean;
   hidden?: boolean;
-  section?: string;
+  section?: string; platformBinding?: import("../../shared/wire").WireBot["platformBinding"];
   pinnedMessageId?: string;
   chiefOfStaff?: boolean;
   managedSections?: string[];
@@ -528,7 +529,7 @@ export type AppSettingsSection =
   | "activity"
   | "backups"
   | "workspaces"
-  | "skills" | "import" | "updates";
+  | "skills" | "import" | "updates" | "announcements";
 
 export type BotSettingsSection =
   | "overview"
@@ -588,6 +589,7 @@ export interface AppState {
   notificationsOpen: boolean;
   notificationsPinned: boolean;
   notifications: NotificationLogEntry[];
+  announcements: Announcement[] | null;
   appSettingsOpen: boolean;
   appSettingsSection: AppSettingsSection;
   appSettingsCloudLink: number;
@@ -660,6 +662,7 @@ export type Action =
   | NotificationFeedAction
   | { type: "toggleNotifications"; open?: boolean }
   | { type: "toggleNotificationsPinned"; pinned?: boolean }
+  | { type: "announcementsHydrated"; announcements: Announcement[] }
   | { type: "webhooksHydrated"; webhooks: WebhookTrigger[]; attempts: WebhookAttempt[]; ingress: WebhookIngressStatus }
   | { type: "webhookPatched"; webhook: WebhookTrigger }
   | { type: "webhookAttempted"; attempt: WebhookAttempt }
@@ -1027,6 +1030,8 @@ export function reducer(state: AppState, action: Action): AppState {
     }
     case "routineRunsLoaded":
       return { ...state, routineRuns: withOlderRoutineRuns(state.routineRuns, action.runs), routineRunsSince: olderRunsSince(state.routineRunsSince, action) };
+    case "announcementsHydrated":
+      return { ...state, announcements: action.announcements };
     case "webhooksHydrated":
       return { ...state, webhooks: action.webhooks, webhookAttempts: action.attempts, webhookIngress: action.ingress };
     case "webhookPatched": {
@@ -1885,6 +1890,7 @@ export const initialState: AppState = {
   notificationsOpen: false,
   notificationsPinned: false,
   notifications: [],
+  announcements: null,
   appSettingsOpen: false,
   appSettingsSection: "general",
   appSettingsCloudLink: 0,
@@ -2932,7 +2938,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let alive = true;
-    type PeripheralKey = "instances" | "config" | "routines" | "webhooks" | "notifications";
+    type PeripheralKey = "instances" | "config" | "routines" | "webhooks" | "notifications" | "announcements";
     type PeripheralPart = {
       key: PeripheralKey;
       request: () => Promise<() => void>;
@@ -2979,6 +2985,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         request: async () => {
           const { notifications } = await api("/api/notifications");
           return () => rawDispatch({ type: "notificationsHydrated", notifications: Array.isArray(notifications) ? notifications : [] });
+        },
+      },
+      {
+        key: "announcements",
+        request: async () => {
+          const { announcements } = await api("/api/announcements");
+          return () => rawDispatch({ type: "announcementsHydrated", announcements: Array.isArray(announcements) ? announcements : [] });
         },
       },
       ...(window.ogb?.remoteClient?.active ? [] : [{

@@ -617,12 +617,10 @@ import { viewerTargetId } from "../shared/desktop-viewer.ts";
 import { createComputerPreviews } from "./computer-previews.ts";
 import { createAntigravityLeftoverRoutes } from "./routes/antigravity-leftovers.ts";
 import { createAntigravityAccountRoutes } from "./routes/antigravity-accounts.ts";
-import { createConfigRoutes } from "./routes/config.ts";
-import { createInstanceRoutes } from "./routes/instances.ts";
+import { createConfigRoutes } from "./routes/config.ts"; import { createInstanceRoutes } from "./routes/instances.ts";
 import { createMcpConfig } from "./host/mcp-config.ts";
-import { createMcpServerRoutes } from "./routes/mcp-servers.ts";
-import { teamAdminSummary } from "./cloud-team-admin.ts";
-import { createSetupImportRoutes } from "./routes/setup-import.ts";
+import { createMcpServerRoutes } from "./routes/mcp-servers.ts"; import { createPluginsHost } from "./host/plugins-host.ts"; import { createPluginsMcp, PLUGINS_INTERNAL_MCP_PATH } from "./host/plugins-mcp.ts"; import { createPlatformInboundHost } from "./host/platform-inbound.ts"; import { PlatformOutboxStore } from "./plugins/platform-outbox.ts"; import { PlatformAccountStore } from "./plugins/platform-accounts.ts"; import { createAnnouncementRoutes } from "./routes/announcements.ts"; import { createAnnouncements } from "./announcements.ts"; import { createAnnouncementFeed } from "./announcement-feed.ts";
+import { teamAdminSummary } from "./cloud-team-admin.ts"; import { createSetupImportRoutes } from "./routes/setup-import.ts";
 import { createComputerRoutes } from "./routes/computers.ts";
 import { createStatusRoutes } from "./routes/status.ts";
 import { findAntigravityLeftovers, removeAntigravityLeftovers } from "./drivers/antigravity-temp.ts";
@@ -1602,7 +1600,7 @@ type InternalCapability = {
   threadId: string;
   generation: string;
   depth: number;
-  kind: "agents" | "connectors" | "computer" | "browser" | "hooks" | "phone" | "data" | "email" | "device" | "lent";
+  kind: "agents" | "connectors" | "computer" | "browser" | "hooks" | "phone" | "data" | "email" | "device" | "lent" | "plugins";
   skillAuthoring: boolean;
   createdBots: number;
   createdRooms?: number;
@@ -1730,6 +1728,7 @@ function endForeignTurns(threadId: string, generation?: string): void {
 
 function revokeInternalCapabilityGeneration(threadId: string, generation: string): void {
   gmailDrafts.endTurn(generation);
+  pluginsMcp.forgetTurn(threadId);
   if (standInRoots.delete(generation)) coordinator.endTurn(generation, { ok: true, text: "" });
   endForeignTurns(threadId, generation);
   if (guestDrivenTurns.get(threadId) === generation) guestDrivenTurns.delete(threadId);
@@ -7932,10 +7931,12 @@ async function beginTurn(
       if (bot.composio !== false && composio.configured(cfg) && instance.adapter.capabilities.composioMcp === true) {
         Object.assign(integrations, await teamConnections.appsIntegrations(bot, threadId, dispatchClaimId, instance.adapter.capabilities.mcpToolsFoundByName ? "dotted" : "plain"));
       }
-      // User MCP servers' tools are never pre-allowed: every call rides the normal permission flow.
+      // User MCP servers' tools are never pre-allowed: every call rides the normal permission flow. Plugin tools ride
+      // the same flow under one harness server; their effects are granted per plugin inside the harness.
       if (instance.adapter.capabilities.customMcp === true && !proactive.fence.confines(threadId) && !botApiThread(threadId)) {
         const custom = await mcpServersHost.prepare(bot).then(() => teamConnections.turnMcp(bot, threadId, dispatchClaimId));
-        attachCustomMcp(integrations, { ...custom, ...lentMcp.mounts(bot, { botId: bot.id, threadId, generation: dispatchClaimId }) }, cfg, { botId: bot.id, threadId });
+        const pluginMount = pluginsMcp.mounts({ botId: bot.id, threadId }, () => mintInternalCapability({ botId: bot.id, threadId, generation: dispatchClaimId, kind: "plugins", depth: 0, skillAuthoring: false, createdBots: 0, openedThreads: 0 }));
+        attachCustomMcp(integrations, { ...custom, ...lentMcp.mounts(bot, { botId: bot.id, threadId, generation: dispatchClaimId }), ...(pluginMount ? { [pluginsMcp.server]: pluginMount } : {}) }, cfg, { botId: bot.id, threadId });
         if (Object.keys(custom).length) Object.assign(integrations, chatAppsMcp.turnMounts(custom, bot.toolScope));
       }
       const worksInWorkspace = supportsWorkspaceFiles(instance.driverKind);
@@ -9856,7 +9857,10 @@ async function runClaimedGroupMemberTurn(
     return true;
   }
   if (instance.adapter.capabilities.customMcp === true) {
-    const custom = { ...await mcpServersHost.prepare(bot).then(() => teamConnections.turnMcp(bot, threadId, internalGeneration)), ...lentMcp.mounts(bot, { botId: bot.id, threadId, generation: internalGeneration }) }; attachCustomMcp(integrations, custom, cfg, { botId: bot.id, threadId }); Object.assign(integrations, chatAppsMcp.turnMounts(custom, bot.toolScope));
+    const custom = { ...await mcpServersHost.prepare(bot).then(() => teamConnections.turnMcp(bot, threadId, internalGeneration)), ...lentMcp.mounts(bot, { botId: bot.id, threadId, generation: internalGeneration }) };
+    const pluginMount = pluginsMcp.mounts({ botId: bot.id, threadId }, () => mintInternalCapability({ botId: bot.id, threadId, generation: internalGeneration, kind: "plugins", depth: 0, skillAuthoring: false, createdBots: 0, openedThreads: 0 }));
+    attachCustomMcp(integrations, { ...custom, ...(pluginMount ? { [pluginsMcp.server]: pluginMount } : {}) }, cfg, { botId: bot.id, threadId });
+    Object.assign(integrations, chatAppsMcp.turnMounts(custom, bot.toolScope));
   }
   // An interrupt during connected-app setup must still stop the queued room operation before it starts a process.
   if (isCancelled?.()) return false;
@@ -12422,7 +12426,7 @@ ROUTES.push(createMcpServerRoutes({
   cfg, bot: (id) => store.bot(id), sessions, mcpOAuth, teamConnections,
   cloudHome: CLOUD_HOME,
   fallbackPublicUrl: FALLBACK_PUBLIC_URL,
-  mcpServerResponse, savedCustomDomain, appCatalog: chatAppsMcp, config: mcpConfig, lender: sessionLendingPrincipal, place: (server, auth) => lentMcp.place(server, { principal: sessionLendingPrincipal(auth), ...(auth.kind === "session" ? { session: auth.session.id } : {}), newest: true }) }));
+  mcpServerResponse, savedCustomDomain, appCatalog: chatAppsMcp, config: mcpConfig, lender: sessionLendingPrincipal, place: (server, auth) => lentMcp.place(server, { principal: sessionLendingPrincipal(auth), ...(auth.kind === "session" ? { session: auth.session.id } : {}), newest: true }) })); const platformAccounts = new PlatformAccountStore(DATA_DIR); const platformOutbox = new PlatformOutboxStore(DATA_DIR); const platformInbound = createPlatformInboundHost({ accounts: platformAccounts, outbox: platformOutbox, dataDir: DATA_DIR, store, canStart: (botId, threadId) => canAdmitDirectTurn(botId, threadId ?? ""), threadBusy, startTurn: (botId, text, opts) => startTurn(botId, text, opts), now: () => new Date().toISOString() }); const pluginsHost = createPluginsHost({ dataDir: DATA_DIR, hostVersion: serverVersion(), host: DESKTOP_MANAGED ? "desktop" : "server", platform: `${process.platform}-${process.arch}`, mayManage: ownerOrAdmin, enableProcessRuntime: process.env.EAC_PLUGIN_PROCESS === "1", bots: { has: (id) => Boolean(store.bot(id)), bindingOf: (id) => { const bot = store.bot(id); return bot?.platformBinding ? { accountId: bot.platformBinding.accountId } : null; }, createDedicated: (input) => { const bot = store.createBot({ name: input.name, ...(input.title ? { title: input.title } : {}), ...(input.description ? { description: input.description } : {}), section: "Platform bots" }); return store.patchBot(bot.id, { platformBinding: { platform: input.platform, accountId: input.accountId, mode: "dedicated" } }) ? bot.id : null; }, bind: (id, binding) => Boolean(store.patchBot(id, { platformBinding: binding ?? undefined })), remove: (id) => store.deleteBot(id) }, accounts: platformAccounts, inbound: platformInbound, outbox: platformOutbox }); ROUTES.push(pluginsHost.route); const pluginsMcp = createPluginsMcp({ registry: pluginsHost.registry, origin: `http://127.0.0.1:${PORT}` }); ROUTES.push(createAnnouncementRoutes({ announcements: createAnnouncements(DATA_DIR), feed: createAnnouncementFeed({ url: process.env.EAC_ANNOUNCEMENTS_URL ?? "" }), mayManage: ownerOrAdmin }));
 ROUTES.push(createSetupImportRoutes({ local: DESKTOP_MANAGED && !CLOUD_HOME && !HOSTED_WORKSPACE, cfg, mcpPolicyRefusal, persistMcpServers: persistAnnouncedMcpServers,
   mcpConfigBusy: mcpConfig.busy }));
 ROUTES.push(createComputerRoutes({
@@ -12963,7 +12967,7 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
         ? "data"
         : path === EMAIL_INTERNAL_MCP_PATH ? "email"
         : path === PHONE_INTERNAL_MCP_PATH
-        ? "device" : isLentMcpPath(path) ? "lent"
+        ? "device" : path === PLUGINS_INTERNAL_MCP_PATH ? "plugins" : isLentMcpPath(path) ? "lent"
         : path === "/api/internal/phone/claim"
         ? "phone"
         : path.startsWith("/api/internal/connectors/")
@@ -13206,6 +13210,9 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
       }
       // The mail passwords stay here; the agent process holds only the turn's capability, and every call gets the live bot's verdict.
       if (method === "POST" && path === EMAIL_INTERNAL_MCP_PATH) { return json(res, 200, { result: await emailHost.handle(await readInternalBody(), internalCapability, requireActiveInternalCapability) }); }
+      if (method === "POST" && path === PLUGINS_INTERNAL_MCP_PATH) {
+        return json(res, 200, { result: await pluginsMcp.handle(await readInternalBody(), internalCapability, requireActiveInternalCapability) });
+      }
       if (method === "POST" && path === PHONE_INTERNAL_MCP_PATH) {
         return json(res, 200, { result: await phones.handle(await readInternalBody(), internalCapability, requireActiveInternalCapability) });
       }

@@ -359,6 +359,8 @@ export interface WireBot extends DefaultBotFields, BotAccessFields {
   movedTo?: BotMovedTo;
   /** Optional labeled divider used to organize this bot in the sidebar. */
   section?: string;
+  /** The platform account this bot answers, written only by the host's account binding. */
+  platformBinding?: { platform: import("./plugins/accounts.ts").PlatformId; accountId: string; mode: "existing" | "dedicated" };
   /** the one message pinned to the top of this bot's active thread */
   pinnedMessageId?: string;
   /** The coordinator for this bot's sidebar section. */

@@ -281,6 +281,8 @@ export const CLIENT_ALLOW: ReadonlyArray<{ methods: readonly string[]; path: Reg
   { methods: ["POST"], path: /^\/api\/notifications\/[\w-]+\/read$/ },
   // the update check only reads a version
   { methods: ["GET"], path: /^\/api\/updates\/check$/ },
+  // announcements read the same text on every client
+  { methods: ["GET"], path: /^\/api\/announcements$/ },
   { methods: ["POST"], path: /^\/api\/auth\/stream-ticket$/ },
   { methods: ["POST"], path: /^\/api\/auth\/logout$/ },
   // A Team Cloud member's own phone: the code carries their address and role, never more (routes/team-phone.ts).

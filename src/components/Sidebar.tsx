@@ -6,7 +6,7 @@ import { api, useStore, formatTime, visibleMessages, currentTaskBot, botOpensTo,
 import { approvalModeFor } from "../../shared/approval-mode";
 import { liveActivityLabel } from "@/lib/live-activity";
 import { SidebarWorkingStep } from "./SidebarWorkingStep";
-import { openBotRow } from "@/state/thread-navigation";
+import { openBotRow } from "@/state/thread-navigation"; import { PlatformBadge } from "./PlatformBadge";
 import { llmThreadTitlesEnabled } from "@/lib/feature-flags";
 
 import { BotAvatar } from "./Avatar";
@@ -796,7 +796,7 @@ export const BotListItem = memo(function BotListItem(props: BotRowProps) {
               className="truncate"
               inputClassName={cn("w-full rounded bg-inset px-1 py-0.5", simpleRow ? "text-[14px] font-medium" : "text-[15px] font-semibold")}
             />
-            {!simpleList && bot.chiefOfStaff && !renaming && (
+            {!simpleList && bot.platformBinding && !renaming && <PlatformBadge platform={bot.platformBinding.platform} />}{!simpleList && bot.chiefOfStaff && !renaming && (
               <Crown size={13} strokeWidth={2.25} className="shrink-0 text-accent" role="img" aria-label={t("sidebar.bot.chiefOfStaff")} data-testid="chief-crown">
                 <title>{t("sidebar.bot.chiefOfStaff")}</title>
               </Crown>

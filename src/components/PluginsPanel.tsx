@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Check, ChevronDown, ChevronRight, Loader2, RefreshCw, Search, Server, TriangleAlert, X } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, Loader2, Puzzle, RefreshCw, Search, Server, TriangleAlert, Users, X } from "lucide-react";
+import { ExtensionsCatalog } from "./ExtensionsCatalog";
+import { PlatformAccountsPanel } from "./PlatformAccountsPanel";
 import { api, useStore, type Bot, type InstanceInfo } from "@/state/store";
 import { cn } from "@/lib/cn";
 import { glassPopupFrameStyle } from "@/lib/glass-popup";
@@ -148,6 +150,8 @@ export function PluginsPanel() {
   const [error, setError] = useState<string | { key: LocaleKey } | null>(null);
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState<"marketplace" | "connected">("marketplace");
+  const [extensionsOpen, setExtensionsOpen] = useState(false);
+  const [platformsOpen, setPlatformsOpen] = useState(false);
   const [showAllApps, setShowAllApps] = useState(false);
   const [hostedConnected, setHostedConnected] = useState<HostedConnections | null>(null);
   const [cardsRefresh, setCardsRefresh] = useState(0);
@@ -456,6 +460,9 @@ export function PluginsPanel() {
     ? "bg-ink text-app"
     : "bg-control/70 text-ink-secondary hover:bg-raised-hover hover:text-ink";
 
+  if (extensionsOpen) return <ExtensionsCatalog onClose={() => setExtensionsOpen(false)} />;
+  if (platformsOpen) return <PlatformAccountsPanel onClose={() => setPlatformsOpen(false)} />;
+
   return (
     <div
       className="glass-popup-frame"
@@ -501,6 +508,24 @@ export function PluginsPanel() {
                   {connectedCount > 0 ? t("apps.connectedCount", { count: connectedCount }) : t("apps.filter.connected")}
                 </span>
                 <ChevronRight size={14} aria-hidden="true" className="shrink-0 rtl:-scale-x-100" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setPlatformsOpen(true)}
+                className="flex size-8 items-center justify-center rounded-full text-ink-secondary hover:bg-raised hover:text-ink"
+                title={t("platforms.title")}
+                aria-label={t("platforms.title")}
+              >
+                <Users size={16} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setExtensionsOpen(true)}
+                className="flex size-8 items-center justify-center rounded-full text-ink-secondary hover:bg-raised hover:text-ink"
+                title={t("extensions.title")}
+                aria-label={t("extensions.title")}
+              >
+                <Puzzle size={16} />
               </button>
               <button
                 onClick={() => { setCardsRefresh((value) => value + 1); void loadConnectionInventory(true); }}
@@ -583,6 +608,35 @@ export function PluginsPanel() {
         </header>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-7 sm:px-7">
+          {/* The two EACbot-extension surfaces, one click from the top: installable plugins and platform dashboards. */}
+          <div className="mb-4 grid gap-2 @container sm:grid-cols-2">
+            <button
+              type="button"
+              data-apps-entry="extensions"
+              onClick={() => setExtensionsOpen(true)}
+              className="flex items-center gap-3 rounded-xl border border-hairline/40 bg-control/30 px-3.5 py-3 text-left transition-colors hover:bg-raised"
+            >
+              <Puzzle size={20} className="shrink-0 text-accent" />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[14px] font-semibold text-ink">{t("extensions.title")}</span>
+                <span className="block truncate text-[12px] text-ink-secondary">{t("extensions.subtitle")}</span>
+              </span>
+              <ChevronRight size={16} aria-hidden="true" className="shrink-0 text-ink-secondary rtl:-scale-x-100" />
+            </button>
+            <button
+              type="button"
+              data-apps-entry="platforms"
+              onClick={() => setPlatformsOpen(true)}
+              className="flex items-center gap-3 rounded-xl border border-hairline/40 bg-control/30 px-3.5 py-3 text-left transition-colors hover:bg-raised"
+            >
+              <Users size={20} className="shrink-0 text-accent" />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[14px] font-semibold text-ink">{t("platforms.title")}</span>
+                <span className="block truncate text-[12px] text-ink-secondary">{t("platforms.subtitle")}</span>
+              </span>
+              <ChevronRight size={16} aria-hidden="true" className="shrink-0 text-ink-secondary rtl:-scale-x-100" />
+            </button>
+          </div>
           {stale && (
             <div className="mb-3 flex items-start gap-2 rounded-xl bg-warning/10 px-3 py-2 text-[13px] text-warning">
               <TriangleAlert size={14} className="mt-px shrink-0" />
