@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "pluginId": "eac.xiaohongshu",
+  "version": "1.0.0",
+  "apiVersion": "^1.0.0",
+  "name": "EAC 小红书内容台",
+  "description": "小红书内容运营的本地工作台：选题、素材、笔记草稿与发布计划。发布与互动需要官方授权通道，未实现前不假装可用；本插件负责让 Bot 帮你把笔记准备好。",
+  "publisher": "EACbot Community",
+  "license": "Apache-2.0",
+  "source": {
+    "repository": "https://github.com/milind-soni/EACbot.git",
+    "revision": "813bba63fd7aa94c98ecf6d93d43648abe50f3a9"
+  },
+  "compatibility": {
+    "hostVersion": "^0.1.0",
+    "hosts": ["server", "desktop"],
+    "platforms": ["win32-x64", "linux-x64", "darwin-arm64", "darwin-x64"]
+  },
+  "runtime": { "mode": "process", "entry": "entry.mjs", "isolation": "none" },
+  "activation": ["manual"],
+  "permissions": [
+    { "id": "xhs-read", "capability": "xiaohongshu.content.read", "effect": "read", "scope": {}, "reason": "读取选题、素材、笔记草稿与计划。" },
+    { "id": "xhs-write", "capability": "xiaohongshu.content.write", "effect": "write", "scope": {}, "reason": "维护选题、素材、笔记草稿与发布计划。" },
+    { "id": "xhs-delete", "capability": "xiaohongshu.content.delete", "effect": "delete", "scope": {}, "reason": "删除选题、素材、笔记草稿与计划。" }
+  ],
+  "contributes": {
+    "tools": [
+      { "id": "xhs-idea", "entry": "entry.mjs", "effect": "write", "permission": "xhs-write", "description": "选题管理：action=add|list|delete（add 需要 title；list 支持 status 过滤）。" },
+      { "id": "xhs-material", "entry": "entry.mjs", "effect": "write", "permission": "xhs-write", "description": "素材管理：action=add|list|delete（文本素材：title, body, tags?）。" },
+      { "id": "xhs-note", "entry": "entry.mjs", "effect": "write", "permission": "xhs-write", "description": "笔记草稿：action=save|list|update|delete（title, body, tags?, status?）。" },
+      { "id": "xhs-plan", "entry": "entry.mjs", "effect": "write", "permission": "xhs-write", "description": "发布计划：action=add|list|delete|done（noteId, plannedFor, note?）。提醒：这只是本机计划，不会自动发布。" }
+    ]
+  },
+  "configSchema": "config.schema.json",
+  "stateVersion": 1
+}

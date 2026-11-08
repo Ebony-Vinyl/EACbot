@@ -1,0 +1,15 @@
+{
+  "name": "@eacbot/host-tauri",
+  "private": true,
+  "version": "0.1.0",
+  "description": "EACbot 桌面宿主（Tauri）：窗口、托盘、系统凭据与被监督的本地 Node 服务。",
+  "scripts": {
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "check": "cargo check --manifest-path src-tauri/Cargo.toml",
+    "test": "cargo test --manifest-path contract/Cargo.toml"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  }
+}

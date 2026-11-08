@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "pluginId": "eac.home-assistant",
+  "version": "1.0.0",
+  "apiVersion": "^1.0.0",
+  "name": "EAC Home Assistant",
+  "description": "通过 Home Assistant 公开 REST API 读取实体状态与调用服务。只应授权给已选择的实体所在的家；控制类工具需要主人单独授权。",
+  "publisher": "EACbot Community",
+  "license": "Apache-2.0",
+  "source": {
+    "repository": "https://github.com/milind-soni/EACbot.git",
+    "revision": "813bba63fd7aa94c98ecf6d93d43648abe50f3a9"
+  },
+  "compatibility": {
+    "hostVersion": "^0.1.0",
+    "hosts": ["server", "desktop"],
+    "platforms": ["win32-x64", "linux-x64", "darwin-arm64", "darwin-x64"]
+  },
+  "runtime": { "mode": "process", "entry": "entry.mjs", "isolation": "none" },
+  "activation": ["manual"],
+  "permissions": [
+    { "id": "ha-read", "capability": "homeassistant.states.read", "effect": "read", "scope": {}, "reason": "读取 Home Assistant 实体状态与服务列表。" },
+    { "id": "ha-control", "capability": "homeassistant.services.call", "effect": "control", "scope": {}, "reason": "调用 Home Assistant 服务（开关灯、温控等），需主人单独授权。" }
+  ],
+  "contributes": {
+    "tools": [
+      { "id": "ha-get-states", "entry": "entry.mjs", "effect": "read", "permission": "ha-read", "description": "列出 Home Assistant 实体状态（可按 domain 或关键字过滤）。" },
+      { "id": "ha-get-state", "entry": "entry.mjs", "effect": "read", "permission": "ha-read", "description": "读取单个实体的状态与属性。" },
+      { "id": "ha-get-services", "entry": "entry.mjs", "effect": "read", "permission": "ha-read", "description": "列出可用的 domain/service。" },
+      { "id": "ha-call-service", "entry": "entry.mjs", "effect": "control", "permission": "ha-control", "description": "调用一个 Home Assistant 服务（domain, service, entity_id?, data?）。" }
+    ]
+  },
+  "configSchema": "config.schema.json",
+  "stateVersion": 1
+}

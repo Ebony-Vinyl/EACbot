@@ -1,0 +1,10 @@
+{
+  "type": "object",
+  "properties": {
+    "apiBase": {
+      "type": "string",
+      "description": "可选：酷狗搜索接口地址，默认 https://songsearch.kugou.com/song/search/v2（测试或代理用）"
+    }
+  },
+  "additionalProperties": false
+}

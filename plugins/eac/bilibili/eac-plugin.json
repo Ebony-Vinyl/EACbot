@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "pluginId": "eac.bilibili",
+  "version": "1.0.0",
+  "apiVersion": "^1.0.0",
+  "name": "EAC Bilibili",
+  "description": "让 Bot 能刷 B 站：搜索视频、读取视频信息与热门榜单，生成观看研究素材。点赞/评论等写操作需要主人单独授权并配置登录 Cookie，默认关闭。",
+  "publisher": "EACbot Community",
+  "license": "Apache-2.0",
+  "source": {
+    "repository": "https://github.com/milind-soni/EACbot.git",
+    "revision": "813bba63fd7aa94c98ecf6d93d43648abe50f3a9"
+  },
+  "compatibility": {
+    "hostVersion": "^0.1.0",
+    "hosts": ["server", "desktop"],
+    "platforms": ["win32-x64", "linux-x64", "darwin-arm64", "darwin-x64"]
+  },
+  "runtime": { "mode": "process", "entry": "entry.mjs", "isolation": "none" },
+  "activation": ["manual"],
+  "permissions": [
+    { "id": "bili-read", "capability": "bilibili.content.read", "effect": "read", "scope": {}, "reason": "搜索与读取 B 站公开视频信息。" },
+    { "id": "bili-like", "capability": "bilibili.video.like", "effect": "write", "scope": {}, "reason": "用已配置的账号给视频点赞，需主人单独授权。" },
+    { "id": "bili-comment", "capability": "bilibili.video.comment", "effect": "send", "scope": {}, "reason": "用已配置的账号发表评论，需主人单独授权。" }
+  ],
+  "contributes": {
+    "tools": [
+      { "id": "bili-search-videos", "entry": "entry.mjs", "effect": "read", "permission": "bili-read", "description": "按关键词搜索 B 站视频（标题、作者、BV 号、播放/弹幕数、链接）。" },
+      { "id": "bili-video-info", "entry": "entry.mjs", "effect": "read", "permission": "bili-read", "description": "读取一个视频的标题、简介、分P、作者、统计数据。" },
+      { "id": "bili-popular", "entry": "entry.mjs", "effect": "read", "permission": "bili-read", "description": "读取当前热门榜单视频。" },
+      { "id": "bili-like", "entry": "entry.mjs", "effect": "write", "permission": "bili-like", "description": "给一个视频点赞（需要 config.json 配置登录 Cookie）。" },
+      { "id": "bili-post-comment", "entry": "entry.mjs", "effect": "send", "permission": "bili-comment", "description": "给一个视频发表评论（需要 config.json 配置登录 Cookie 与 csrf）。" }
+    ]
+  },
+  "configSchema": "config.schema.json",
+  "stateVersion": 1
+}

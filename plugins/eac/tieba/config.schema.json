@@ -1,0 +1,18 @@
+{
+  "type": "object",
+  "properties": {
+    "cookie": {
+      "type": "string",
+      "description": "可选：已登录 tieba.baidu.com 的 Cookie，仅供回帖"
+    },
+    "tbs": {
+      "type": "string",
+      "description": "可选：登录后页面源码中的 tbs 值，回帖必需"
+    },
+    "apiBase": {
+      "type": "string",
+      "description": "可选：基地址，默认 https://tieba.baidu.com（测试或代理用）"
+    }
+  },
+  "additionalProperties": false
+}

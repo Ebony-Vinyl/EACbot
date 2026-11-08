@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "pluginId": "eac.health",
+  "version": "1.0.0",
+  "apiVersion": "^1.0.0",
+  "name": "EAC Health",
+  "description": "个人健康记录助手：记录步数、体重、睡眠、心率、饮水与情绪，给出趋势与每日摘要。全部数据保存在本机插件数据目录，不上传任何服务。",
+  "publisher": "EACbot Community",
+  "license": "Apache-2.0",
+  "source": {
+    "repository": "https://github.com/milind-soni/EACbot.git",
+    "revision": "813bba63fd7aa94c98ecf6d93d43648abe50f3a9"
+  },
+  "compatibility": {
+    "hostVersion": "^0.1.0",
+    "hosts": ["server", "desktop"],
+    "platforms": ["win32-x64", "linux-x64", "darwin-arm64", "darwin-x64"]
+  },
+  "runtime": { "mode": "process", "entry": "entry.mjs", "isolation": "none" },
+  "activation": ["manual"],
+  "permissions": [
+    { "id": "health-read", "capability": "health.records.read", "effect": "read", "scope": {}, "reason": "读取健康记录与趋势摘要。" },
+    { "id": "health-write", "capability": "health.records.write", "effect": "write", "scope": {}, "reason": "添加或导入健康记录。" },
+    { "id": "health-delete", "capability": "health.records.delete", "effect": "delete", "scope": {}, "reason": "删除指定的健康记录。" }
+  ],
+  "contributes": {
+    "tools": [
+      { "id": "health-record-add", "entry": "entry.mjs", "effect": "write", "permission": "health-write", "description": "添加一条健康记录（metric: steps/weight_kg/sleep_hours/heart_rate/water_ml/mood 或自定义；value, at?, note?）。" },
+      { "id": "health-records", "entry": "entry.mjs", "effect": "read", "permission": "health-read", "description": "按指标与时间范围列出健康记录。" },
+      { "id": "health-summary", "entry": "entry.mjs", "effect": "read", "permission": "health-read", "description": "最近 N 天每个指标的平均值、最新值与记录数。" },
+      { "id": "health-trend", "entry": "entry.mjs", "effect": "read", "permission": "health-read", "description": "单个指标的趋势：方向（up/down/flat）、最小、最大、最新。" },
+      { "id": "health-record-delete", "entry": "entry.mjs", "effect": "delete", "permission": "health-delete", "description": "按 id 删除一条健康记录。" }
+    ]
+  },
+  "configSchema": "config.schema.json",
+  "stateVersion": 1
+}

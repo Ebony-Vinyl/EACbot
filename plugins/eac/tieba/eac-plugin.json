@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "pluginId": "eac.tieba",
+  "version": "1.0.0",
+  "apiVersion": "^1.0.0",
+  "name": "EAC 贴吧助手",
+  "description": "贴吧工具：读取吧内热帖与帖子摘要（HTML 页面解析，实验性），维护回复草稿。回帖需要单独授权并配置 Cookie，遇验证码/风控即停，不绕过。",
+  "publisher": "EACbot Community",
+  "license": "Apache-2.0",
+  "source": {
+    "repository": "https://github.com/milind-soni/EACbot.git",
+    "revision": "813bba63fd7aa94c98ecf6d93d43648abe50f3a9"
+  },
+  "compatibility": {
+    "hostVersion": "^0.1.0",
+    "hosts": ["server", "desktop"],
+    "platforms": ["win32-x64", "linux-x64", "darwin-arm64", "darwin-x64"]
+  },
+  "runtime": { "mode": "process", "entry": "entry.mjs", "isolation": "none" },
+  "activation": ["manual"],
+  "permissions": [
+    { "id": "tieba-read", "capability": "tieba.content.read", "effect": "read", "scope": {}, "reason": "读取吧内帖子与摘要。" },
+    { "id": "tieba-draft", "capability": "tieba.draft.write", "effect": "write", "scope": {}, "reason": "维护回帖草稿。" },
+    { "id": "tieba-reply", "capability": "tieba.post.reply", "effect": "send", "scope": {}, "reason": "发表回帖，需主人单独授权并配置 Cookie。" }
+  ],
+  "contributes": {
+    "tools": [
+      { "id": "tieba-forum-threads", "entry": "entry.mjs", "effect": "read", "permission": "tieba-read", "description": "读取一个吧的帖子列表（标题、作者、回复数、链接；HTML 解析，实验性）。" },
+      { "id": "tieba-thread-detail", "entry": "entry.mjs", "effect": "read", "permission": "tieba-read", "description": "读取一个帖子的前若干楼内容摘要（HTML 解析，实验性）。" },
+      { "id": "tieba-reply-draft", "entry": "entry.mjs", "effect": "write", "permission": "tieba-draft", "description": "为某个帖子保存/列出/删除回帖草稿（action=save|list|delete）。" },
+      { "id": "tieba-reply-post", "entry": "entry.mjs", "effect": "send", "permission": "tieba-reply", "description": "发表回帖（需要 config.json 配置 Cookie 与 TBS；遇验证即停）。" }
+    ]
+  },
+  "configSchema": "config.schema.json",
+  "stateVersion": 1
+}

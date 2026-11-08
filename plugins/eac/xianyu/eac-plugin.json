@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "pluginId": "eac.xianyu",
+  "version": "1.0.0",
+  "apiVersion": "^1.0.0",
+  "name": "EAC 闲鱼助手",
+  "description": "闲鱼工具：自动回复知识库与规则（本地，稳定可用）；商品搜索需要配置已登录 Cookie（实验性）。发布、改价、交易等高影响操作未实现，不假装可用。",
+  "publisher": "EACbot Community",
+  "license": "Apache-2.0",
+  "source": {
+    "repository": "https://github.com/milind-soni/EACbot.git",
+    "revision": "813bba63fd7aa94c98ecf6d93d43648abe50f3a9"
+  },
+  "compatibility": {
+    "hostVersion": "^0.1.0",
+    "hosts": ["server", "desktop"],
+    "platforms": ["win32-x64", "linux-x64", "darwin-arm64", "darwin-x64"]
+  },
+  "runtime": { "mode": "process", "entry": "entry.mjs", "isolation": "none" },
+  "activation": ["manual"],
+  "permissions": [
+    { "id": "xy-read", "capability": "xianyu.kb.read", "effect": "read", "scope": {}, "reason": "读取知识库与自动回复规则。" },
+    { "id": "xy-write", "capability": "xianyu.kb.write", "effect": "write", "scope": {}, "reason": "维护知识库条目与自动回复规则。" },
+    { "id": "xy-delete", "capability": "xianyu.kb.delete", "effect": "delete", "scope": {}, "reason": "删除知识库条目与规则。" },
+    { "id": "xy-search", "capability": "xianyu.items.read", "effect": "read", "scope": {}, "reason": "用已配置 Cookie 搜索闲鱼商品（实验性）。" }
+  ],
+  "contributes": {
+    "tools": [
+      { "id": "xy-kb-add", "entry": "entry.mjs", "effect": "write", "permission": "xy-write", "description": "添加知识库条目（question 关键词, answer 回复文本, tags?）。" },
+      { "id": "xy-kb-list", "entry": "entry.mjs", "effect": "read", "permission": "xy-read", "description": "列出知识库条目，可按关键词过滤。" },
+      { "id": "xy-kb-delete", "entry": "entry.mjs", "effect": "delete", "permission": "xy-delete", "description": "按 id 删除知识库条目。" },
+      { "id": "xy-rules", "entry": "entry.mjs", "effect": "write", "permission": "xy-write", "description": "设置范围内自动回复规则（enable, onlyTrusted?, maxRepliesPerDay?）；发布/改价不在其中。" },
+      { "id": "xy-item-search", "entry": "entry.mjs", "effect": "read", "permission": "xy-search", "description": "按关键词搜索闲鱼商品（需要 config.json 配置已登录 Cookie；实验性，接口无官方合同）。" }
+    ]
+  },
+  "configSchema": "config.schema.json",
+  "stateVersion": 1
+}

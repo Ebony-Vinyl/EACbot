@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "pluginId": "eac.muse",
+  "version": "1.0.0",
+  "apiVersion": "^1.0.0",
+  "name": "EAC Muse",
+  "description": "音乐助手：酷狗公开接口搜歌、队列与播放状态管理（expectedRevision 防冲突）。播放回执由已连接的播放端（KugouMusic.NET 桥或面板）回报；没有播放端时控制请求只会被记录，不会谎称已播放。",
+  "publisher": "EACbot Community",
+  "license": "Apache-2.0",
+  "source": {
+    "repository": "https://github.com/milind-soni/EACbot.git",
+    "revision": "813bba63fd7aa94c98ecf6d93d43648abe50f3a9"
+  },
+  "compatibility": {
+    "hostVersion": "^0.1.0",
+    "hosts": ["server", "desktop"],
+    "platforms": ["win32-x64", "linux-x64", "darwin-arm64", "darwin-x64"]
+  },
+  "runtime": { "mode": "process", "entry": "entry.mjs", "isolation": "none" },
+  "activation": ["manual"],
+  "permissions": [
+    { "id": "muse-read", "capability": "muse.playback.read", "effect": "read", "scope": {}, "reason": "读搜索结果、队列与播放状态。" },
+    { "id": "muse-control", "capability": "muse.playback.control", "effect": "control", "scope": {}, "reason": "播放/暂停/切歌/seek/音量，需主人授权。" },
+    { "id": "muse-queue-write", "capability": "muse.queue.write", "effect": "write", "scope": {}, "reason": "编辑队列与回报播放回执。" }
+  ],
+  "contributes": {
+    "tools": [
+      { "id": "muse-search", "entry": "entry.mjs", "effect": "read", "permission": "muse-read", "description": "用酷狗公开接口按关键词搜歌（歌名、歌手、hash、时长）。" },
+      { "id": "muse-now-playing", "entry": "entry.mjs", "effect": "read", "permission": "muse-read", "description": "当前曲目与播放状态快照（含 revision；playbackConfirmed=false 表示还没有播放端回执）。" },
+      { "id": "muse-queue", "entry": "entry.mjs", "effect": "read", "permission": "muse-read", "description": "读取当前队列。" },
+      { "id": "muse-play-control", "entry": "entry.mjs", "effect": "control", "permission": "muse-control", "description": "播放控制：action=play|pause|resume|next|prev|seek|volume，带 expectedRevision 防过期冲突。" },
+      { "id": "muse-queue-edit", "entry": "entry.mjs", "effect": "write", "permission": "muse-queue-write", "description": "编辑队列：action=add|remove|clear，add 需要 track（来自 muse-search）。" },
+      { "id": "muse-report-playback", "entry": "entry.mjs", "effect": "write", "permission": "muse-queue-write", "description": "播放端回执：state=playing|paused|ended|failed|buffering（KugouMusic.NET 桥或面板调用，Bot 不用它）。" }
+    ]
+  },
+  "configSchema": "config.schema.json",
+  "stateVersion": 1
+}

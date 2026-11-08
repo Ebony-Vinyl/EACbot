@@ -1,0 +1,16 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "EACbot main window: core webview, dialog for folder picking, opener for external links. Custom commands are enforced in Rust by the allowlist in eac-host-contract.",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-show",
+    "core:window:allow-hide",
+    "core:window:allow-close",
+    "core:window:allow-minimize",
+    "core:window:allow-set-title",
+    "dialog:allow-open",
+    "opener:default"
+  ]
+}
