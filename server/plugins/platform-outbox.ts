@@ -70,6 +70,8 @@ export class PlatformOutboxStore {
     };
     const parsed = messageSchema.safeParse(message);
     if (!parsed.success) throw new PlatformOutboxError("invalid", parsed.error.issues[0]?.message ?? "invalid outbox message");
+    // The cap is checked before any state moves, so a refused append leaves the store exactly as it was.
+    if (state.messages.length >= 500) throw new PlatformOutboxError("full", "the platform outbox is full; a bridge must ack its deliveries");
     state.messages.push(parsed.data);
     this.persist(state);
     return parsed.data;

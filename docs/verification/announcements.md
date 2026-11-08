@@ -62,5 +62,5 @@ A member session may `GET /api/announcements` but gets 403 on the mutations
 - `EAC_PLUGIN_PROCESS=1` subprocess tool calls over the live fixture HTTP —
   the launcher does not cross that variable; unit tests cover it.
 - The 92 pre-existing stale `zh.json` translations and the pre-existing
-  `vocabulary.test.ts` EACbot-Cloud wording failures were already failing
+  `src/locales/vocabulary.test.ts` EACbot-Cloud wording failures were already failing
   before this change and are not part of it.
