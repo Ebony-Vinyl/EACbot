@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "pluginId": "example.my-plugin",
+  "version": "0.1.0",
+  "apiVersion": "^1.0.0",
+  "name": "My plugin",
+  "description": "Replace this with what the plugin does.",
+  "publisher": "Your name or organization",
+  "license": "MIT",
+  "source": {
+    "repository": "https://github.com/example/my-eac-plugin",
+    "revision": "0000000000000000000000000000000000000000"
+  },
+  "compatibility": {
+    "hostVersion": "^0.1.0",
+    "hosts": ["server", "desktop"],
+    "platforms": ["win32-x64", "linux-x64", "darwin-arm64"]
+  },
+  "runtime": {
+    "mode": "declarative"
+  },
+  "activation": ["manual"],
+  "permissions": [],
+  "contributes": {},
+  "stateVersion": 1
+}

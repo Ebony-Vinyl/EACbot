@@ -28,7 +28,9 @@ exception: `EAC_OPENAI_LIVE_URL` crosses when it is a loopback
 `http://127.0.0.1:PORT` (the fake GPT-Live that
 `node --experimental-strip-types server/testing/fake-openai-live.ts` prints),
 and `EAC_OPENAI_LIVE_KEY` crosses only with it, so that key can only ever
-reach the fake.
+reach the fake. The announcements recipe sets `EAC_ANNOUNCEMENTS_URL` so the
+fixture reads the operator-run announcement source; it is a read-only GET of
+that JSON.
 
 Pass the printed URL explicitly from a second terminal:
 
@@ -76,6 +78,7 @@ Use only mapped, tested commands:
 - [Chat widgets: prompts to try with a real bot](widget-prompts.md)
 - [Phone web app installation and safe areas](phone-web-app.md)
 - [Welcome flow and guided tour](onboarding.md)
+- [Announcements and the version-upgrade surface](announcements.md)
 - [Channels](channels.md)
 - [In-chat team coordination](room-coordination.md)
 - [Question cards: a teammate's question, in its chat and the person's inbox](question-cards.md)
@@ -327,6 +330,17 @@ sent mentions, multiline scrolling and responsive wrapping in real chat views.
 
 The [Group and Goal Local VM recipe](group-local-vm.md) checks per-speaker
 desktop routing, cancellation, and computer authority cleanup.
+
+## Planned plugin-platform acceptance
+
+These are acceptance designs. M1/M3 contract tests, `/api/plugins`, signed channel install/update/rollback and the extension-center UI exist; full recipes, real OS isolation and business plugins do not. They must be mapped to implemented commands and isolated fixtures as each stage ships:
+
+- [Plugin platform, platform bots, memory and UI](plugin-platform.md)
+- [Business plugins and cross-module integration](plugin-integrations.md)
+- [Plugin supply chain, releases and recovery](plugin-release.md)
+
+The [implementation roadmap](../superpowers/plans/2026-11-07-eac-plugin-platform/README.md)
+tracks the prerequisites. Do not treat mock coverage as real-account verification.
 
 ## Evidence
 
