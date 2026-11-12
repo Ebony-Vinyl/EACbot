@@ -7,7 +7,7 @@ import { t } from "@/lib/i18n";
 import { BoatOfferPanel } from "../BoatOffer";
 import { LiveProviderSettings } from "../LiveProviderSettings";
 import { VoiceEveryReplySetting } from "../VoiceEveryReplySetting";
-import { BuiltInReplyWait, LmStudioServer, OtherOpenAiCompatServers } from "../OpenAiCompatServers";
+import { BuiltInReplyWait, LmStudioServer } from "../OpenAiCompatServers";
 import { KEY_CATALOG, KEY_SECTIONS, keyMatches, savedState, type KeyEntry, type KeyId, type KeySectionId } from "./key-catalog";
 import { finishKeyFocus, useKeyFocus, type KeyFocusRequest } from "./key-focus";
 import { AnthropicEveryClaudeBot, OpenAiCompatUrl, OpenCodeProviderKeys, VpsConnection } from "./KeyPanels";
@@ -24,7 +24,7 @@ const PANELS: Partial<Record<KeyId, () => ReactNode>> = {
 
 const EXTRAS: Partial<Record<KeyId, () => ReactNode>> = {
   anthropic: () => <AnthropicEveryClaudeBot />,
-  openaiCompat: () => <><OpenAiCompatUrl /><BuiltInReplyWait /><OtherOpenAiCompatServers /></>,
+  openaiCompat: () => <><OpenAiCompatUrl /><BuiltInReplyWait /></>,
   box: () => <BoatOfferPanel />,
   liveKey: () => <LiveProviderSettings />,
 };

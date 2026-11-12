@@ -1,9 +1,19 @@
 {
   "type": "object",
-  "required": ["baseUrl", "token"],
+  "required": [
+    "baseUrl",
+    "token"
+  ],
   "properties": {
-    "baseUrl": { "type": "string", "description": "Home Assistant 地址，如 http://homeassistant.local:8123" },
-    "token": { "type": "string", "description": "HA 长期访问令牌（Long-lived access token）" }
+    "baseUrl": {
+      "type": "string",
+      "description": "Home Assistant 地址，如 http://homeassistant.local:8123"
+    },
+    "token": {
+      "type": "string",
+      "description": "HA 长期访问令牌（Long-lived access token）",
+      "secret": true
+    }
   },
   "additionalProperties": false
 }

@@ -16,6 +16,7 @@ import type { PlatformInboundHost } from "./platform-inbound.ts";
 import { MemorySpaceStore } from "../memory-spaces/store.ts";
 import { DeviceRegistry } from "../plugins/device-registry.ts";
 import { KanbanStore } from "../plugins/kanban.ts";
+import { createPluginConfigHost } from "../plugins/config-host.ts";
 
 export interface PluginsHostOptions {
   dataDir: string;
@@ -60,7 +61,12 @@ export function createPluginsHost(options: PluginsHostOptions): PluginsHost {
     channels,
     platform: options.platform,
   });
-  const plugins = createPluginRoutes({ registry: created, channels, market, mayManage: options.mayManage, botExists: (botId) => options.bots.has(botId) });
+  const pluginConfig = createPluginConfigHost({
+    dataDir: options.dataDir,
+    ...(runtime?.call ? { call: (installationId, method, params, timeoutMs) => runtime.call!(installationId, method, params, timeoutMs) } : {}),
+    ...(runtime?.isRunning ? { isRunning: (installationId) => runtime.isRunning!(installationId) } : {}),
+  });
+  const plugins = createPluginRoutes({ registry: created, channels, market, mayManage: options.mayManage, botExists: (botId) => options.bots.has(botId), config: pluginConfig });
   const platformAccounts = options.accounts ?? new PlatformAccountStore(options.dataDir);
   const platforms = createPlatformRoutes({
     accounts: platformAccounts,

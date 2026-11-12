@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Check, Loader2, RefreshCw, TriangleAlert } from "lucide-react";
+import { Blocks, Check, Loader2, RefreshCw, TriangleAlert } from "lucide-react";
 
 import { api, useStore, type InstanceInfo } from "@/state/store";
 import { EngineCard, EngineSections, RefreshEngines, engineReady } from "./EngineLibrary";
@@ -18,6 +18,8 @@ import { ConfirmDialog } from "./ConfirmDialog";
 import { Select } from "./Select";
 import { SettingsDisclosureRow, SettingsGroup, SettingsRows } from "./SettingsPrimitives";
 import { InstanceProviderMark } from "./ProviderIcons";
+import { OtherOpenAiCompatServers } from "./OpenAiCompatServers";
+import { addedServers } from "@/lib/openai-compat-endpoints";
 
 interface ProbeResult {
   ok: boolean;
@@ -426,32 +428,60 @@ function SimpleEngines({ rows, isReady, renderEngine, more }: {
   more: { id: string; open: boolean; onToggle: () => void };
 }) {
   const [opened, setOpened] = useState<string | null>(null);
-  const featured = rows.filter((instance) => isReady(instance) || instance.authentication !== undefined);
-  const others = rows.filter((instance) => !featured.includes(instance));
+  const [customOpen, setCustomOpen] = useState(false);
+  // Added OpenAI-compatible servers live in their own row below, so they do not double up here.
+  const compatIds = new Set(addedServers(rows).map((instance) => instance.instanceId));
+  const engineRows = rows.filter((instance) => !compatIds.has(instance.instanceId));
+  const featured = engineRows.filter((instance) => isReady(instance) || instance.authentication !== undefined);
+  const others = engineRows.filter((instance) => !featured.includes(instance));
+  const customServers = addedServers(rows);
+  const customReady = customServers.length > 0;
+  const featuredRows = featured.map((instance) => {
+    const ready = isReady(instance), open = opened === instance.instanceId;
+    return (
+      <div key={instance.instanceId} data-simple-engine={instance.instanceId} className="group">
+        <div className="flex min-h-11 flex-wrap items-center gap-x-5 gap-y-2 px-4 py-2.5">
+          <span className="flex min-w-[min(100%,15rem)] flex-1 items-center gap-3">
+            <InstanceProviderMark instance={instance} size={14} subtle />
+            <span className="flex min-w-0 flex-col gap-0.5">
+              <span className="truncate text-[14px] leading-5 text-ink">{instance.displayName}</span>
+              <span className="truncate text-[13px] leading-[18px] text-ink-secondary">{simpleStatus(instance, ready)}</span>
+            </span>
+          </span>
+          <button type="button" aria-expanded={open} className="ui-button ml-auto shrink-0" onClick={() => setOpened(open ? null : instance.instanceId)}>
+            {t(open ? "common.done" : ready ? "settings.simple.ai.manage" : "settings.simple.ai.setUp")}
+          </button>
+        </div>
+        {open && <div className="px-4 pb-3">{renderEngine(instance, true)}</div>}
+      </div>
+    );
+  });
+  const customRow = (
+    <div key="custom-providers" data-simple-engine="custom-providers" className="group">
+      <div className="flex min-h-11 flex-wrap items-center gap-x-5 gap-y-2 px-4 py-2.5">
+        <span className="flex min-w-[min(100%,15rem)] flex-1 items-center gap-3">
+          <Blocks size={14} className="shrink-0 text-ink-secondary" aria-hidden="true" />
+          <span className="flex min-w-0 flex-col gap-0.5">
+            <span className="truncate text-[14px] leading-5 text-ink">{t("settings.simple.ai.custom")}</span>
+            <span className="truncate text-[13px] leading-[18px] text-ink-secondary">{customReady ? t("onboarding.engines.ready") : t("onboarding.engines.needsSetup")}</span>
+          </span>
+        </span>
+        <button type="button" aria-expanded={customOpen} className="ui-button ml-auto shrink-0" onClick={() => setCustomOpen(!customOpen)}>
+          {t(customOpen ? "common.done" : customReady ? "settings.simple.ai.manage" : "settings.simple.ai.setUp")}
+        </button>
+      </div>
+      {customOpen && <div className="px-4 pb-3"><OtherOpenAiCompatServers /></div>}
+    </div>
+  );
+  const deepseekIndex = featured.findIndex((instance) => instance.driverKind === "deepseekAgent");
+  const rowItems = [...featuredRows];
+  if (deepseekIndex >= 0) rowItems.splice(deepseekIndex + 1, 0, customRow);
+  else rowItems.push(customRow);
   return (
     <>
       <SettingsGroup label={t("settings.simple.ai.yours")} actions={<RefreshEngines />}>
         <SettingsRows>
-          {featured.map((instance) => {
-            const ready = isReady(instance), open = opened === instance.instanceId;
-            return (
-              <div key={instance.instanceId} data-simple-engine={instance.instanceId} className="group">
-                <div className="flex min-h-11 flex-wrap items-center gap-x-5 gap-y-2 px-4 py-2.5">
-                  <span className="flex min-w-[min(100%,15rem)] flex-1 items-center gap-3">
-                    <InstanceProviderMark instance={instance} size={14} subtle />
-                    <span className="flex min-w-0 flex-col gap-0.5">
-                      <span className="truncate text-[14px] leading-5 text-ink">{instance.displayName}</span>
-                      <span className="truncate text-[13px] leading-[18px] text-ink-secondary">{simpleStatus(instance, ready)}</span>
-                    </span>
-                  </span>
-                  <button type="button" aria-expanded={open} className="ui-button ml-auto shrink-0" onClick={() => setOpened(open ? null : instance.instanceId)}>
-                    {t(open ? "common.done" : ready ? "settings.simple.ai.manage" : "settings.simple.ai.setUp")}
-                  </button>
-                </div>
-                {open && <div className="px-4 pb-3">{renderEngine(instance, true)}</div>}
-              </div>
-            );
-          })}
+          {rowItems}
         </SettingsRows>
       </SettingsGroup>
       {others.length > 0 && (

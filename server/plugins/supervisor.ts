@@ -135,7 +135,7 @@ export class StdioPluginSupervisor implements PluginRuntime {
     try {
       const stat = lstatSync(entry);
       const realEntry = realpathSync(entry);
-      const realRel = relative(record.packageDir, realEntry);
+      const realRel = relative(realpathSync(record.packageDir), realEntry);
       if (stat.isSymbolicLink() || !stat.isFile() || realRel.startsWith("..") || isAbsolute(realRel)) {
         return { ok: false, error: "the plugin entry changed into a link or left its package" };
       }

@@ -11,6 +11,7 @@ import {
   type PlatformRoute,
 } from "../plugins/platform-accounts.ts";
 import { type PlatformOutboxStore } from "../plugins/platform-outbox.ts";
+import { readBatch, shouldSpeak, type ReplyChanceInput } from "../../shared/reply-chance.ts";
 
 const threadsSchema = z.object({
   schemaVersion: z.literal(1),
@@ -37,6 +38,15 @@ export interface PlatformInboundDeps {
   };
   canStart(botId: string, threadId: string | undefined): boolean;
   threadBusy(botId: string, threadId: string): boolean;
+  /** The bot's name and aliases, so a message that names it is always answered. */
+  namesOf?(botId: string): string[];
+  /**
+   * The last few minutes of this conversation, oldest last, for the "am I already talking too much" reading. Absent
+   * means the gate cannot tell, and it answers only what names the bot.
+   */
+  recent?(botId: string, threadId: string): Array<{ role: string; text: string; at: number }>;
+  /** Share of replies this conversation wants, 0–1. Absent or 1 keeps the old behaviour of answering every message. */
+  replyShare?(): number;
   startTurn(botId: string, text: string, opts: {
     threadId: string;
     sender?: { name: string; id?: string };
@@ -53,6 +63,8 @@ const PLATFORM_LABELS: Record<ThreadsFile["threads"][number]["platform"], string
 
 export type PlatformDelivery =
   | { status: 200; body: { route: PlatformRoute } }
+  /** Delivered, and deliberately not answered: the gate judged this message not for the bot. */
+  | { status: 200; body: { route: PlatformRoute; threadId: string; silent: true } }
   | { status: 202; body: { route: PlatformRoute; threadId: string; accepted: true } }
   | { status: 404; body: { route: PlatformRoute } }
   | { status: 409; body: { route: PlatformRoute; threadId?: string; error: string; code?: string } }
@@ -114,6 +126,30 @@ export function createPlatformInboundHost(deps: PlatformInboundDeps) {
     return task.threadId;
   };
 
+  /** Whether this message is one to answer, from the bot's names and the room's last few minutes. */
+  const speakDecision = (botId: string, threadId: string, text: string): { speak: boolean } => {
+    const share = deps.replyShare?.();
+    // No share configured, or a full one: answer as before, which is what every existing binding expects.
+    if (share === undefined || share >= 1) return { speak: true };
+    const names = deps.namesOf?.(botId) ?? [];
+    const named = names.some((name) => name.length > 0 && text.includes(name));
+    const batch = readBatch([text], named);
+    const recent = deps.recent?.(botId, threadId) ?? [];
+    const cutoff = Date.now() - 5 * 60_000;
+    const inWindow = recent.filter((message) => message.at >= cutoff);
+    const mine = inWindow.filter((message) => message.role === "assistant");
+    const lastMine = mine.at(-1);
+    const input: ReplyChanceInput = {
+      named,
+      ...batch,
+      selfShare: inWindow.length ? mine.length / inWindow.length : 0,
+      recentMessages: inWindow.length,
+      secondsSinceSelf: lastMine ? (Date.now() - lastMine.at) / 1000 : 3600,
+      pending: 1,
+    };
+    return { speak: shouldSpeak(input, share).speak };
+  };
+
   return {
     /** A conversation's EACbot thread, for the platform dashboard to link to. */
     threadOf(accountId: string, conversationId: string): string | null {
@@ -152,6 +188,14 @@ export function createPlatformInboundHost(deps: PlatformInboundDeps) {
       }
       if (deps.threadBusy(route.botId, threadId)) {
         return { status: 409, body: { route, threadId, error: "this conversation is already being answered", code: "thread_busy" } };
+      }
+      // A group chat is not a request queue. Answering every message makes the bot noise, so a message that does not
+      // name it has to clear a gate whose odds a person set. The event is still marked seen either way: this is a
+      // decision not to answer, not a failure to deliver, and re-delivering it would only ask the same question again.
+      const decision = speakDecision(route.botId, threadId, text);
+      if (!decision.speak) {
+        deps.accounts.markSeen(event.accountId, event.eventId);
+        return { status: 200, body: { route, threadId, silent: true } };
       }
       const senderName = event.sender.name ?? `${PLATFORM_LABELS[event.platform]} user`;
       const senderId = route.principal.personId;
