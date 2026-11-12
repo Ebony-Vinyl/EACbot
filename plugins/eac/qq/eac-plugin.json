@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "pluginId": "eac.qq",
+  "version": "1.0.0",
+  "apiVersion": "^1.0.0",
+  "name": "EAC QQ 桥（OneBot v11）",
+  "description": "把 OneBot v11 实现的 QQ 账号接到 EACbot：QQ 消息进入绑定 Bot 的会话，Bot 的回复回到 QQ。去重、回声与主人身份由宿主判定；发送结果不明时不重试、不谎称已送达。",
+  "publisher": "EACbot Community",
+  "license": "Apache-2.0",
+  "source": {
+    "repository": "https://github.com/milind-soni/EACbot.git",
+    "revision": "813bba63fd7aa94c98ecf6d93d43648abe50f3a9"
+  },
+  "compatibility": {
+    "hostVersion": "^0.1.0 || >=0.2.0-preview.0 <0.3.0",
+    "hosts": [
+      "server",
+      "desktop"
+    ],
+    "platforms": [
+      "win32-x64",
+      "linux-x64",
+      "darwin-arm64",
+      "darwin-x64"
+    ]
+  },
+  "runtime": {
+    "mode": "process",
+    "entry": "entry.mjs",
+    "isolation": "none"
+  },
+  "activation": [
+    "manual"
+  ],
+  "permissions": [
+    {
+      "id": "qq-receive",
+      "capability": "qq.messages.receive",
+      "effect": "read",
+      "scope": {},
+      "reason": "从 OneBot 连接接收 QQ 消息并交给绑定 Bot。"
+    },
+    {
+      "id": "qq-send",
+      "capability": "qq.messages.send",
+      "effect": "send",
+      "scope": {},
+      "reason": "把 Bot 的回复发回 QQ 会话。"
+    },
+    {
+      "id": "qq-configure",
+      "capability": "qq.bridge.configure",
+      "effect": "write",
+      "scope": {},
+      "reason": "写入桥自己的连接配置（OneBot 地址、账户 id），只落在本插件工作目录。"
+    }
+  ],
+  "contributes": {
+    "tools": [
+      {
+        "id": "qq-bridge-status",
+        "entry": "entry.mjs",
+        "effect": "read",
+        "permission": "qq-receive",
+        "description": "查看桥的连接状态、收发计数、待投递与最近错误。"
+      },
+      {
+        "id": "qq-send-message",
+        "entry": "entry.mjs",
+        "effect": "send",
+        "permission": "qq-send",
+        "description": "直接向一个 QQ 私聊或群发送文本（发送结果以 OneBot 回执为准，不保证 QQ 端已送达）。"
+      },
+      {
+        "id": "qq-bridge-configure",
+        "entry": "entry.mjs",
+        "effect": "write",
+        "permission": "qq-configure",
+        "description": "写入桥的配置：onebotUrl、accountId，可选 onebotToken、serverUrl、serverToken。"
+      }
+    ]
+  },
+  "configSchema": "config.schema.json",
+  "stateVersion": 1
+}

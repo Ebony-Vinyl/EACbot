@@ -1,0 +1,41 @@
+{
+  "type": "object",
+  "properties": {
+    "onebotUrl": {
+      "type": "string",
+      "description": "必填。OneBot v11 正向 WebSocket 地址，例如 ws://127.0.0.1:3001"
+    },
+    "onebotToken": {
+      "type": "string",
+      "description": "可选。OneBot 端的 access_token；同时以查询参数与 Authorization 头发送",
+      "secret": true
+    },
+    "accountId": {
+      "type": "string",
+      "description": "必填。这个 QQ 平台账户在 EACbot 里的 accountId（设置 → 平台账户里显示）"
+    },
+    "serverUrl": {
+      "type": "string",
+      "description": "可选。EACbot 服务地址，默认 http://127.0.0.1:8799"
+    },
+    "serverToken": {
+      "type": "string",
+      "description": "可选。EACbot 访问令牌（eacbot token create --scope admin）。桌面应用与远程部署需要；本机自建服务器可省略",
+      "secret": true
+    },
+    "pollMs": {
+      "type": "number",
+      "description": "可选。轮询宿主 outbox 的间隔毫秒数，默认 1000"
+    },
+    "allow": {
+      "type": "string",
+      "description": "必填。允许接入的会话，格式 group:群号 或 direct:QQ号，多个用逗号分隔；留空则不接入任何会话"
+    }
+  },
+  "required": [
+    "onebotUrl",
+    "accountId",
+    "allow"
+  ],
+  "additionalProperties": false
+}

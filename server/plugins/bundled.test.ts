@@ -13,7 +13,7 @@ import { StdioPluginSupervisor } from "./supervisor.ts";
 import { installLocalPlugin } from "./local-install.ts";
 
 const PACK_ROOT = join(import.meta.dirname, "..", "..", "plugins", "eac");
-const PACKS = ["bilibili", "douyin", "health", "home-assistant", "muse", "tieba", "xianyu", "xiaohongshu"];
+const PACKS = ["bilibili", "douyin", "health", "home-assistant", "muse", "qq", "tieba", "xianyu", "xiaohongshu"];
 
 const folders: string[] = [];
 afterEach(() => {
@@ -85,12 +85,14 @@ describe("bundled plugins", () => {
   });
 });
 
-function configFor(pack: string, fakeUrl: string): Record<string, string> {
+function configFor(pack: string, fakeUrl: string): Record<string, unknown> {
   if (pack === "home-assistant") return { baseUrl: fakeUrl, token: "test-token" };
   if (pack === "bilibili") return { apiBase: fakeUrl, cookie: "SESSDATA=x; bili_jct=csrf123" };
   if (pack === "muse") return { apiBase: fakeUrl };
   if (pack === "tieba") return { apiBase: fakeUrl, cookie: "TIEBA_USERTYPE=test", tbs: "tbs123" };
   if (pack === "xianyu") return { cookie: "_m_h5_tk=abc_123; unb=77" };
+  // The QQ bridge reads its OneBot address from config; this port is closed on purpose, so no tool below sends.
+  if (pack === "qq") return { onebotUrl: "ws://127.0.0.1:1", accountId: "11111111-2222-3333-4444-555555555555", serverUrl: fakeUrl, pollMs: 60_000 };
   return {};
 }
 
@@ -105,6 +107,7 @@ function toolFor(pack: string): { id: string; args: Record<string, unknown> } {
     case "tieba": return { id: "tieba-reply-draft", args: { action: "save", threadId: "1234567890", text: "草稿" } };
     case "xianyu": return { id: "xy-kb-add", args: { question: "包邮吗", answer: "包邮" } };
     case "bilibili": return { id: "bili-search-videos", args: { keyword: "test" } };
+    case "qq": return { id: "qq-bridge-status", args: {} };
     default: throw new Error(`no tool mapped for ${pack}`);
   }
 }
