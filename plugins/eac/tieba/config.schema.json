@@ -3,7 +3,8 @@
   "properties": {
     "cookie": {
       "type": "string",
-      "description": "可选：已登录 tieba.baidu.com 的 Cookie，仅供回帖"
+      "description": "可选：已登录 tieba.baidu.com 的 Cookie，仅供回帖",
+      "secret": true
     },
     "tbs": {
       "type": "string",

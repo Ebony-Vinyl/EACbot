@@ -5,6 +5,7 @@ import type { PluginGrantResources } from "../../shared/plugins/permissions.ts";
 import { LocalInstallError, installLocalPlugin } from "../plugins/local-install.ts";
 import { MarketError, type PluginMarketService } from "../plugins/market.ts";
 import { PluginChannelError, type PluginChannelStore } from "../plugins/channel-store.ts";
+import { PluginConfigError, type PluginConfigHost } from "../plugins/config-host.ts";
 
 export interface PluginRouteDeps {
   registry: PluginRegistry;
@@ -13,6 +14,8 @@ export interface PluginRouteDeps {
   mayManage(auth: RequestAuth): boolean;
   /** When given, a grant may only name a bot this workspace has. */
   botExists?(botId: string): boolean;
+  /** The values a plugin reads from its work directory, and the status it reports. */
+  config?: PluginConfigHost;
 }
 
 const RESOURCES = ["accounts", "devices", "memorySpaces", "resources"] as const;
@@ -53,6 +56,10 @@ function failure(error: unknown): { status: number; body: { error: string; code:
   }
   if (error instanceof LocalInstallError) {
     return { status: error.status, body: { error: error.message, code: error.code } };
+  }
+  if (error instanceof PluginConfigError) {
+    const status = error.code === "not-found" ? 404 : error.code === "no-schema" ? 409 : error.code === "unreadable" ? 422 : 400;
+    return { status, body: { error: error.message, code: error.code } };
   }
   return { status: 500, body: { error: "plugin operation failed", code: "internal" } };
 }
@@ -287,6 +294,50 @@ export function createPluginRoutes(deps: PluginRouteDeps): RouteHandler {
         return plugin ? json(res, 200, { plugin }) : json(res, 404, { error: "No such plugin installation.", code: "not-found" });
       } catch {
         return json(res, 500, { error: "The plugin store could not be read.", code: "store-unavailable" });
+      }
+    }
+
+    // The configuration a plugin reads from its own work directory, and the status it reports about itself. Neither
+    // is a tool call: a person fixing a broken bridge needs no grant, and no bot has to be authorised to look.
+    const configPath = /^\/api\/plugins\/([A-Za-z0-9_-]{1,120})\/config$/.exec(path);
+    if (configPath && deps.config) {
+      const record = deps.registry.store.get(configPath[1]!);
+      if (!record) return json(res, 404, { error: "No such plugin installation.", code: "not-found" });
+      if (method === "GET") {
+        try {
+          return json(res, 200, deps.config.read(record));
+        } catch (error) {
+          const refused = failure(error);
+          return json(res, refused.status, refused.body);
+        }
+      }
+      if (method === "PUT") {
+        let body: unknown;
+        try {
+          body = await readBody(req, 64 * 1024);
+        } catch (error) {
+          const status = (error as { status?: number }).status === 413 ? 413 : 400;
+          return json(res, status, { error: "A configuration object is required.", code: "invalid-body" });
+        }
+        try {
+          return json(res, 200, deps.config.write(record, body));
+        } catch (error) {
+          const refused = failure(error);
+          return json(res, refused.status, refused.body);
+        }
+      }
+      return json(res, 405, { error: "GET or PUT this plugin's configuration.", code: "method-not-allowed" });
+    }
+
+    const statusPath = /^\/api\/plugins\/([A-Za-z0-9_-]{1,120})\/status$/.exec(path);
+    if (statusPath && deps.config && method === "GET") {
+      const record = deps.registry.store.get(statusPath[1]!);
+      if (!record) return json(res, 404, { error: "No such plugin installation.", code: "not-found" });
+      try {
+        return json(res, 200, { status: await deps.config.status(record) });
+      } catch (error) {
+        const refused = failure(error);
+        return json(res, refused.status, refused.body);
       }
     }
 

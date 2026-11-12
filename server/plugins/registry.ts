@@ -59,6 +59,8 @@ export interface PluginSummary {
   permissions: Array<{ id: string; capability: string; effect: string; reason: string }>;
   provides: Record<string, string>;
   requires: Record<string, string>;
+  /** True when the plugin declares values a person fills in its work directory. */
+  configurable: boolean;
 }
 
 function runtimeSummary(runtime: PluginManifest["runtime"]): PluginSummary["runtime"] {
@@ -79,6 +81,7 @@ function summary(record: PluginInstallRecord): PluginSummary {
     permissions: record.manifest.permissions.map(({ id, capability, effect, reason }) => ({ id, capability, effect, reason })),
     provides: record.manifest.provides ?? {},
     requires: record.manifest.requires ?? {},
+    configurable: typeof record.manifest.configSchema === "string",
   };
 }
 
@@ -118,6 +121,11 @@ export class PluginRegistry {
   constructor(store: PluginInstallStore, options: PluginRegistryOptions) {
     this.store = store;
     this.options = options;
+  }
+
+  /** The supervisor, for host-side methods that are not tool calls: configuration and live status. */
+  get runtime(): PluginRuntime | undefined {
+    return this.options.runtime;
   }
 
   private serial<T>(installationId: string, run: () => Promise<T>): Promise<T> {
