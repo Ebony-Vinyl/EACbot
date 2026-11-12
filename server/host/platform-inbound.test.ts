@@ -12,7 +12,7 @@ afterEach(() => {
   for (const folder of folders.splice(0)) rmSync(folder, { recursive: true, force: true });
 });
 
-function setup() {
+function setup(options: { names?: string[]; share?: number; recent?: Array<{ role: string; text: string; at: number }> } = {}) {
   const folder = mkdtempSync(join(tmpdir(), "eac-platform-inbound-"));
   folders.push(folder);
   const accounts = new PlatformAccountStore(folder, { now: () => "2026-11-08T10:00:00.000Z" });
@@ -37,6 +37,9 @@ function setup() {
     accounts, outbox, dataDir: folder, store,
     canStart: () => true,
     threadBusy: () => state.busy,
+    ...(options.names ? { namesOf: () => options.names! } : {}),
+    ...(options.share !== undefined ? { replyShare: () => options.share! } : {}),
+    ...(options.recent ? { recent: () => options.recent! } : {}),
     startTurn: async (botId, text, opts) => {
       if (state.refuseStart) throw Object.assign(new Error("blocked"), { code: state.refuseStart });
       turns.push({ botId, text, opts });
@@ -160,5 +163,37 @@ describe("platform inbound turns", () => {
       startTurn: async () => ({ ok: true, text: "" }),
     });
     expect(second.threadOf(first.account.accountId, "conv-1")).toBe(created.body.threadId);
+  });
+
+  it("answers every message when no share is set, which is what an existing binding expects", async () => {
+    const { host, event, turns } = setup();
+    const delivered = await host.deliver(event({ text: "随便说一句" }));
+    expect(delivered.status).toBe(202);
+    expect(turns).toHaveLength(1);
+  });
+
+  it("stays silent on an unaddressed message when the share is low, without opening a turn", async () => {
+    const { host, event, turns } = setup({ names: ["EACbot"], share: 0.1 });
+    const delivered = await host.deliver(event({ text: "周六再说吧", conversation: { id: "g1", kind: "group" } }));
+    // Delivered and deliberately not answered: the event is consumed, no turn runs, nothing is retried.
+    expect(delivered).toMatchObject({ status: 200, body: { silent: true } });
+    expect(turns).toHaveLength(0);
+  });
+
+  it("always answers a message that names the bot", async () => {
+    const { host, event, turns } = setup({ names: ["EACbot"], share: 0.05 });
+    const delivered = await host.deliver(event({ text: "EACbot 你来说说", conversation: { id: "g1", kind: "group" } }));
+    expect(delivered.status).toBe(202);
+    expect(turns).toHaveLength(1);
+  });
+
+  it("does not ask again for a message it chose not to answer", async () => {
+    const { host, event, turns } = setup({ names: ["EACbot"], share: 0.05 });
+    const payload = event({ text: "周六再说吧", conversation: { id: "g1", kind: "group" } });
+    await host.deliver(payload);
+    // The same event again is a duplicate, not a second chance to answer.
+    const again = await host.deliver(payload);
+    expect(again.status).toBe(200);
+    expect(turns).toHaveLength(0);
   });
 });
