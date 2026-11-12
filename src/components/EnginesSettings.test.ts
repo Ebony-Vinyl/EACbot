@@ -443,10 +443,24 @@ describe("Settings → AI in Simple mode", () => {
     ];
     const html = simple();
     expect(html).toContain(">Your AI</h3>");
-    expect(rows(html)).toEqual(["claude", "codex"]);
+    expect(rows(html)).toEqual(["claude", "codex", "custom-providers"]);
     expect(html).toMatch(/data-simple-engine="claude"[\s\S]*?>Manage<\/button>/);
     expect(html).toMatch(/data-simple-engine="codex"[\s\S]*?>Set up<\/button>/);
+    expect(html).toContain("Custom providers");
     expect(html).not.toContain("Model providers and accounts");
+  });
+
+  it("keeps the added OpenAI-compatible servers out of the engine rows; their own row hosts them", () => {
+    fixture.instances = [
+      engine("deepseek", "deepseekAgent", true),
+      { ...engine("openai-compat-1", "openai-compat", true), instanceId: "openai-compat-1", displayName: "My relay", cliDefault: undefined },
+      engine("kimi", "kimiAgent", false),
+    ];
+    const html = simple();
+    expect(rows(html)).toEqual(["deepseek", "custom-providers"]);
+    // The added server is represented by its own row, not as an engine row or inside the fold.
+    expect(html).not.toContain("My relay");
+    expect(html).toMatch(/More AI providers \(1\)/);
   });
 
   it("folds every other provider under More AI providers, with the count", () => {
