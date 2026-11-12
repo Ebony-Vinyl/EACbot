@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Download, KeyRound, Loader2, Package, Play, Plus, Power, RefreshCw, RotateCcw, ShieldCheck, Trash2, TriangleAlert, X } from "lucide-react";
+import { Download, KeyRound, Loader2, Package, Play, Plus, Power, RefreshCw, RotateCcw, Settings2, ShieldCheck, Trash2, TriangleAlert, X } from "lucide-react";
 
 import { api } from "@/state/store";
 import type { LocaleKey } from "@/locales";
@@ -9,6 +9,7 @@ import { t } from "@/lib/i18n";
 import { useStore } from "@/state/store";
 
 import { PluginGrants } from "./PluginGrants";
+import { PluginConfigForm, PluginStatusLine } from "./PluginConfig";
 
 interface MarketEntry {
   pluginId: string;
@@ -42,6 +43,8 @@ interface InstalledPlugin {
   state: string;
   runtime: { mode: string };
   permissions: Array<{ id: string; capability: string; effect: string }>;
+  /** Whether this plugin declares values a person must fill in its work directory. */
+  configurable?: boolean;
 }
 
 const STATE_KEYS: Record<string, LocaleKey> = {
@@ -78,6 +81,8 @@ export function ExtensionsCatalog({ onClose }: { onClose(): void }) {
   const [error, setError] = useState<string | null>(null);
   const [showChannelForm, setShowChannelForm] = useState(false);
   const [grantsFor, setGrantsFor] = useState<string | null>(null);
+  const [configFor, setConfigFor] = useState<string | null>(null);
+  const [statusTick, setStatusTick] = useState(0);
   const [localPath, setLocalPath] = useState("");
   const [channel, setChannel] = useState({ sourceId: "", name: "", url: "", keyId: "", publicKeyPem: "" });
 
@@ -313,6 +318,16 @@ export function ExtensionsCatalog({ onClose }: { onClose(): void }) {
                       <div className="truncate text-[12px] text-ink-secondary">{plugin.installationId} &middot; {plugin.sourceId} &middot; {plugin.permissions.length > 0 ? t("extensions.permissions", { count: plugin.permissions.length }) : t("extensions.noPermissions")}</div>
                     </div>
                     <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] ${plugin.state === "active" ? "bg-accent/15 text-accent" : "bg-raised text-ink-secondary"}`}>{stateLabel(plugin.state)}</span>
+                    {plugin.configurable && (
+                      <button
+                        type="button"
+                        onClick={() => setConfigFor((current) => (current === plugin.installationId ? null : plugin.installationId))}
+                        aria-expanded={configFor === plugin.installationId}
+                        className="inline-flex h-7 shrink-0 items-center gap-1 rounded-full px-2.5 text-[12px] text-ink-secondary hover:bg-raised hover:text-ink"
+                      >
+                        <Settings2 size={13} /> {t("extensions.config.button")}
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => setGrantsFor((current) => (current === plugin.installationId ? null : plugin.installationId))}
@@ -334,8 +349,16 @@ export function ExtensionsCatalog({ onClose }: { onClose(): void }) {
                       <Trash2 size={14} />
                     </button>
                   </div>
+                  {plugin.state === "active" && (
+                    <div className="mt-1 pl-6">
+                      <PluginStatusLine installationId={plugin.installationId} refreshKey={statusTick} />
+                    </div>
+                  )}
                   {grantsFor === plugin.installationId && (
                     <PluginGrants installationId={plugin.installationId} bots={state.bots.filter((bot) => !bot.hidden).map((bot) => ({ id: bot.id, name: bot.name }))} />
+                  )}
+                  {configFor === plugin.installationId && (
+                    <PluginConfigForm installationId={plugin.installationId} onSaved={() => setStatusTick((tick) => tick + 1)} />
                   )}
                 </div>
               ))}
