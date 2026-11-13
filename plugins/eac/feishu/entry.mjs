@@ -70,6 +70,7 @@ let restartTimer = null;
 let tickTimer = null;
 let flushingInbound = false;
 let flushingOutbox = false;
+let outboxPauseUntil = 0;
 
 function note(error) {
   status.lastError = textOf(error);
@@ -133,6 +134,9 @@ async function flushInbound() {
       }
       if (answer.status === 401 || answer.status === 403) {
         note(answer.body?.error ?? ("host refused the bridge token (" + answer.status + ")"));
+        entry.attempts = (entry.attempts ?? 0) + 1;
+        entry.nextAt = new Date(Date.now() + 60_000).toISOString();
+        persist();
         break;
       }
       if (answer.status >= 400 && answer.status < 500) {
@@ -241,6 +245,7 @@ async function sendOutbox(message) {
 
 async function flushOutbox() {
   if (flushingOutbox || !config || !state) return;
+  if (Date.now() < outboxPauseUntil) return;
   flushingOutbox = true;
   try {
     let answer;
@@ -252,6 +257,7 @@ async function flushOutbox() {
     }
     if (!answer.ok) {
       note(answer.body?.error ?? ("outbox read failed (" + answer.status + ")"));
+      if (answer.status === 401 || answer.status === 403 || answer.status >= 500) outboxPauseUntil = Date.now() + 60_000;
       return;
     }
     const messages = Array.isArray(answer.body?.messages) ? answer.body.messages : [];
