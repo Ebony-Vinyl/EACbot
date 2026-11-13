@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 /** Platforms EAC may bind to a bot. A platform adapter reports which of these it can actually serve. */
-export const PLATFORM_IDS = ["qq", "bilibili", "xianyu", "douyin", "xiaohongshu", "tieba"] as const;
+export const PLATFORM_IDS = ["qq", "bilibili", "xianyu", "douyin", "xiaohongshu", "tieba", "feishu"] as const;
 export type PlatformId = (typeof PLATFORM_IDS)[number];
 
 export const PLATFORM_STATUSES = ["connected", "expired", "revoked", "unavailable"] as const;

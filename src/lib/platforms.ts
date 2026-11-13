@@ -8,4 +8,5 @@ export const PLATFORM_LABELS: Readonly<Record<PlatformId, string>> = {
   douyin: "抖音",
   xiaohongshu: "小红书",
   tieba: "贴吧",
+  feishu: "飞书",
 };

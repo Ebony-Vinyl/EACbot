@@ -1,12 +1,13 @@
 # EAC 官方插件包（plugins/eac）
 
-这些是随本仓库源码分发的官方插件包（共 9 个）。全部为 process 插件（stdio JSON-RPC），由宿主 supervisor 启动（需 `EAC_PLUGIN_PROCESS=1`）。安装方式见 [扩展中心](../../docs/plugins/README.md)：本地包路径指向各包目录（含 `eac-plugin.json`），或经签名渠道分发。
+这些是随本仓库源码分发的官方插件包（共 10 个）。全部为 process 插件（stdio JSON-RPC），由宿主 supervisor 启动（需 `EAC_PLUGIN_PROCESS=1`）。安装方式见 [扩展中心](../../docs/plugins/README.md)：本地包路径指向各包目录（含 `eac-plugin.json`），或经签名渠道分发。
 
 ## 能力矩阵（2026-11-11，如实标注）
 
 | 插件 | 已实现（状态） | 明确未实现 |
 | --- | --- | --- |
 | `eac.qq` | OneBot v11 桥：QQ 群聊/私聊 → 绑定 Bot 的会话，回复回 QQ；去重/回声/身份由宿主判定（production，需自备 OneBot） | 官方 QQ 开放平台协议、图片/语音/文件消息、频道与评论、反向 WS |
+| `eac.feishu` | 飞书企业自建应用文本桥：私聊/群 @ → 绑定 Bot，回复回原消息；lark-cli 长连接、本地队列和幂等回复（需真实租户验收） | 图片/文件/语音/视频、飞书卡片审批、用户身份文档/日历 |
 | `eac.health` | 记录/查询/趋势/摘要/删除（production，全本地） | 手环/手机自动导入 |
 | `eac.home-assistant` | HA REST 实体读取、服务调用（production） | WebSocket 实时订阅 |
 | `eac.bilibili` | 搜索/视频信息/热门榜（production）；点赞/评论（experimental，需 Cookie+grant） | 弹幕/投币/收藏/关注、字幕抓取总结 |

@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "pluginId": "eac.feishu",
+  "version": "1.0.0",
+  "apiVersion": "^1.0.0",
+  "name": "EAC 飞书桥（Feishu / Lark）",
+  "description": "把飞书企业自建应用的私聊和群聊文本消息接入绑定 Bot：lark-cli 接收事件，EAC 宿主处理身份与回合，回复写回原消息。",
+  "publisher": "EACbot Community",
+  "license": "Apache-2.0",
+  "source": {
+    "repository": "https://github.com/Ebony-Vinyl/EACbot.git",
+    "revision": "8b7b29f72094f2b1894944322e6904d7aad3e756"
+  },
+  "compatibility": {
+    "hostVersion": "^0.1.0 || >=0.2.0-preview.0 <0.3.0",
+    "hosts": ["server", "desktop"],
+    "platforms": ["win32-x64", "linux-x64", "darwin-arm64", "darwin-x64"]
+  },
+  "runtime": {
+    "mode": "process",
+    "entry": "entry.mjs",
+    "isolation": "none"
+  },
+  "activation": ["manual"],
+  "permissions": [
+    {
+      "id": "feishu-receive",
+      "capability": "feishu.messages.receive",
+      "effect": "read",
+      "scope": {},
+      "reason": "接收飞书私聊和群聊文本事件并交给绑定 Bot。"
+    },
+    {
+      "id": "feishu-send",
+      "capability": "feishu.messages.send",
+      "effect": "send",
+      "scope": {},
+      "reason": "把 Bot 的回复写回原飞书消息，或由主人主动发送文本。"
+    }
+  ],
+  "contributes": {
+    "tools": [
+      {
+        "id": "feishu-bridge-status",
+        "entry": "entry.mjs",
+        "effect": "read",
+        "permission": "feishu-receive",
+        "description": "查看飞书桥连接、队列和最近错误，不返回 app secret。"
+      },
+      {
+        "id": "feishu-chat-list",
+        "entry": "entry.mjs",
+        "effect": "read",
+        "permission": "feishu-receive",
+        "description": "列出机器人已加入的飞书群（bot 身份不列私聊）。"
+      },
+      {
+        "id": "feishu-send-message",
+        "entry": "entry.mjs",
+        "effect": "send",
+        "permission": "feishu-send",
+        "description": "由主人主动向飞书群或私聊发送文本；正常回复走 outbox。"
+      }
+    ]
+  },
+  "configSchema": "config.schema.json",
+  "stateVersion": 1
+}

@@ -13,7 +13,7 @@ import { StdioPluginSupervisor } from "./supervisor.ts";
 import { installLocalPlugin } from "./local-install.ts";
 
 const PACK_ROOT = join(import.meta.dirname, "..", "..", "plugins", "eac");
-const PACKS = ["bilibili", "douyin", "health", "home-assistant", "muse", "qq", "tieba", "xianyu", "xiaohongshu"];
+const PACKS = ["bilibili", "douyin", "feishu", "health", "home-assistant", "muse", "qq", "tieba", "xianyu", "xiaohongshu"];
 
 const folders: string[] = [];
 afterEach(() => {
@@ -108,6 +108,7 @@ function toolFor(pack: string): { id: string; args: Record<string, unknown> } {
     case "xianyu": return { id: "xy-kb-add", args: { question: "包邮吗", answer: "包邮" } };
     case "bilibili": return { id: "bili-search-videos", args: { keyword: "test" } };
     case "qq": return { id: "qq-bridge-status", args: {} };
+    case "feishu": return { id: "feishu-bridge-status", args: {} };
     default: throw new Error(`no tool mapped for ${pack}`);
   }
 }

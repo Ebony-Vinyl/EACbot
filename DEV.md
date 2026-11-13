@@ -49,7 +49,7 @@ node --experimental-strip-types server/eacbot.ts serve --port 8799 --no-pair
 
 ## 插件优先架构开发计划
 
-以下文档是 2026-11-07 的设计与 2026-11-08 的实施状态。已落地：M1 合同/注册/授权、M3 签名渠道与扩展中心、**插件工具经 `eac-plugins` MCP 服务器自动挂载进 Bot 回合**（read/draft 回合内自动授权，更强效果需主人发 grant，见扩展中心的“授权”页）、**平台入站事件 → 绑定 Bot 的会话 turn**（回复进入 outbox 由桥取走）、**官方插件包 8 个**（`plugins/eac/`：health、home-assistant、bilibili、muse、tieba、xianyu、douyin、xiaohongshu，能力矩阵见其 README）、**Tauri 宿主工程**（`hosts/tauri/`，cargo check 与合同测试通过；打包签名未做，Electron 仍是默认宿主）。进程插件需 `EAC_PLUGIN_PROCESS=1`。仍未实现：真实 OS 沙箱、SDK 发布物/testkit、QQ/B站桥的真实账户接入（合同与插件侧工具已就绪）。
+以下文档是 2026-11-07 的设计与 2026-11-08 的实施状态。已落地：M1 合同/注册/授权、M3 签名渠道与扩展中心、**插件工具经 `eac-plugins` MCP 服务器自动挂载进 Bot 回合**（read/draft 回合内自动授权，更强效果需主人发 grant，见扩展中心的“授权”页）、**平台入站事件 → 绑定 Bot 的会话 turn**（回复进入 outbox 由桥取走）、**官方插件包 10 个**（`plugins/eac/`：health、home-assistant、bilibili、muse、tieba、xianyu、douyin、xiaohongshu、qq、feishu，能力矩阵见其 README）、**Tauri 宿主工程**（`hosts/tauri/`，cargo check 与合同测试通过；打包签名未做，Electron 仍是默认宿主）。进程插件需 `EAC_PLUGIN_PROCESS=1`。仍未实现：真实 OS 沙箱、SDK 发布物/testkit、QQ/B站桥的真实账户接入（合同与插件侧工具已就绪）；飞书桥已实现文本收发，真实租户验收仍需管理员配置。
 
 - [总体架构](docs/superpowers/specs/2026-11-07-eac-plugin-platform-design.md)：稳定宿主、插件边界、平台 Bot、共享记忆与渐进迁移。
 - [产品与界面设计](docs/superpowers/specs/2026-11-07-eac-product-experience.md)：扩展市场、平台看板、主题布局与模型生成面板。

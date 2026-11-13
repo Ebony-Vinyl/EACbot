@@ -12,6 +12,7 @@ import {
 } from "../plugins/platform-accounts.ts";
 import { type PlatformOutboxStore } from "../plugins/platform-outbox.ts";
 import { readBatch, shouldSpeak, type ReplyChanceInput } from "../../shared/reply-chance.ts";
+import { PLATFORM_IDS, type PlatformId } from "../../shared/plugins/accounts.ts";
 
 const threadsSchema = z.object({
   schemaVersion: z.literal(1),
@@ -19,7 +20,7 @@ const threadsSchema = z.object({
     key: z.string().min(1).max(450),
     accountId: z.string().uuid(),
     conversationId: z.string().min(1).max(200),
-    platform: z.enum(["qq", "bilibili", "xianyu", "douyin", "xiaohongshu", "tieba"]),
+    platform: z.enum(PLATFORM_IDS),
     botId: z.string().min(1).max(120),
     threadId: z.string().min(1).max(120),
     createdAt: z.string().datetime({ offset: true }),
@@ -57,8 +58,8 @@ export interface PlatformInboundDeps {
   now?: () => string;
 }
 
-const PLATFORM_LABELS: Record<ThreadsFile["threads"][number]["platform"], string> = {
-  qq: "QQ", bilibili: "Bilibili", xianyu: "Xianyu", douyin: "Douyin", xiaohongshu: "Xiaohongshu", tieba: "Tieba",
+const PLATFORM_LABELS: Record<PlatformId, string> = {
+  qq: "QQ", bilibili: "Bilibili", xianyu: "Xianyu", douyin: "Douyin", xiaohongshu: "Xiaohongshu", tieba: "Tieba", feishu: "Feishu",
 };
 
 export type PlatformDelivery =

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import type { PlatformId } from "./accounts.ts";
+import { PLATFORM_IDS, type PlatformId } from "./accounts.ts";
 
 export const MEMORY_SPACE_ACCESS = ["read", "read-write"] as const;
 export type MemorySpaceAccess = (typeof MEMORY_SPACE_ACCESS)[number];
@@ -37,7 +37,7 @@ export type MemorySpace = z.infer<typeof memorySpaceSchema>;
 
 export const memoryProvenanceSchema = z.object({
   botId: z.string().min(1).max(120),
-  platform: z.enum(["qq", "bilibili", "xianyu", "douyin", "xiaohongshu", "tieba"]).optional(),
+  platform: z.enum(PLATFORM_IDS).optional(),
   accountId: z.string().max(200).optional(),
   conversationId: z.string().max(200).optional(),
   messageId: z.string().max(200).optional(),

@@ -1,0 +1,57 @@
+{
+  "type": "object",
+  "properties": {
+    "cli": {
+      "type": "string",
+      "description": "必填。lark-cli.exe 的绝对路径；也可用 .cmd 包装器。不要填 .ps1。"
+    },
+    "larkConfigDir": {
+      "type": "string",
+      "description": "必填。这个飞书机器人专用的 lark-cli 配置目录，不要与个人 lark-cli 配置共用。"
+    },
+    "accountId": {
+      "type": "string",
+      "description": "必填。EACbot 平台账户里这个飞书账户的 UUID。"
+    },
+    "botOpenId": {
+      "type": "string",
+      "description": "必填。飞书机器人的 open_id（ou_...），用于 @ 识别和回声过滤。"
+    },
+    "botAppId": {
+      "type": "string",
+      "description": "可选。飞书应用 ID（cli_...），用于兼容事件里的机器人 mention。"
+    },
+    "serverUrl": {
+      "type": "string",
+      "description": "可选。EACbot 服务地址，默认 http://127.0.0.1:8799。"
+    },
+    "serverToken": {
+      "type": "string",
+      "description": "可选。EACbot admin 访问令牌；桌面或远程部署需要，本机 loopback 可省略。",
+      "secret": true
+    },
+    "chats": {
+      "type": "string",
+      "description": "可选。允许的群，格式 oc_xxx:mentions 或 oc_yyy:all，多个用逗号分隔；留空表示不接收群消息。"
+    },
+    "allowedSenders": {
+      "type": "string",
+      "description": "必填。允许触发 Bot 的飞书用户 open_id，多个用逗号分隔；留空则什么都不接收。"
+    },
+    "directMessages": {
+      "type": "boolean",
+      "description": "是否接收私聊，默认 true；用户仍需在 allowedSenders 中。"
+    },
+    "otherChats": {
+      "type": "string",
+      "enum": ["none", "mentions"],
+      "description": "未列出的群：默认不接收；只接 @ 时选 mentions。"
+    },
+    "pollMs": {
+      "type": "number",
+      "description": "outbox 和重试轮询间隔，默认 1000，范围 250-30000 毫秒。"
+    }
+  },
+  "required": ["cli", "larkConfigDir", "accountId", "botOpenId", "allowedSenders"],
+  "additionalProperties": false
+}
