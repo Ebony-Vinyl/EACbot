@@ -8,6 +8,7 @@ import { glassPopupFrameStyle } from "@/lib/glass-popup";
 import { t } from "@/lib/i18n";
 import { useStore } from "@/state/store";
 
+import { PluginUiPanel } from "./PluginUiPanel";
 import { PluginGrants } from "./PluginGrants";
 import { PluginConfigForm, PluginStatusLine } from "./PluginConfig";
 
@@ -109,6 +110,7 @@ export function ExtensionsCatalog({ onClose }: { onClose(): void }) {
     setBusy(key);
     try {
       await action();
+      window.dispatchEvent(new Event("eac-plugin-ui-refresh"));
       await load(true);
       setError(null);
     } catch (reason) {
@@ -304,6 +306,8 @@ export function ExtensionsCatalog({ onClose }: { onClose(): void }) {
             </div>
             {!loading && !catalog?.entries.length && <div className="rounded-xl border border-dashed border-hairline/40 px-3 py-8 text-center text-[13px] text-ink-secondary">{t("extensions.emptyCatalog")}</div>}
           </section>
+
+          <PluginUiPanel />
 
           <section className="mt-7 border-t border-hairline/30 pt-5">
             <h3 className="text-[14px] font-semibold text-ink">{t("extensions.installedTitle")}</h3>

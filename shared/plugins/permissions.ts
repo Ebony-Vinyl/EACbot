@@ -8,6 +8,15 @@ export interface PluginGrantResources {
   resources?: string[];
 }
 
+/** 宿主从已接收的平台会话推导的可授权身份与受众。 */
+export interface PluginGrantTarget {
+  botId: string;
+  principalId: string;
+  audienceId: string;
+  accountId: string;
+  label: string;
+}
+
 /** A grant is issued by the host for one installation and one authenticated principal/audience pair. */
 export interface PluginGrant {
   grantId: string;

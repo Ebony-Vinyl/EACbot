@@ -2,13 +2,19 @@
 
 ## Context
 
-依赖 M1/M2 的真实合同。新增功能复用当前 Bot、记忆、调度与用量路径，不因插件化建立重复系统。以下路径分为明确的新增和既有修改，尚未实施。
+依赖 M1/M2 的真实合同。新增功能复用当前 Bot、记忆、调度与用量路径，不因插件化建立重复系统。下列任务保留原始验收清单。M4 当前实现与验证状态见本节进展，M5/M6 按各自代码状态推进。
 
 **Goal:** 使平台身份、记忆、界面、任务和媒体在同一 Bot 运行时协作。
 
 **Architecture:** 先身份/受众和共享数据，再 UI 和模型媒体；Kanban 作为既有任务执行的产品视图。
 
 **Tech Stack:** 现有 TypeScript/React、Markdown 记忆和 SQLite 运行记录；可选 Pipecat 外部语音进程。
+
+## M4 当前进展（2026-11-13）
+
+Task 1 的 OneBot/NapCat 入站与回复通路已有提交，本次补充 conversation kind 隔离、重绑新线程和迟到回复再校验。Task 2 已接入模型 system prompt、session_search/session_read、memory_update 和 epoch 撤销，隔离 fake 模型检查实际上下文。Task 3 已加入 `shared/plugins/panels.ts`、`themes.ts`、`panel-frame.ts` 与扩展中心及 Bot library 插槽，支持声明式和沙箱只读面板、生成预览、保存、回滚及持久主题/布局选择。
+
+原始清单保持最终验收要求，浏览器截图、完整桌面回归和真实账户证据仍待补齐。详细命令和结果见[验证记录](../../../verification/plugin-platform.md)。
 
 ## Task 1：账户绑定与独立平台 Bot
 

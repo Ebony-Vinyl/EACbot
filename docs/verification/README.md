@@ -333,7 +333,7 @@ desktop routing, cancellation, and computer authority cleanup.
 
 ## Planned plugin-platform acceptance
 
-These are acceptance designs. M1/M3 contract tests, `/api/plugins`, signed channel install/update/rollback and the extension-center UI exist; full recipes, real OS isolation and business plugins do not. They must be mapped to implemented commands and isolated fixtures as each stage ships:
+M1/M3 contracts, `/api/plugins`, signed channel install/update/rollback and the extension-center UI exist. M4 now includes platform turn audience isolation, revocable shared memory and plugin panels/themes/layouts, with isolated fake-engine and browser observations recorded in plugin-platform.md. Real OS process isolation, business plugins and full desktop visual acceptance remain pending. Map each remaining recipe to implemented commands and isolated fixtures as it ships:
 
 - [Plugin platform, platform bots, memory and UI](plugin-platform.md)
 - [Business plugins and cross-module integration](plugin-integrations.md)

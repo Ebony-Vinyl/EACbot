@@ -103,6 +103,8 @@ export const VITEST_SUBSETS = {
       "server/plugins/store.test.ts",
       "server/plugins/supervisor.test.ts",
       "server/plugins/tool-call.test.ts",
+      "server/plugins/ui-contributions.test.ts",
+      "server/routes/plugin-ui.test.ts",
       "server/routes/plugins-grants.test.ts",
       "server/routes/plugins-market.test.ts",
       "server/routes/plugins.test.ts",

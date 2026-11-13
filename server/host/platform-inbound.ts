@@ -12,6 +12,7 @@ import {
 } from "../plugins/platform-accounts.ts";
 import { type PlatformOutboxStore } from "../plugins/platform-outbox.ts";
 import { readBatch, shouldSpeak, type ReplyChanceInput } from "../../shared/reply-chance.ts";
+import type { PlatformTurnContext } from "./memory-context.ts";
 
 const threadsSchema = z.object({
   schemaVersion: z.literal(1),
@@ -19,6 +20,7 @@ const threadsSchema = z.object({
     key: z.string().min(1).max(450),
     accountId: z.string().uuid(),
     conversationId: z.string().min(1).max(200),
+    conversationKind: z.enum(["direct", "group", "channel", "comment"]).optional(),
     platform: z.enum(["qq", "bilibili", "xianyu", "douyin", "xiaohongshu", "tieba"]),
     botId: z.string().min(1).max(120),
     threadId: z.string().min(1).max(120),
@@ -52,6 +54,7 @@ export interface PlatformInboundDeps {
     sender?: { name: string; id?: string };
     unattended?: boolean;
     automationSource?: "webhook";
+    platformContext: PlatformTurnContext;
     onSettled(outcome: { ok: boolean; text: string }): void;
   }): Promise<unknown>;
   now?: () => string;
@@ -99,14 +102,14 @@ export function createPlatformInboundHost(deps: PlatformInboundDeps) {
     threads = state;
   };
 
-  const conversationKey = (accountId: string, conversationId: string) => `${accountId}\u0000${conversationId}`.slice(0, 450);
+  const conversationKey = (accountId: string, conversationId: string, kind: string) => `${accountId}\u0000${kind}\u0000${conversationId}`;
 
   /** One conversation, one thread for as long as its task exists; an unbound event never opens one. */
-  const threadFor = (botId: string, platform: ThreadsFile["threads"][number]["platform"], accountId: string, conversationId: string): string | null => {
+  const threadFor = (botId: string, platform: ThreadsFile["threads"][number]["platform"], accountId: string, conversationId: string, conversationKind: PlatformTurnContext["conversation"]["kind"]): string | null => {
     const state = loadThreads();
-    const key = conversationKey(accountId, conversationId);
+    const key = conversationKey(accountId, conversationId, conversationKind);
     const found = state.threads.find((row) => row.key === key);
-    if (found && deps.store.taskByThread(found.botId, found.threadId)) return found.threadId;
+    if (found?.botId === botId && deps.store.taskByThread(botId, found.threadId)) return found.threadId;
     if (!deps.canStart(botId, undefined)) return null;
     const task = deps.store.createTask(botId, `${PLATFORM_LABELS[platform]}: ${conversationId.slice(0, 60)}`, false, undefined, undefined, "ask");
     if (!task) return null;
@@ -116,6 +119,7 @@ export function createPlatformInboundHost(deps: PlatformInboundDeps) {
         key,
         accountId,
         conversationId,
+        conversationKind,
         platform,
         botId,
         threadId: task.threadId,
@@ -152,8 +156,8 @@ export function createPlatformInboundHost(deps: PlatformInboundDeps) {
 
   return {
     /** A conversation's EACbot thread, for the platform dashboard to link to. */
-    threadOf(accountId: string, conversationId: string): string | null {
-      const found = loadThreads().threads.find((row) => row.key === conversationKey(accountId, conversationId));
+    threadOf(accountId: string, conversationId: string, kind: PlatformTurnContext["conversation"]["kind"] = "direct"): string | null {
+      const found = loadThreads().threads.find((row) => row.key === conversationKey(accountId, conversationId, kind));
       return found && deps.store.taskByThread(found.botId, found.threadId) ? found.threadId : null;
     },
 
@@ -182,7 +186,7 @@ export function createPlatformInboundHost(deps: PlatformInboundDeps) {
         return { status: 200, body: { route } };
       }
 
-      const threadId = threadFor(route.botId, event.platform, event.accountId, event.conversation.id);
+      const threadId = threadFor(route.botId, event.platform, event.accountId, event.conversation.id, event.conversation.kind);
       if (!threadId) {
         return { status: 409, body: { route, error: "this bot cannot open another conversation", code: "thread_limit" } };
       }
@@ -205,10 +209,14 @@ export function createPlatformInboundHost(deps: PlatformInboundDeps) {
           sender: { name: senderName, id: senderId },
           unattended: true,
           automationSource: "webhook",
+          platformContext: { platform: event.platform, accountId: event.accountId, conversation: event.conversation, sender: event.sender },
           // startTurn resolves at dispatch; the reply lands in the outbox when the turn settles, for the bridge to pull.
           onSettled: (outcome) => {
             if (!outcome.ok || !outcome.text.trim()) return;
             try {
+              const current = deps.accounts.resolveInbound(raw, { remember: false, ignoreDuplicate: true });
+              if (current.action !== "delivered" || current.botId !== route.botId || current.audienceId !== route.audienceId ||
+                  JSON.stringify(current.principal) !== JSON.stringify(route.principal)) return;
               deps.outbox.append({
                 accountId: event.accountId,
                 conversationId: event.conversation.id,

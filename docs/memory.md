@@ -462,3 +462,12 @@ Every panel edit, delete or acceptance carries the revision it was based on.
 Stale writes return 409; writes without a revision return 428. Reloading after a
 conflict retains the unsaved draft for comparison. Pending replacement cards
 also refuse approval if the accepted fact changed since the proposal.
+
+
+## 平台会话与共享记忆
+
+平台消息的身份来自宿主账户映射。主人私聊可读取私有记忆，群聊、频道、评论与访客私聊只读取已加入空间的 `shared`、`normal` 条目。群内主人可通过 `memory_update` 向具有 read-write 成员权限的共享空间写入，访客写入返回拒绝。调用需要 `space_id` 和 `expected_revision`，删除另需 `entry_id`。
+
+每个回合记录身份、受众和空间 epoch。撤销、删除条目、成员变更或身份变化会失效工具能力，并在后续回合重建模型上下文。旧消息仍保留在聊天记录中，模型回放与检索遵循新的读取起点。已经外发给第三方的数据需要由接收方处理。
+
+包含共享记忆的会话停用自动私有记忆捕获、整理输入与每回合私有日志，避免把可撤销内容复制到普通 Markdown。显式共享写入保留 Bot、平台、账户与会话来源。普通 Bot 可继续使用既有私有 Markdown 记忆。

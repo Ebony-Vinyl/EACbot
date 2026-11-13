@@ -33,6 +33,20 @@ describe("Store", () => {
     rmSync(DATA_DIR, { recursive: true, force: true });
   });
 
+  it("persists platform memory boundaries without exposing them in task wire data", () => {
+    const store = new Store(selection);
+    const bot = store.createBot({ name: "Platform bot" });
+    const patch = {
+      platformContext: { platform: "qq" as const, accountId: "fixture-account", conversation: { kind: "group" as const, id: "123" }, sender: { id: "456" } },
+      memoryContext: { fingerprint: "fixture-fingerprint", startMessageId: "message-1" },
+    };
+    store.patchTask(bot.id, bot.threadId, patch);
+    const task = new Store(selection).taskByThread(bot.id, bot.threadId)!;
+    expect(task).toMatchObject(patch);
+    expect(toWireTask(task, selection())).not.toHaveProperty("platformContext");
+    expect(toWireTask(task, selection())).not.toHaveProperty("memoryContext");
+  });
+
   it("retains tool selection across restarts and distinguishes clearing from no tools", () => {
     const store = new Store(selection);
     const bot = store.createBot({ name: "Scoped drafter" });

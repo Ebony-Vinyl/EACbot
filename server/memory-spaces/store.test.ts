@@ -30,6 +30,15 @@ function sharedSpace(store: MemorySpaceStore) {
 }
 
 describe("shared memory spaces", () => {
+  it("keeps its cached state consistent after a rejected capacity write", () => {
+    const { folder, store } = makeStore();
+    for (let index = 0; index < 200; index++) {
+      store.create({ spaceId: `space-${index}`, name: `Space ${index}`, audience: "shared" });
+    }
+    expect(() => store.create({ spaceId: "overflow", name: "Overflow", audience: "shared" })).toThrow(/limits/);
+    expect(store.list()).toHaveLength(200);
+    expect(new MemorySpaceStore(folder).list()).toHaveLength(200);
+  });
   it("writes with a revision, reads only as a member, and refuses read-only writers", () => {
     const { folder, store } = makeStore();
     const space = sharedSpace(store);

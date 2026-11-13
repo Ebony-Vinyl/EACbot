@@ -236,15 +236,14 @@ import { createOneOnOneGoals } from "./host/one-on-one-goals.ts";
 
 import { BUILT_IN_DRIVERS } from "./drivers/builtIn.ts";
 import { openCodeProviderKeysAllowed, setOpenCodeProviderKeyPolicy } from "./drivers/acp/opencode-go.ts";
-import { openCardRows, readMessageText, recallMessages, recentMessages, closeMessageSearch, closeMessageDb, chatFollowups, cancelledChatFollowup, settleChatFollowups, threadsReferencing, logNotification, lastRowAt, threadsWithCardsSince } from "./message-db.ts";
-import { briefCrossingLabel, claimRecallCrossings, recallCrossingLabel } from "./recall-disclosure.ts";
-import { parseSince, parseUntil, recentWork, recentWorkPrompt, turnOutcomeLine } from "./recent-work.ts";
+import { openCardRows, recentMessages, closeMessageSearch, closeMessageDb, chatFollowups, cancelledChatFollowup, settleChatFollowups, threadsReferencing, logNotification, lastRowAt, threadsWithCardsSince } from "./message-db.ts";
+import { briefCrossingLabel, claimRecallCrossings } from "./recall-disclosure.ts";
+import { recentWork, recentWorkPrompt, turnOutcomeLine } from "./recent-work.ts";
 import { chiefEscalationsEnabled, NEEDS_INPUT_GATE, peerApprovalGate, RAISED_GATE } from "./escalations.ts";
 import { createChiefNotices } from "./host/chief-notices.ts";
 import { needsInputQuestion } from "./runtime-coordinator.ts";
 import { createHandoffTicks } from "./handoff-ticks.ts"; import { IDLE_HTTP_SERVER } from "./due-timer.ts";
 
-const SESSION_READ_MAX_CHARS = 8_000;
 import { personOf, promptWithReply, replyTargetIn, speakerOf, transcriptText, type PersonName, type ReplyTarget } from "./replies.ts";
 import type { DataContext } from "./data-context.ts";
 import { promptWithDataContext } from "../shared/data-context.ts";
@@ -345,7 +344,6 @@ import {
   memoryLogPath,
   memorySystemPrompt,
   memorySourceLabel,
-  searchMemoryFiles,
   SESSION_SEARCH_SYSTEM_PROMPT,
   TASK_WORKSPACES_DIR,
   readMemoryOnlyFromRegularFiles,
@@ -619,6 +617,10 @@ import { createAntigravityLeftoverRoutes } from "./routes/antigravity-leftovers.
 import { createAntigravityAccountRoutes } from "./routes/antigravity-accounts.ts";
 import { createConfigRoutes } from "./routes/config.ts"; import { createInstanceRoutes } from "./routes/instances.ts";
 import { createMcpConfig } from "./host/mcp-config.ts";
+import { createMemoryContext, watchMemoryAccess, platformGrantTargets, turnPluginIdentity, memoryThreadReadable, memoryMessageReadable, mayRetainPrivateMemory, memoryReplayStart, readableMemoryMessages, PRIVATE_MEMORY_PARTS, type MemoryContextSnapshot, type PlatformTurnContext } from "./host/memory-context.ts";
+import { MemorySpaceStore } from "./memory-spaces/store.ts";
+import { sessionRecallRoute } from "./routes/session-recall.ts";
+import { privateMemoryWriteRefused, handleSharedMemoryWrite } from "./routes/shared-memory.ts";
 import { createMcpServerRoutes } from "./routes/mcp-servers.ts"; import { createPluginsHost } from "./host/plugins-host.ts"; import { createPluginsMcp, PLUGINS_INTERNAL_MCP_PATH } from "./host/plugins-mcp.ts"; import { createPlatformInboundHost } from "./host/platform-inbound.ts"; import { PlatformOutboxStore } from "./plugins/platform-outbox.ts"; import { PlatformAccountStore } from "./plugins/platform-accounts.ts"; import { createAnnouncementRoutes } from "./routes/announcements.ts"; import { createAnnouncements } from "./announcements.ts"; import { createAnnouncementFeed } from "./announcement-feed.ts";
 import { teamAdminSummary } from "./cloud-team-admin.ts"; import { createSetupImportRoutes } from "./routes/setup-import.ts";
 import { createComputerRoutes } from "./routes/computers.ts";
@@ -1159,16 +1161,17 @@ function recentWorkSources(bot: BotRecord) {
 }
 
 function recallThreads(from: BotRecord, capability: Parameters<typeof cloudLendingView>[0]): { roomByThread: Map<string, GroupRecord>; ownThreads: string[] } {
+  if (store.taskByThread(from.id, capability.threadId)?.platformContext) return { roomByThread: new Map(), ownThreads: [capability.threadId] };
   const roomByThread = recallRooms(store.groups, from, roomFeedsBot);
-  return { roomByThread, ownThreads: recallThreadIds(from, roomByThread).filter((id) => !proactive.fence.confines(id) && !botApiThread(id)).filter(CLOUD_TEAM ? teamHost.readableFrom(capability.threadId) : cloudLendingView(capability) ? cloudOwnerOnlyThread : () => true) };
+  return { roomByThread, ownThreads: recallThreadIds(from, roomByThread).filter((id) => !proactive.fence.confines(id) && !botApiThread(id) && memoryThreadReadable(memoryContexts, from.id, id, store.taskByThread(from.id, id), from.memoryEnabled !== false)).filter(CLOUD_TEAM ? teamHost.readableFrom(capability.threadId) : cloudLendingView(capability) ? cloudOwnerOnlyThread : () => true) };
 }
 
 /** Other conversations only for a 1:1 turn the person started: another bot, a webhook or a room must not pull a private chat into its reply. */
 function autoRecallPrompt(bot: BotRecord, threadId: string, message: string, opts: { conversations: boolean; userName: PersonName }): string {
-  if (bot.memoryEnabled === false || !autoRecallEnabled(cfg)) return "";
+  if (store.taskByThread(bot.id, threadId)?.memoryContext?.startMessageId || store.taskByThread(bot.id, threadId)?.platformContext || bot.memoryEnabled === false || !autoRecallEnabled(cfg)) return "";
   const roomByThread = opts.conversations ? recallRooms(store.groups, bot, roomFeedsBot) : new Map<string, GroupRecord>();
   const threadIds = opts.conversations
-    ? recallThreadIds(bot, roomByThread).filter((id) => id !== threadId && threadReadableFrom(threadId)(id) && outsideLineage.mayReach(id, threadId))
+    ? recallThreadIds(bot, roomByThread).filter((id) => id !== threadId && !store.taskByThread(bot.id, id)?.memoryContext?.startMessageId && memoryThreadReadable(memoryContexts, bot.id, id, store.taskByThread(bot.id, id), bot.memoryEnabled !== false) && threadReadableFrom(threadId)(id) && outsideLineage.mayReach(id, threadId))
     : [];
   try {
     const recalled = buildRecall({
@@ -1729,6 +1732,7 @@ function endForeignTurns(threadId: string, generation?: string): void {
 function revokeInternalCapabilityGeneration(threadId: string, generation: string): void {
   gmailDrafts.endTurn(generation);
   pluginsMcp.forgetTurn(threadId);
+  if (memoryTurns.get(threadId)?.generation === generation) memoryTurns.delete(threadId);
   if (standInRoots.delete(generation)) coordinator.endTurn(generation, { ok: true, text: "" });
   endForeignTurns(threadId, generation);
   if (guestDrivenTurns.get(threadId) === generation) guestDrivenTurns.delete(threadId);
@@ -1796,6 +1800,9 @@ function authorizedInternalCapability(header: string | string[] | undefined): In
 }
 
 function internalCapabilityIsActive(capability: InternalCapability): boolean {
+  const memoryTurn = memoryTurns.get(capability.threadId);
+  if (memoryTurn?.generation === capability.generation && !memoryThreadReadable(memoryContexts, capability.botId, capability.threadId,
+    store.taskByThread(capability.botId, capability.threadId), store.bot(capability.botId)?.memoryEnabled !== false)) return false;
   if (capability.generation === EXTERNAL_RUNTIME_GENERATION) {
     return Boolean(capability.externalRuntime && capability.externalRuntime.botId === capability.botId &&
       capability.externalRuntime.threadId === capability.threadId &&
@@ -2809,6 +2816,12 @@ const store = new Store(
 );
 const outsideLineage = createOutsideLineage({
   home: Boolean(CLOUD_HOME), team: Boolean(CLOUD_TEAM), solo: () => cloudHome?.solo() === true, store,
+  platformConfined: (threadId) => {
+    const bot = store.botByThread(threadId);
+    const platform = bot && store.taskByThread(bot.id, threadId)?.platformContext;
+    if (!platform) return false;
+    try { return !memoryContexts.snapshot(bot.id, platform).privateMemory; } catch { return true; }
+  },
   confinedNow: (threadId) => guestDrivenTurns.has(threadId), activeRun: activeRoutineRunForThread,
   writer: (routineId) => cloudRoutineAuthors?.writer(routineId), starters: (threadId) => cloudThreadStarters(threadId), guestOpened: cloudGuestOpened, ownerPerson: cloudOwnerPerson,
   node: (id) => coordinator.node(id), active: () => coordinator.active(), language: (threadId) => threadLanguage(threadId),
@@ -5141,11 +5154,11 @@ const memoryUpkeep = createMemoryUpkeep({
   sourceLabel: (botId, threadId) => memorySourceLabel({ room: store.groupByThread(threadId), task: store.taskByThread(teamHost.baseBotId(botId), threadId), threadId }),
   mayCapture: (botId, threadId) => {
     const room = store.groupByThread(threadId);
-    if (cloudGuestDriven(threadId)) return false;
+    if (cloudGuestDriven(threadId) || !mayRetainPrivateMemory(memoryContexts, store, threadId)) return false;
     return !room || roomCaptureAllowed(room, store.bot(teamHost.baseBotId(botId)));
   },
   restoreTurn: (botId, threadId, turnId) => {
-    if (routines?.runForThread(threadId)) return null;
+    if (routines?.runForThread(threadId) || !mayRetainPrivateMemory(memoryContexts, store, threadId)) return null;
     const room = store.groupByThread(threadId);
     if (room) return roomCaptureAllowed(room, store.bot(botId)) ? captureRoomTurnFor(threadId, botId, turnId) : null;
     if (store.botByThread(threadId)?.id !== botId) return null;
@@ -5153,7 +5166,7 @@ const memoryUpkeep = createMemoryUpkeep({
     return captureTurnFor(threadId, turnId);
   },
   ...(lendingMemory ? { writing: <T>(botId: string, write: () => T): T => lendingMemory.trustedWrite(botId, write) } : {}),
-  conversations: (botId, since) => CLOUD_TEAM ? [] : dreamConversations(store, teamHost.baseBotId(botId), since, (threadId) => !routines?.runForThread(threadId) && (!CLOUD_PERSONAL || cloudOwnerOnlyThread(threadId)), CLOUD_PERSONAL ? (sender) => cloudProvenOwnerPerson(sender?.id) : undefined),
+  conversations: (botId, since) => CLOUD_TEAM ? [] : dreamConversations(store, teamHost.baseBotId(botId), since, (threadId) => !routines?.runForThread(threadId) && mayRetainPrivateMemory(memoryContexts, store, threadId) && (!CLOUD_PERSONAL || cloudOwnerOnlyThread(threadId)), CLOUD_PERSONAL ? (sender) => cloudProvenOwnerPerson(sender?.id) : undefined),
   quietMs: () => captureQuietMs(cfg), tidyHour: () => tidyHour(cfg), dreamer: () => proactive.dreamer(),
   log: (line) => console.log(line),
 });
@@ -5329,7 +5342,7 @@ bus.subscribe((event: RuntimeEvent) => {
       return;
     }
     const bot = store.botByThread(event.threadId);
-    if (!bot || !upkeepEnabled(bot) || isInternalTurn(event.threadId)
+    if (!bot || !mayRetainPrivateMemory(memoryContexts, store, event.threadId) || !upkeepEnabled(bot) || isInternalTurn(event.threadId)
       || isUnattended(bot.id, event.threadId) || routines?.runForThread(event.threadId)) return;
     if (CLOUD_PERSONAL && !cloudOwnerOnlyThread(event.threadId)) return;
     const turn = captureTurnFor(event.threadId, event.turnId);
@@ -5406,7 +5419,7 @@ bus.subscribe((event: RuntimeEvent) => {
     const messages = store.messagesFor(event.threadId);
     const reply = messages.findLast((message) => message.role === "bot" && message.kind === "text" && message.turnId === event.turnId);
     const bot = store.botByThread(event.threadId) ?? (reply?.from ? store.bot(reply.from.botId) : undefined);
-    if (!bot || bot.memoryEnabled === false) return;
+    if (!bot || bot.memoryEnabled === false || !mayRetainPrivateMemory(memoryContexts, store, event.threadId)) return;
     const tools = messages
       .filter((message) => message.kind === "activity" && message.turnId === event.turnId && message.tool?.name)
       .map((message) => message.tool!.name);
@@ -7013,7 +7026,7 @@ function latestCompaction(messages: readonly Message[]) {
 }
 
 function directContext(bot: BotRecord, threadId: string, messages: Message[]): ContextMessage[] {
-  const messagesById = new Map(store.messagesFor(threadId).map(message => [message.id, message]));
+  const messagesById = new Map(messages.map(message => [message.id, message]));
   const userName = userNameFor(threadId), labels = lineLabels(threadId);
   const newestReports = newestAutomationLines(messages);
   return messages.filter(isContextMessage).map(m => ({
@@ -7044,7 +7057,9 @@ async function compactConversation(input: {
   const { bot, threadId, generation, instance, model, excludedIds, manual, idle } = input;
   const task = store.taskByThread(bot.id, threadId);
   if (!task || (!manual && cfg.context?.autoCompact === false)) return;
-  const messages = store.activePath(threadId);
+  if (!memoryThreadReadable(memoryContexts, bot.id, threadId, task, bot.memoryEnabled !== false)) return;
+  const readable = readableMemoryMessages(store.activePath(threadId), task.memoryContext);
+  const messages = store.activePath(threadId).filter((message) => !task.memoryContext || readable.has(message.id));
   const context = directContext(bot, threadId, messages);
   const record = latestCompaction(messages);
   // A retry must apply the existing record before considering another fold.
@@ -7080,7 +7095,7 @@ async function compactConversation(input: {
     const summary = await draftSummary(fold.folded, { signal: controller.signal, generateText: sideJobs.text("compaction", bot.id, { instance })?.generateText });
     if (!idle && !directTurnClaimIsCurrent(bot.id, generation, threadId)) throw new DirectTurnSetupCancelled("context summarization stopped");
     controller.signal.throwIfAborted();
-    if (prefix !== JSON.stringify(store.activePath(threadId).slice(0, messages.length))) {
+    if (!memoryThreadReadable(memoryContexts, bot.id, threadId, task, bot.memoryEnabled !== false) || prefix !== JSON.stringify(store.activePath(threadId).filter((message) => !task.memoryContext || readable.has(message.id)).slice(0, messages.length))) {
       if (manual) throw new Error("the conversation changed during summarization — please retry");
       return;
     }
@@ -7537,6 +7552,7 @@ async function beginTurn(
     userMessage?: Message;
     editedMessageId?: string;
     sender?: ResolvedSender;
+    platformContext?: PlatformTurnContext;
     trigger?: UsageTrigger;
     excludeMessageIds?: string[];
     threadId?: string;
@@ -7630,9 +7646,12 @@ async function beginTurn(
   }
   const policyRefusal = policyModelRefusal(instance);
   if (policyRefusal) throw Object.assign(new Error(policyRefusal), { status: 409, code: "managed_policy" });
+  if (opts?.platformContext) store.patchTask(bot.id, threadId, { platformContext: opts.platformContext });
+  const memorySnapshot = memoryContexts.snapshot(bot.id, task.platformContext, bot.memoryEnabled !== false, threadId);
+  const platformConfined = Boolean(task.platformContext && !memorySnapshot.privateMemory);
   const toolScope = toolScopeForTurn(bot.id);
   guestDrivenTurns.delete(threadId);
-  const guestConfined = cloudGuestDriven(threadId) || cloudGuestDrivenHandoff(opts?.coordination?.id) || botApiThread(threadId);
+  const guestConfined = platformConfined || cloudGuestDriven(threadId) || cloudGuestDrivenHandoff(opts?.coordination?.id) || botApiThread(threadId);
   if (guestConfined && instance.adapter.capabilities.guestTurns !== "confined") {
     throw Object.assign(new Error(botApiThread(threadId) ? serverLine(threadLanguage(threadId), "server.botApi.engineRefusal") : guestEngineRefusal(threadId)), { status: 409, code: "guest_engine" });
   }
@@ -7701,6 +7720,12 @@ async function beginTurn(
           ...(opts?.relayed ? { relayed: true } : {}),
         });
   }
+  const previousMemoryContext = task.memoryContext;
+  const memoryChanged = previousMemoryContext !== undefined && previousMemoryContext.fingerprint !== memorySnapshot.fingerprint;
+  const memoryContext = previousMemoryContext || task.platformContext
+    ? memoryReplayStart(previousMemoryContext, memorySnapshot, userMessage.id)
+    : { fingerprint: memorySnapshot.fingerprint, startMessageId: "" };
+  store.patchTask(bot.id, threadId, { memoryContext, ...(memoryChanged || task.platformContext && !previousMemoryContext ? { resumeCursors: {}, handedMessages: undefined, appliedCompactionId: undefined } : {}) });
   const personLine = !opts?.coordination && !opts?.cardContinuation && !opts?.automationSource && !opts?.compactOnly
     && !opts?.computerSelectionContinuation && !opts?.editedMessageId && !commsDepth && !opts?.peerAsk && !userMessage.peerAsk; if (personLine) cloudConnections.personTurn(bot, threadId);
   if (personLine && !userMessage.relayed && (coordinator.answer(threadId, text) || signInSettle.answerInChat(bot.id, threadId, text))) {
@@ -7761,7 +7786,13 @@ async function beginTurn(
   const pendingSource = requestMessageId ?? store.activePath(threadId).findLast(message => message.role === "user")?.id;
   if (pendingSource) store.patchMessage(threadId, pendingSource, { requestPending: true });
   const settleOutcome = opts?.coordination?.settle ?? opts?.onSettled;
-  if (settleOutcome) directCoordinationSettlers.set(dispatchClaimId, { nodeId: opts?.coordination?.id ?? dispatchClaimId, settle: settleOutcome });
+  if (settleOutcome) directCoordinationSettlers.set(dispatchClaimId, { nodeId: opts?.coordination?.id ?? dispatchClaimId, settle: (outcome) => {
+    try {
+      const current = memoryContexts.snapshot(bot.id, task.platformContext, store.bot(bot.id)?.memoryEnabled !== false, threadId);
+      settleOutcome(current.fingerprint === memorySnapshot.fingerprint ? outcome : { ok: false, text: "Memory access changed during this turn." });
+    } catch { settleOutcome({ ok: false, text: "The platform account is unavailable." }); }
+  } });
+  memoryTurns.set(threadId, { botId: bot.id, generation: dispatchClaimId, snapshot: memorySnapshot });
   directFollowupSettlers.set(dispatchClaimId, { threadId, settle: opts?.onTurnSettled });
   directTurnDispatchClaims.set(threadId, { id: dispatchClaimId, botId, threadId, phase: "setup" }); liveTurns.dispatchStarted(threadId);
   directTurnBots.set(threadId, bot);
@@ -7825,11 +7856,13 @@ async function beginTurn(
         if ((m.roomRequest.phase === "request" && m.roomRequest.id === opts.coordination.id) ||
           (m.roomRequest.phase === "result" && coordinationChildren?.has(m.roomRequest.id))) skipTranscript.add(m.id);
       }
-      const context = directContext(bot, threadId, activeMessages);
+      const memoryStart = memoryContext.startMessageId === "" ? 0 : activeMessages.findIndex((message) => message.id === memoryContext.startMessageId);
+      const memoryMessages = memoryStart >= 0 ? activeMessages.slice(memoryStart) : activeMessages.filter((message) => message.id === userMessage.id);
+      const context = directContext(bot, threadId, memoryMessages);
       const contextOrder = context.map(m => m.id);
       const replayable = context.filter(m => !skipTranscript.has(m.id));
-      const record = latestCompaction(activeMessages);
-      const selection = selectReplay(context, { budgetBytes: cfg.context?.rebuildBytes ?? DEFAULT_REBUILD_BYTES, excludedIds: skipTranscript, compaction: record, tools: replayToolCalls(activeMessages, cfg.context) });
+      const record = latestCompaction(memoryMessages);
+      const selection = selectReplay(context, { budgetBytes: cfg.context?.rebuildBytes ?? DEFAULT_REBUILD_BYTES, excludedIds: skipTranscript, compaction: record, tools: replayToolCalls(memoryMessages, cfg.context) });
       const transcript = selection.transcript.map(({ role, text }) => ({ role, text }));
       const contextReset = selection.compacted > 0 && record?.id !== task.appliedCompactionId;
       if (contextReset) store.patchTask(bot.id, threadId, { resumeCursors: {} });
@@ -7837,7 +7870,7 @@ async function beginTurn(
       const followed = folderToFollow(bot, threadId, task.cwd, { worksInFolders: supportsWorkspaceFiles(instance.driverKind), keepsPrivateFolder: guestConfined || cloudGuestOpened(threadId) }); if (followed) store.patchTask(bot.id, threadId, { cwd: followed, resumeCursors: {} });
 
       // After a rewind the native session still holds the abandoned branch; the flag clears only once dispatched, or a failed dispatch loses the next attempt's history.
-      const rewound = Boolean(task.rewound);
+      const rewound = Boolean(task.rewound || memoryChanged || task.platformContext && !previousMemoryContext);
       const externalContextMarker = isExternalContextMarker(task.lastInstanceId)
         ? task.lastInstanceId
         : undefined;
@@ -7864,9 +7897,9 @@ async function beginTurn(
       const setupText = agentsMounted ? expandSetupTurnText(skillCommandText) : skillCommandText;
       const userTurnText = (opts?.app?.context ?? "") + (opts?.cardContinuation ? "" : routineRunNote(threadId, opts?.automationSource)) + labelledLine(personLine && !opts?.excludeMessageIds ? userMessage : {}, withReactionNotes(promptWithReply(
         skillAuthoring ? expandLearnTurnText(setupText) : setupText,
-        opts?.replyTo,
+        memoryMessages.some((message) => message.id === opts?.replyTo?.id) ? opts?.replyTo : undefined,
         userNameFor(threadId),
-      ), personLine ? activeMessages : [], skipTranscript, userNameFor(threadId)), lineLabels(threadId));
+      ), personLine ? memoryMessages : [], skipTranscript, userNameFor(threadId)), lineLabels(threadId));
       const replay = usesNativeImageInput
         ? extractReplayImages(selection.inline, turnImages)
         : { transcript: selection.inline, images: [] };
@@ -7942,9 +7975,10 @@ async function beginTurn(
       const worksInWorkspace = supportsWorkspaceFiles(instance.driverKind);
       if (worksInWorkspace) {
         ensureWorkspace(bot.id, appLanguage());
-        if (bot.memoryEnabled !== false) beginMemoryTurn(teamHost.layer(bot.id, threadId), threadId); botBox.lend(bot.id, threadId, teamHost.layerDirs(bot.id, threadId));
+        if (memorySnapshot.privateMemory && bot.memoryEnabled !== false) beginMemoryTurn(teamHost.layer(bot.id, threadId), threadId); botBox.lend(bot.id, threadId, teamHost.layerDirs(bot.id, threadId));
       }
       const privateWorkspace = worksInWorkspace ? ensureTaskWorkspaceWithSkills(bot.id, threadId, skillsHost.turnImports(bot, threadId, instance)) : undefined;
+      if (platformConfined && task.cwd !== privateWorkspace) store.patchTask(bot.id, threadId, { cwd: privateWorkspace, resumeCursors: {} });
       const skillInstructions = renderSkillInstructions(selectedSkills, {
         includeRoot: worksInWorkspace,
       });
@@ -7952,7 +7986,7 @@ async function beginTurn(
       // A legacy task with a live provider session pins to null, since moving it breaks resume; a Cloud guest's conversation pins its own private folder.
       const pinnedCwd =
         privateWorkspace
-          ? store.pinTaskCwd(bot.id, threadId, privateWorkspace, { privateOnly: cloudGuestOpened(threadId) || botApiThread(threadId) })
+          ? store.pinTaskCwd(bot.id, threadId, privateWorkspace, { privateOnly: platformConfined || cloudGuestOpened(threadId) || botApiThread(threadId) })
           : null;
       const cwd = pinnedCwd ?? undefined;
       const checkpointCwd = cwd && cwd !== privateWorkspace ? cwd : undefined;
@@ -8429,7 +8463,7 @@ async function beginTurn(
         { id: "webhook", label: "Webhook provenance", text: opts?.automationSource === "webhook" ? WEBHOOK_PROMPT : opts?.automationSource === "api" ? BOT_API_PROMPT : "" },
         { id: "automation-reply", label: "Automation reply", text: opts?.automationSource && automationReports.reportsElsewhere(threadId) ? AUTOMATION_REPLY_PROMPT : "" },
         { id: "mentions", label: "Mentions", text: (tagged.length ? `The user named these existing teammates: ${tagged.map(b => `${peerName(b.name)} (${b.id})`).join(", ")}. Use coordinate_bots when their contribution is needed; do not substitute native helper agents for these bots.` : "") + placesElsewhere.mentioned(providerText, store.bots) },
-      ].filter((part) => (apiFenced ? BOT_API_PARTS.has(part.id) : !confined || READ_AND_DRAFT_PARTS.has(part.id))), integrations.agents, { replyStyle: liveBot?.replyStyle ?? bot.replyStyle });
+      ].filter((part) => memorySnapshot.privateMemory || !PRIVATE_MEMORY_PARTS.has(part.id)).concat(memorySnapshot.prompt ? [{ id: "memory", label: "Shared memory", text: memorySnapshot.prompt }] : []).filter((part) => (apiFenced ? BOT_API_PARTS.has(part.id) : !confined || READ_AND_DRAFT_PARTS.has(part.id))), integrations.agents, { replyStyle: liveBot?.replyStyle ?? bot.replyStyle });
       turnPromptBytes.set(threadId, { stable: Buffer.byteLength(prompt.stable), volatile: Buffer.byteLength(prompt.volatile) });
       // Recall rides in front of this turn's message, never the system prompt, whose volatile half is re-sent whole on any change.
       const recalled = autoRecallPrompt(bot, threadId, resolvedImages.text, {
@@ -8437,8 +8471,8 @@ async function beginTurn(
         conversations: commsDepth === 0 && !coordinationNode && !opts?.automationSource && !opts?.unattended && !apiFenced,
         userName: userNameFor(threadId),
       });
-      if (!directTurnClaimIsCurrent(bot.id, dispatchClaimId, threadId)) {
-        throw new DirectTurnSetupCancelled("turn stopped before dispatch");
+      if (!directTurnClaimIsCurrent(bot.id, dispatchClaimId, threadId) || memoryContexts.snapshot(bot.id, task.platformContext, bot.memoryEnabled !== false, threadId).fingerprint !== memorySnapshot.fingerprint) {
+        throw new DirectTurnSetupCancelled("turn stopped or memory access changed before dispatch");
       }
       runningTurnEngines.set(threadId, instance);
       // Re-decide from the soul actually sent, except on an unattended continuation wake, so a session started under an old soul never survives a soul change by laundering its record.
@@ -11122,6 +11156,7 @@ function attachmentNameInThread(threadId: string, path: string): string | null {
 
 function messageFileRootsForThread(senderId: string, threadId: string): string[] {
   const directBot = store.botByThread(threadId);
+  if (directBot && outsideLineage.cloudGuestDriven(threadId) && store.taskByThread(directBot.id, threadId)?.platformContext) return [store.taskByThread(directBot.id, threadId)?.cwd].filter((path): path is string => Boolean(path));
   const group = directBot ? undefined : store.groupByThread(threadId);
   let pinnedCwd: string | null | undefined;
   let configuredCwd: string | undefined;
@@ -12426,10 +12461,35 @@ ROUTES.push(createMcpServerRoutes({
   cfg, bot: (id) => store.bot(id), sessions, mcpOAuth, teamConnections,
   cloudHome: CLOUD_HOME,
   fallbackPublicUrl: FALLBACK_PUBLIC_URL,
-  mcpServerResponse, savedCustomDomain, appCatalog: chatAppsMcp, config: mcpConfig, lender: sessionLendingPrincipal, place: (server, auth) => lentMcp.place(server, { principal: sessionLendingPrincipal(auth), ...(auth.kind === "session" ? { session: auth.session.id } : {}), newest: true }) })); const platformAccounts = new PlatformAccountStore(DATA_DIR); const platformOutbox = new PlatformOutboxStore(DATA_DIR); const platformInbound = createPlatformInboundHost({ accounts: platformAccounts, outbox: platformOutbox, dataDir: DATA_DIR, store, canStart: (botId, threadId) => canAdmitDirectTurn(botId, threadId ?? ""), threadBusy, startTurn: (botId, text, opts) => startTurn(botId, text, opts), now: () => new Date().toISOString(),
+  mcpServerResponse, savedCustomDomain, appCatalog: chatAppsMcp, config: mcpConfig, lender: sessionLendingPrincipal, place: (server, auth) => lentMcp.place(server, { principal: sessionLendingPrincipal(auth), ...(auth.kind === "session" ? { session: auth.session.id } : {}), newest: true }) })); const platformAccounts = new PlatformAccountStore(DATA_DIR); const platformOutbox = new PlatformOutboxStore(DATA_DIR);
+const sharedMemory = new MemorySpaceStore(DATA_DIR);
+const memoryContexts = createMemoryContext({ memory: sharedMemory, accounts: platformAccounts, principalFor: (threadId) => {
+  if (!CLOUD_HOME) return { kind: "owner", personId: "host-owner" };
+  const person = teamConversationPerson(threadId) ?? threadPersonKey(threadId);
+  const role = (teamOwners.people?.list() ?? []).find((entry) => personKey({ id: "", email: entry.email }) === person)?.role;
+  const owner = CLOUD_TEAM ? role === "owner" || role === "admin" : cloudOwnerOnlyThread(threadId);
+  return { kind: owner ? "owner" : "guest", personId: person ?? "unknown" };
+} });
+const memoryTurns = new Map<string, { botId: string; generation: string; snapshot: MemoryContextSnapshot }>();
+watchMemoryAccess({ memory: sharedMemory, contexts: memoryContexts, turns: memoryTurns,
+  platformFor: (botId, threadId) => store.taskByThread(botId, threadId)?.platformContext,
+  enabled: (botId) => store.bot(botId)?.memoryEnabled !== false,
+  invalidate: (botId, threadId) => {
+    revokeInternalCapabilitiesForThread(threadId);
+    void interruptDirectThread(botId, threadId, "Shared memory access changed").catch(() => {});
+  } });
+const platformInbound = createPlatformInboundHost({ accounts: platformAccounts, outbox: platformOutbox, dataDir: DATA_DIR, store, canStart: (botId, threadId) => canAdmitDirectTurn(botId, threadId ?? ""), threadBusy, startTurn: (botId, text, opts) => startTurn(botId, text, opts), now: () => new Date().toISOString(),
     namesOf: (botId) => { const bot = store.bot(botId); return bot ? [bot.name, bot.title].filter((name): name is string => typeof name === "string" && name.length > 0) : []; },
     recent: (_botId, threadId) => recentMessages([threadId], { since: Date.now() - 5 * 60_000 }, 40).map((hit) => ({ role: hit.role, text: hit.snippet, at: hit.at })),
-    replyShare: () => cfg.platformReplyShare ?? 1 }); const pluginsHost = createPluginsHost({ dataDir: DATA_DIR, hostVersion: serverVersion(), host: DESKTOP_MANAGED ? "desktop" : "server", platform: `${process.platform}-${process.arch}`, mayManage: ownerOrAdmin, enableProcessRuntime: process.env.EAC_PLUGIN_PROCESS === "1", bots: { has: (id) => Boolean(store.bot(id)), bindingOf: (id) => { const bot = store.bot(id); return bot?.platformBinding ? { accountId: bot.platformBinding.accountId } : null; }, createDedicated: (input) => { const bot = store.createBot({ name: input.name, ...(input.title ? { title: input.title } : {}), ...(input.description ? { description: input.description } : {}), section: "Platform bots" }); return store.patchBot(bot.id, { platformBinding: { platform: input.platform, accountId: input.accountId, mode: "dedicated" } }) ? bot.id : null; }, bind: (id, binding) => Boolean(store.patchBot(id, { platformBinding: binding ?? undefined })), remove: (id) => store.deleteBot(id) }, accounts: platformAccounts, inbound: platformInbound, outbox: platformOutbox }); ROUTES.push(pluginsHost.route); const pluginsMcp = createPluginsMcp({ registry: pluginsHost.registry, origin: `http://127.0.0.1:${PORT}` }); ROUTES.push(createAnnouncementRoutes({ announcements: createAnnouncements(DATA_DIR), feed: createAnnouncementFeed({ url: process.env.EAC_ANNOUNCEMENTS_URL ?? "" }), mayManage: ownerOrAdmin }));
+    replyShare: () => cfg.platformReplyShare ?? 1 }); const pluginsHost = createPluginsHost({ dataDir: DATA_DIR, hostVersion: serverVersion(), host: DESKTOP_MANAGED ? "desktop" : "server", platform: `${process.platform}-${process.arch}`, mayManage: ownerOrAdmin, enableProcessRuntime: process.env.EAC_PLUGIN_PROCESS === "1", bots: { has: (id) => Boolean(store.bot(id)), bindingOf: (id) => { const bot = store.bot(id); return bot?.platformBinding ? { accountId: bot.platformBinding.accountId } : null; }, createDedicated: (input) => { const bot = store.createBot({ name: input.name, ...(input.title ? { title: input.title } : {}), ...(input.description ? { description: input.description } : {}), section: "Platform bots" }); return store.patchBot(bot.id, { platformBinding: { platform: input.platform, accountId: input.accountId, mode: "dedicated" } }) ? bot.id : null; }, bind: (id, binding) => Boolean(store.patchBot(id, { platformBinding: binding ?? undefined })), remove: (id) => store.deleteBot(id) }, accounts: platformAccounts, memory: sharedMemory, grantTargets: () => platformGrantTargets(store, memoryContexts), generatePanel: async (botId, prompt) => {
+      const bot = store.bot(botId);
+      if (!bot) return null;
+      if (hostedModels && !hostedModels.allows(bot.modelSelection)) return null;
+      const instance = registry.get(bot.modelSelection.instanceId);
+      if (!instance?.generateText || policyModelRefusal(instance)) return null;
+      assertWithinBudget(cfg, DATA_DIR);
+      return await instance.generateText(prompt, { timeoutMs: 60_000, model: bot.modelSelection.model });
+    }, inbound: platformInbound, outbox: platformOutbox }); ROUTES.push(pluginsHost.route); const pluginsMcp = createPluginsMcp({ registry: pluginsHost.registry, origin: `http://127.0.0.1:${PORT}`, identity: ({ botId, threadId }) => turnPluginIdentity(memoryContexts, botId, threadId, store.taskByThread(botId, threadId)?.platformContext, cloudGuestDriven(threadId)) }); ROUTES.push(createAnnouncementRoutes({ announcements: createAnnouncements(DATA_DIR), feed: createAnnouncementFeed({ url: process.env.EAC_ANNOUNCEMENTS_URL ?? "" }), mayManage: ownerOrAdmin }));
 ROUTES.push(createSetupImportRoutes({ local: DESKTOP_MANAGED && !CLOUD_HOME && !HOSTED_WORKSPACE, cfg, mcpPolicyRefusal, persistMcpServers: persistAnnouncedMcpServers,
   mcpConfigBusy: mcpConfig.busy }));
 ROUTES.push(createComputerRoutes({
@@ -12961,7 +13021,7 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
         return json(res, 403, { error: "an external runtime can only list its peers, hand them work with coordinate_bots and read assignment_status" });
       }
       if (proactive.fence.refusesRoute(internalSender, internalCapability.threadId, method, path)) return json(res, 403, { error: READ_AND_DRAFT_REFUSAL }); if (botApiThread(internalCapability.threadId) && botApiRouteRefused(method, path)) return json(res, 403, { error: BOT_API_REFUSAL });
-      if (cloudGuestDriven(internalCapability.threadId) && outsideRouteRefused(method, path)) return json(res, 403, { error: OUTSIDE_REFUSAL });
+      if ((cloudGuestDriven(internalCapability.threadId) || memoryTurns.get(internalCapability.threadId)?.snapshot.privateMemory === false) && outsideRouteRefused(method, path)) return json(res, 403, { error: OUTSIDE_REFUSAL });
       const requiredCapabilityKind = path === "/api/internal/hook"
         ? "hooks"
         : path === "/api/internal/browser/mcp"
@@ -12993,8 +13053,9 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
       if (claimedThread !== null && claimedThread !== internalCapability.threadId) {
         return json(res, 403, { error: "the internal capability belongs to a different conversation" });
       }
+      let internalBody: ReturnType<typeof readBody> | undefined;
       const readInternalBody = async () => {
-        const body = await readBody(req);
+        const body = await (internalBody ??= readBody(req));
         // Authorization at header time is not a lease: if the owning turn settled meanwhile, die before any side effect.
         if (!internalCapabilityIsActive(internalCapability)) {
           throw Object.assign(new Error(TURN_ENDED_REFUSAL), { status: 401 });
@@ -13022,6 +13083,12 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
       const delegatedThisTurn = (taskId: string) => {
         (internalCapability.delegatedThisTurn ??= new Set()).add(taskId);
       };
+      const platformMemory = store.taskByThread(internalSender.id, internalCapability.threadId)?.platformContext;
+      const currentMemory = memoryContexts.snapshot(internalSender.id, platformMemory, internalSender.memoryEnabled !== false, internalCapability.threadId);
+      if (privateMemoryWriteRefused(method, path, currentMemory)) return json(res, 403, { error: "This platform audience cannot change private or team memory." });
+      const sharedWrite = await handleSharedMemoryWrite({ req, res, path, method, json, readBody: readInternalBody }, { memory: sharedMemory,
+        snapshot: currentMemory, platform: platformMemory, botId: internalSender.id, enabled: internalSender.memoryEnabled !== false });
+      if (sharedWrite !== PASS) return;
       const memorySource = (): string => memorySourceLabel({
         room: store.groupByThread(internalCapability.threadId),
         task: store.taskByThread(internalSender.id, internalCapability.threadId),
@@ -13118,6 +13185,7 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
       const ownersWrite = <T,>(write: () => T): T => lendingMemory ? lendingMemory.trustedWrite(internalSender.id, write) : write();
       if (method === "POST" && path === "/api/internal/memory") {
         const body = await readInternalBody();
+        if (!currentMemory.privateMemory) return json(res, 403, { error: "This platform audience can only write an explicitly shared space." });
         const ownersAsk = CLOUD_TEAM || (!store.groupByThread(internalCapability.threadId) && ownersOwnAsk(store.activePath(internalCapability.threadId)));
         const result = ownersWrite(() => botMemoryUpdate(teamHost.layer(internalSender.id, internalCapability.threadId), body, { source: memorySource(), aboutMe: ownersAsk ? aboutMeFacts : null,
           prefer: body?.action === "prefer" ? personPreference.target(internalCapability, internalSender) : null }));
@@ -13570,91 +13638,10 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
           source: "appliedBy" in proposed ? proposed.appliedBy : "profile" });
         return json(res, 201, proposed);
       }
-      // session_search searches the calling bot's own threads only: search across bots would be an isolation change.
-      const discloseRecall = (bot: BotRecord, roomThreadId: string, sourceThreadIds: readonly string[]): void => {
-        const crossing = claimRecallCrossings(roomThreadId, sourceThreadIds);
-        if (!crossing.count) return;
-        store.appendMessage(roomThreadId, {
-          role: "bot",
-          kind: "activity",
-          from: { botId: bot.id, name: bot.name, color: bot.color },
-          tool: { name: recallCrossingLabel(bot.name, crossing.count, threadLanguage(roomThreadId)), ok: true },
-        });
-      };
-      if (method === "GET" && path === "/api/internal/session-search") {
-        const fromBotId = String(url.searchParams.get("fromBotId") ?? "");
-        const from = store.bot(fromBotId);
-        if (!from) return json(res, 403, { error: "unknown sender" });
-        const fromThreadId = internalCapability.threadId;
-        if (!connectorThread(from.id, fromThreadId)) {
-          return json(res, 403, { error: "source conversation does not belong to sender" });
-        }
-        const q = String(url.searchParams.get("q") ?? "").trim();
-        const now = Date.now();
-        const sinceRaw = url.searchParams.get("since");
-        const untilRaw = url.searchParams.get("until");
-        const since = sinceRaw ? parseSince(sinceRaw, now) : null;
-        const until = untilRaw ? parseUntil(untilRaw, now) : null;
-        if (sinceRaw && since === null) return json(res, 400, { error: "since must be a date, or a span like 24h, 3d, today, yesterday" });
-        if (untilRaw && until === null) return json(res, 400, { error: "until must be a date, or a span like 24h, 3d, today, yesterday" });
-        if (!q && since === null) return json(res, 400, { error: "q or since is required" });
-        const range = since !== null || until !== null
-          ? { ...(since !== null ? { since } : {}), ...(until !== null ? { until } : {}) }
-          : undefined;
-        const rawLimit = Number(url.searchParams.get("limit"));
-        const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(Math.trunc(rawLimit), 25) : 12;
-        const scope = url.searchParams.get("scope") ?? "all";
-        if (scope !== "all" && scope !== "conversations" && scope !== "memory" && scope !== "team") {
-          return json(res, 400, { error: "scope must be all, conversations, memory, or team" });
-        }
-        const memoryHits = scope === "conversations" || scope === "team" || !q || from.memoryEnabled === false ? [] : teamHost.memoryIds(from.id, fromThreadId).flatMap((id) => searchMemoryFiles(id, q, limit)).slice(0, limit);
-        if (scope === "memory" || scope === "team") return json(res, 200, { hits: [], memoryHits, teamHits: scope === "team" ? teamMemory.search(from.section, q, limit, range) : [] });
-        const { roomByThread, ownThreads } = recallThreads(from, internalCapability);
-        const inRoom = Boolean(store.groupByThread(fromThreadId));
-        const found = q ? recallMessages(q, ownThreads, limit, range) : recentMessages(ownThreads, range ?? {}, limit);
-        const hits = found.map((hit) => {
-          const room = roomByThread.get(hit.threadId);
-          return {
-            ...hit,
-            task: room
-              ? (room.tasks ?? []).find((task) => task.threadId === hit.threadId)?.title
-              : store.taskByThread(from.id, hit.threadId)?.title,
-            ...(room ? { room: room.name } : {}),
-            current: hit.threadId === fromThreadId,
-            crossed: inRoom && !room && hit.threadId !== fromThreadId,
-          };
-        });
-        if (inRoom) {
-          discloseRecall(from, fromThreadId, hits.filter((hit) => hit.crossed).map((hit) => hit.threadId));
-        }
-        return json(res, 200, { hits, memoryHits, teamHits: scope === "conversations" ? [] : teamMemory.search(from.section, q, limit, range) });
-      }
-      // Reading one message: an id from another bot's thread reads as missing, not forbidden, so the id space leaks nothing.
-      if (method === "GET" && path === "/api/internal/session-read") {
-        const fromBotId = String(url.searchParams.get("fromBotId") ?? "");
-        const from = store.bot(fromBotId);
-        if (!from) return json(res, 403, { error: "unknown sender" });
-        const fromThreadId = internalCapability.threadId;
-        if (!connectorThread(from.id, fromThreadId)) {
-          return json(res, 403, { error: "source conversation does not belong to sender" });
-        }
-        const threadId = String(url.searchParams.get("threadId") ?? "").trim();
-        const messageId = String(url.searchParams.get("messageId") ?? "").trim();
-        if (!threadId || !messageId) return json(res, 400, { error: "threadId and messageId are required" });
-        const recall = recallThreads(from, internalCapability);
-        const own = recall.ownThreads.includes(threadId);
-        const message = own ? readMessageText(threadId, messageId) : null;
-        if (!message) return json(res, 404, { error: "no such message in your conversations" });
-        const readInRoom = Boolean(store.groupByThread(fromThreadId));
-        const readCrossed = readInRoom && threadId !== fromThreadId && !recall.roomByThread.has(threadId);
-        if (readCrossed) discloseRecall(from, fromThreadId, [threadId]);
-        return json(res, 200, {
-          ...message,
-          crossed: readCrossed,
-          text: message.text.length > SESSION_READ_MAX_CHARS ? `${message.text.slice(0, SESSION_READ_MAX_CHARS)}…` : message.text,
-          task: store.taskByThread(from.id, threadId)?.title,
-        });
-      }
+      if (await sessionRecallRoute({ method, path, url, res, json }, { store, threadId: internalCapability.threadId, capability: internalCapability,
+        memory: currentMemory, memoryIds: teamHost.memoryIds, connectorThread, threadLanguage, recallThreads,
+        messageReadable: (threadId, messageId) => memoryMessageReadable(store, internalSender.id, threadId, messageId),
+        teamSearch: (...args) => teamMemory.search(...args) }) !== PASS) return;
       if (method === "GET" && path === "/api/internal/skills") {
         if (!skillAuthoringEnabled(cfg)) return json(res, 403, { error: "skill authoring is not enabled in Settings" });
         if (!internalCapability.skillAuthoring) return json(res, 403, { error: store.groupByThread(internalCapability.threadId) ? roomSkillsRefusal(Boolean(internalCapability.roomHandoffId)) : "skill authoring is not enabled for this turn" });

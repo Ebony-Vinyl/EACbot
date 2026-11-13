@@ -45,6 +45,7 @@ export class MemorySpaceStore {
   readonly file: string;
   private state: z.infer<typeof fileSchema> | null = null;
   private readonly now: () => string;
+  private readonly listeners = new Set<() => void>();
 
   constructor(dataDir: string, options: MemorySpaceStoreOptions = {}) {
     this.file = join(dataDir, "memory-spaces", "spaces.json");
@@ -53,6 +54,11 @@ export class MemorySpaceStore {
 
   list(): MemorySpace[] {
     return this.load().spaces.map((space) => structuredClone(space));
+  }
+
+  subscribe(listener: () => void): () => void {
+    this.listeners.add(listener);
+    return () => { this.listeners.delete(listener); };
   }
 
   get(spaceId: string): MemorySpace | null {
@@ -173,7 +179,7 @@ export class MemorySpaceStore {
     const at = this.now();
     const entry = { ...state.entries[index]!, deletedAt: at, updatedAt: at, revision: space.revision + 1 };
     state.entries[index] = entry;
-    const next: MemorySpace = { ...space, revision: space.revision + 1, updatedAt: at };
+    const next: MemorySpace = { ...space, revision: space.revision + 1, epoch: space.epoch + 1, updatedAt: at };
     const spaceIndex = state.spaces.findIndex((candidate) => candidate.spaceId === spaceId);
     state.spaces[spaceIndex] = next;
     this.persist(state);
@@ -210,10 +216,10 @@ export class MemorySpaceStore {
   }
 
   private load(): z.infer<typeof fileSchema> {
-    if (this.state) return this.state;
+    if (this.state) return structuredClone(this.state);
     if (!existsSync(this.file)) {
       this.state = { schemaVersion: 1, spaces: [], entries: [] };
-      return this.state;
+      return structuredClone(this.state);
     }
     let raw: unknown;
     try {
@@ -224,13 +230,17 @@ export class MemorySpaceStore {
     const parsed = fileSchema.safeParse(raw);
     if (!parsed.success) throw new MemorySpaceError("corrupt", "memory-spaces/spaces.json does not match schema version 1");
     this.state = parsed.data;
-    return this.state;
+    return structuredClone(this.state);
   }
 
   private persist(state: z.infer<typeof fileSchema>): void {
     if (state.entries.length > MAX_ENTRIES) throw new MemorySpaceError("conflict", "the memory store is full; delete entries first");
+    if (!fileSchema.safeParse(state).success) throw new MemorySpaceError("conflict", "The memory space exceeds its storage limits.");
     mkdirSync(dirname(this.file), { recursive: true, mode: 0o700 });
     writeFileAtomic(this.file, JSON.stringify(state, null, 2) + "\n", { mode: 0o600 });
     this.state = state;
+    for (const listener of this.listeners) {
+      try { listener(); } catch { console.warn("Shared memory change listener failed."); }
+    }
   }
 }

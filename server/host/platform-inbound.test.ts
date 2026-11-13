@@ -12,7 +12,7 @@ afterEach(() => {
   for (const folder of folders.splice(0)) rmSync(folder, { recursive: true, force: true });
 });
 
-function setup(options: { names?: string[]; share?: number; recent?: Array<{ role: string; text: string; at: number }> } = {}) {
+function setup(options: { names?: string[]; share?: number; recent?: Array<{ role: string; text: string; at: number }>; defer?: boolean } = {}) {
   const folder = mkdtempSync(join(tmpdir(), "eac-platform-inbound-"));
   folders.push(folder);
   const accounts = new PlatformAccountStore(folder, { now: () => "2026-11-08T10:00:00.000Z" });
@@ -43,7 +43,7 @@ function setup(options: { names?: string[]; share?: number; recent?: Array<{ rol
     startTurn: async (botId, text, opts) => {
       if (state.refuseStart) throw Object.assign(new Error("blocked"), { code: state.refuseStart });
       turns.push({ botId, text, opts });
-      opts.onSettled({ ok: true, text: "已回复" });
+      if (!options.defer) opts.onSettled({ ok: true, text: "已回复" });
       return { ok: true, text: "已回复" };
     },
   });
@@ -61,6 +61,35 @@ function setup(options: { names?: string[]; share?: number; recent?: Array<{ rol
 }
 
 describe("platform inbound turns", () => {
+  it("keeps group and direct conversations with the same id on different threads", async () => {
+    const { host, event, turns } = setup();
+    await host.deliver(event({ conversation: { id: "123", kind: "direct" } }));
+    await host.deliver(event({ conversation: { id: "123", kind: "group" } }));
+    expect(turns[0]!.opts.threadId).not.toBe(turns[1]!.opts.threadId);
+    expect(turns[1]!.opts.platformContext).toMatchObject({ conversation: { id: "123", kind: "group" }, sender: { id: "friend-1" } });
+  });
+
+  it("opens a new thread when an account is rebound to a different bot", async () => {
+    const { host, event, accounts, account, turns } = setup();
+    await host.deliver(event());
+    accounts.unbind(account.accountId);
+    accounts.bind(account.accountId, "bot-2", "existing");
+    await host.deliver(event());
+    expect(turns[1]!.botId).toBe("bot-2");
+    expect(turns[1]!.opts.threadId).not.toBe(turns[0]!.opts.threadId);
+  });
+
+  it("suppresses a late reply after unbinding and delivers an unchanged accepted turn", async () => {
+    const { host, event, turns, accounts, account, outbox } = setup({ defer: true });
+    await host.deliver(event());
+    const settle = turns[0]!.opts.onSettled as (result: { ok: boolean; text: string }) => void;
+    settle({ ok: true, text: "first" });
+    expect(outbox.list(account.accountId)).toHaveLength(1);
+    accounts.unbind(account.accountId);
+    settle({ ok: true, text: "late" });
+    expect(outbox.list(account.accountId)).toHaveLength(1);
+  });
+
   it("starts the bound bot's turn on its own thread and queues the reply when the turn settles", async () => {
     const { host, event, turns, createdTasks, outbox, account } = setup();
     const first = await host.deliver(event()) as { status: number; body: { threadId: string; route: { action: string }; accepted?: boolean } };

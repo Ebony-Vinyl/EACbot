@@ -13,8 +13,8 @@ const grantSchema = z.object({
   grantId: z.string().min(1).max(120),
   installationId: z.string().min(1).max(120),
   botId: z.string().min(1).max(120),
-  principalId: z.string().min(1).max(200),
-  audienceId: z.string().min(1).max(200),
+  principalId: z.string().min(1).max(512),
+  audienceId: z.string().min(1).max(512),
   permissionId: z.string().min(1).max(64),
   effect: z.enum(["read", "draft", "control", "write", "send", "delete", "financial", "security"]),
   resources: z.object({
