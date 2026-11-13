@@ -28,7 +28,7 @@ function readConfig() {
   const larkConfigDir = String(raw.larkConfigDir ?? "").trim();
   const accountId = String(raw.accountId ?? "").trim();
   const botOpenId = String(raw.botOpenId ?? "").trim();
-  if (!cli) throw new Error("config.json needs cli (lark-cli.exe or lark-cli.ps1)");
+  if (!cli) throw new Error("config.json needs cli (lark-cli.exe or a .cmd wrapper)");
   if (!larkConfigDir) throw new Error("config.json needs larkConfigDir");
   if (!/^[0-9a-f-]{36}$/i.test(accountId)) throw new Error("config.json needs the EAC platform account UUID in accountId");
   if (!/^ou_[A-Za-z0-9_-]+$/.test(botOpenId)) throw new Error("config.json needs botOpenId (the Feishu bot open_id)");
