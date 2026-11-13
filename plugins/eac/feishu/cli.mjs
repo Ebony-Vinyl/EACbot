@@ -20,6 +20,15 @@ function environment(configDir) {
   return env;
 }
 
+function killChild(child) {
+  if (process.platform === "win32" && child.pid) {
+    const killer = spawn("taskkill", ["/pid", String(child.pid), "/T", "/F"], { windowsHide: true, stdio: "ignore" });
+    killer.on("error", () => { try { child.kill(); } catch {} });
+    return;
+  }
+  try { child.kill(); } catch {}
+}
+
 function parsed(text) {
   const trimmed = String(text ?? "").trim();
   if (!trimmed) return null;
@@ -62,7 +71,7 @@ export async function runLark(cli, args, options = {}) {
   let stdout = "";
   let stderr = "";
   const timer = setTimeout(() => {
-    try { child.kill(); } catch {}
+    killChild(child);
   }, options.timeoutMs ?? 30_000);
   child.stdout.setEncoding("utf8");
   child.stderr.setEncoding("utf8");
@@ -106,7 +115,7 @@ export function consumeEvents(cli, configDir, handlers) {
   let ready = false;
   const stop = () => {
     try { child.stdin.end(); } catch {}
-    try { child.kill(); } catch {}
+    killChild(child);
   };
   stdout.on("line", (line) => {
     if (line.length > 1_048_576) {
