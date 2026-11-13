@@ -1,6 +1,6 @@
 # Plugin Manifest v1
 
-状态：设计合同；`shared/plugins/manifest.ts` 已有运行时解析器和固定测试，本地包安装器会校验声明入口；SDK 发布物和插件市场尚未实现。权限语义以[权限规范](permissions.md)为准。Manifest 描述插件希望做什么，不代表宿主已经授予权限或审核信任。
+状态：设计合同；`shared/plugins/manifest.ts` 已有运行时解析器和固定测试，本地包安装器会校验声明入口；签名插件市场已有实现，SDK 发布物仍待交付。权限语义以[权限规范](permissions.md)为准。Manifest 描述插件希望做什么，不代表宿主已经授予权限或审核信任。
 
 ## 1. 文件与字段
 
@@ -125,3 +125,30 @@
 必测：重复 key、未知 schema、错误 SemVer、ID 冲突、权限遗漏、路径逃逸、入口缺失、依赖环、版本冲突、制品架构不符、UI 贡献越权、未知字段、过大描述、伪造审核等级。
 
 schema 检查通过只是安装前置条件；仍需[渠道验证](channels.md)、[生命周期](sdk.md)和[安全验收](security-review.md)。
+
+
+## 7. UI 贡献的运行格式
+
+宿主读取 active 插件声明的 JSON 入口，单文件最大 128 KiB。每项贡献独立校验，错误显示在扩展中心。停用和卸载后移除贡献，当前主题与布局回退内置默认值。
+
+声明式面板使用 `mode: "declarative"`，入口示例如下。
+
+```json
+{
+  "schemaVersion": 1,
+  "title": "任务与用量",
+  "slot": "workspace",
+  "items": [
+    {"type": "data", "source": "tasks"},
+    {"type": "data", "source": "usage"}
+  ]
+}
+```
+
+插槽支持 `workspace` 和 `bot`。组件支持 `text`、`list`、`data`，只读数据源支持 `tasks`、`usage`、`platforms`。Bot 插槽按当前 Bot 过滤，数据由当前登录用户的状态提供。自然语言生成输出同一格式，经过预览后保存，保存采用 CAS revision 并保留最多十个历史版本。
+
+高级面板使用 `mode: "sandbox"`，JSON 包含 `schemaVersion`、`title`、`slot`、`html`。HTML 最大 100,000 字符，运行于 sandbox="allow-scripts allow-forms" 的不透明来源 frame。frame 使用现有 MCP Apps 桥接，先调用 `ui/initialize`，从 `hostContext.pluginPanelNonce` 取得能力 nonce，再发送 `ui/notifications/initialized`。读取数据调用 `tools/call`，顶层 params 携带 `nonce`、`name: "panel_data"` 和 `arguments: {"source": "tasks"}`。允许的数据源与声明式一致，最多返回三十行。宿主检查消息来源、nonce 和存活状态，销毁时撤销能力。外部资源与连接、资源 RPC、消息发送、链接打开和模型上下文写入均关闭。
+
+主题 JSON 包含 `schemaVersion: 1`、`title` 和 `tokens`。token 固定为 `app`、`panel`、`ink`、`secondary`、`accent`、`accentInk`，值为六位十六进制颜色。正文、次级正文和强调按钮文字组合需要至少 4.5 的对比度。宿主只应用预定义颜色变量。
+
+布局 JSON 包含 `schemaVersion: 1`、`title`、`panels` 与 `columns`。`panels` 为已激活贡献的命名空间 key 数组，`columns` 为 1 或 2。主题、布局及安全模式选择保存在当前浏览器本地存储，面板定义与版本保存在工作区 `plugin-panels.json`。

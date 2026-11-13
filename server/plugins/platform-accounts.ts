@@ -256,7 +256,7 @@ export class PlatformAccountStore {
    * consumed here, before any queue or model call. `remember: false` leaves the event unseen, so an admission that
    * failed for a busy or full reason can be delivered again later by the same bridge retry.
    */
-  resolveInbound(raw: unknown, options: { remember?: boolean } = {}): PlatformRoute {
+  resolveInbound(raw: unknown, options: { remember?: boolean; ignoreDuplicate?: boolean } = {}): PlatformRoute {
     const remember = options.remember !== false;
     const parsed = platformInboundEventSchema.safeParse(raw);
     if (!parsed.success) throw new PlatformAccountError("invalid", parsed.error.issues[0]?.message ?? "invalid inbound event");
@@ -266,7 +266,7 @@ export class PlatformAccountStore {
     if (!account) return { action: "unknown-account", event };
     if (account.platform !== event.platform) throw new PlatformAccountError("invalid", "the event platform does not match the account");
 
-    if (state.seen.some((seen) => seen.eventId === event.eventId && seen.accountId === event.accountId)) {
+    if (!options.ignoreDuplicate && state.seen.some((seen) => seen.eventId === event.eventId && seen.accountId === event.accountId)) {
       return { action: "ignored", event, reason: "duplicate" };
     }
     if (remember) this.rememberSeen(state, event.accountId, event.eventId);

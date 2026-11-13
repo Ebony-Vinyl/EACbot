@@ -51,6 +51,7 @@ interface MountedTool {
 export interface PluginsMcpDeps {
   registry: PluginRegistry;
   origin: string;
+  identity?(capability: PluginsMcpCapability): { principalId: string; audienceId: string; accountId?: string; autoGrant?: boolean };
 }
 
 /** A turn's capability, narrowed to what the plugin mount may know: which bot, which conversation. */
@@ -70,15 +71,13 @@ export function createPluginsMcp(deps: PluginsMcpDeps) {
     ...(tool.description ? { description: tool.description } : {}),
   }));
 
-  /** Turn identity is the bot, not the thread: an owner-issued grant names a bot it trusts, and any of that bot's
-   * conversations may use it. The internal capability token is what keeps a call to one live turn. */
-  const principalOf = (botId: string) => `bot:${botId}`;
-  const audienceOf = principalOf;
+  const identityOf = (capability: PluginsMcpCapability) => deps.identity?.(capability)
+    ?? { principalId: `bot:${capability.botId}`, audienceId: `bot:${capability.botId}` };
   const grantKey = (threadId: string, tool: MountedTool) => `${threadId}\u0000${tool.installationId}\u0000${tool.toolId}`;
 
   /** One grant per (thread, installation, tool), held in memory only: it never reaches the persisted grant list. */
   const turnGrant = (capability: PluginsMcpCapability, tool: MountedTool, now: number): PluginGrant | null => {
-    if (!AUTO_GRANTED_EFFECTS.has(tool.effect)) return null;
+    if (!AUTO_GRANTED_EFFECTS.has(tool.effect) || identityOf(capability).autoGrant === false) return null;
     const key = grantKey(capability.threadId, tool);
     const held = turnGrants.get(key);
     if (held && Date.parse(held.expiresAt ?? "") > now) return held;
@@ -86,8 +85,7 @@ export function createPluginsMcp(deps: PluginsMcpDeps) {
       grantId: `turn_${createHash("sha256").update(key).digest("hex").slice(0, 24)}`,
       installationId: tool.installationId,
       botId: capability.botId,
-      principalId: principalOf(capability.botId),
-      audienceId: audienceOf(capability.botId),
+      ...identityOf(capability),
       permissionId: tool.permission,
       effect: tool.effect,
       resources: {},
@@ -147,8 +145,7 @@ export function createPluginsMcp(deps: PluginsMcpDeps) {
       try {
         const result = await registry.callTool(tool.installationId, tool.toolId, {
           botId: capability.botId,
-          principalId: principalOf(capability.botId),
-          audienceId: audienceOf(capability.botId),
+          ...identityOf(capability),
           epoch: 0,
           args,
           ...(grant ? { grant } : {}),

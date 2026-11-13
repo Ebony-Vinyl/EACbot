@@ -38,6 +38,12 @@ const fullTask: TaskRecord = {
 const botModel = { instanceId: "codex", model: "bot-model" };
 
 describe("shared wire model", () => {
+  it("keeps platform identities and memory context bookkeeping on the server", () => {
+    const wire = toWireTask({ ...fullTask, memoryContext: { fingerprint: "private-fingerprint", startMessageId: "message-1" },
+      platformContext: { platform: "qq", accountId: "account-1", conversation: { kind: "group", id: "123" }, sender: { id: "456" } } }, botModel);
+    expect(wire).not.toHaveProperty("memoryContext");
+    expect(wire).not.toHaveProperty("platformContext");
+  });
   it("toWireTask emits exactly the WireTask key set and never the server-private fields", () => {
     const wire = toWireTask(fullTask, botModel);
     expect(Object.keys(wire).sort()).toEqual([

@@ -14,6 +14,7 @@ import type { SimplePageId } from "./page-registry";
 import { Card, CardLabel, NavRow } from "./rows";
 import { panelMemoryNotes } from "./memory-notes";
 import { useMemoryDoc } from "./use-memory-doc";
+import { PluginBotPanels } from "../PluginBotPanels";
 
 export interface LibraryItems {
   pages: Array<{ messageId: string; title: string; url: string }>;
@@ -94,11 +95,13 @@ export function LibraryTab({ bot, onOpen }: { bot: Bot; onOpen: (page: SimplePag
           {t("botPanel.library.empty")}
         </p>
         {keeps}
+        <PluginBotPanels botId={bot.id} />
       </div>
     );
   }
   return (
     <div data-panel-tabpanel="library">
+      <PluginBotPanels botId={bot.id} />
       {pages.length > 0 && (
         <Card label={t("botPanel.library.pages")} anchor="pages">
           {pages.map((page) => (

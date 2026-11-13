@@ -671,6 +671,16 @@ export async function callTool(called: string, input: Json, context: ToolCallCon
     return confirmationResult(r, "the default model change", "model");
   }
   if (member === "memory_update") {
+    if (typeof args.space_id === "string" && args.space_id.trim()) {
+      const { body: result } = await apiResponse("/api/internal/memory", {
+        method: "POST",
+        body: JSON.stringify({ fromBotId: BOT_ID, fromThreadId: THREAD_ID, spaceId: args.space_id,
+          expectedRevision: args.expected_revision, action: args.action, text: args.text, entryId: args.entry_id }),
+      });
+      return result.ok === true
+        ? { text: JSON.stringify(result) }
+        : { text: String(result.error ?? "Shared memory update was not confirmed."), isError: true };
+    }
     const passageOnly = args.action === "remove" || args.action === "forget";
     if (!["append", "replace", "remove", "supersede", "forget", "prefer"].includes(String(args.action))
       || (!passageOnly && (typeof args.text !== "string" || !args.text.trim()))

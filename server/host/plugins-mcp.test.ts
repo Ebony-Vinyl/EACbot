@@ -123,6 +123,41 @@ describe("plugin tools MCP mount", () => {
     expect(again.isError).toBe(false);
   });
 
+  it("does not reuse a bot's owner grant or auto-grant private plugin reads to a platform audience", async () => {
+    const calls: RuntimeCall[] = [];
+    const { registry } = setup(calls);
+    const installationId = await installReadAndSendPlugin(registry);
+    registry.grantTool(installationId, { toolId: "request", botId: "bot-1", principalId: "bot:bot-1", audienceId: "bot:bot-1", epoch: 0 });
+    const mcp = createPluginsMcp({ registry, origin: "http://127.0.0.1:1234", identity: () => ({
+      principalId: "qq-member", audienceId: "qq-group", autoGrant: false,
+    }) });
+    for (const name of ["plugin_eac_library__search", "plugin_eac_library__request"]) {
+      const result = await mcp.handle({ method: "tools/call", params: { name, arguments: {} } }, { botId: "bot-1", threadId: "group-thread" }, () => {}) as { isError: boolean };
+      expect(result.isError).toBe(true);
+    }
+    expect(calls).toHaveLength(0);
+  });
+
+  it("uses an owner-issued platform grant only for its sender and audience", async () => {
+    const calls: RuntimeCall[] = [];
+    const { registry } = setup(calls);
+    const installationId = await installReadAndSendPlugin(registry);
+    const grant = registry.grantTool(installationId, {
+      toolId: "search", botId: "bot-1", principalId: "qq-member", audienceId: "qq-group", epoch: 0,
+    });
+    const mcp = createPluginsMcp({ registry, origin: "http://127.0.0.1:1234", identity: ({ threadId }) => ({
+      principalId: "qq-member", audienceId: threadId, autoGrant: false,
+    }) });
+    const call = (threadId: string) => mcp.handle({ method: "tools/call", params: {
+      name: "plugin_eac_library__search", arguments: {},
+    } }, { botId: "bot-1", threadId }, () => {}) as Promise<{ isError: boolean }>;
+    expect((await call("qq-group")).isError).toBe(false);
+    expect((await call("other-group")).isError).toBe(true);
+    registry.removeGrant(installationId, grant.grantId);
+    expect((await call("qq-group")).isError).toBe(true);
+    expect(calls).toHaveLength(1);
+  });
+
   it("keeps mounted tool names within the MCP limit for a long plugin id", () => {
     const long = "eac.averyveryverylongpluginnamespace.superduperplugin";
     const name = pluginsToolName(long, "search-things");

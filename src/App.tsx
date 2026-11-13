@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { PluginUiHost } from "@/components/PluginUiHost";
 import { Live2dOverlay } from "@/components/Live2dOverlay";
 import { ChevronLeft, Loader2, Menu } from "lucide-react";
 import { CLOUD_LINK_SETTINGS, openBot, StoreProvider, useStore } from "@/state/store";
@@ -474,6 +475,7 @@ function Application() {
         <GuidedTour />
         <LiveCallHost />
         <Live2dOverlay />
+        <PluginUiHost />
         <FirstConversationTour quiet={spotlightsQuiet(viewer)} />
       </StoreProvider>
     </DesktopCapabilitiesProvider>

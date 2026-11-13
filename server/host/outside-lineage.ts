@@ -27,6 +27,7 @@ export interface OutsideLineageDeps {
   store: Pick<Store, "botByThread" | "taskByThread" | "patchTask" | "messagesFor" | "groupByThread" | "appendMessage">;
   /** This conversation's running turn was started confined. */
   confinedNow(threadId: string): boolean;
+  platformConfined?(threadId: string): boolean;
   activeRun(threadId: string): RoutineRun | null;
   writer(routineId: string): string | undefined;
   starters(threadId: string): (string | undefined)[];
@@ -74,6 +75,7 @@ export function createOutsideLineage(deps: OutsideLineageDeps) {
 
   /** A guest-driven turn runs in Ask whatever the bot's own level, with no shell. On a Cloud only its owner ever used, only what came in from outside is. */
   function cloudGuestDriven(threadId: string): boolean {
+    if (deps.platformConfined?.(threadId)) return true;
     if (!deps.home) return false;
     if (deps.confinedNow(threadId)) return true;
     const run = deps.activeRun(threadId);
@@ -92,10 +94,12 @@ export function createOutsideLineage(deps: OutsideLineageDeps) {
   const cloudGuestDrivenHandoff = (nodeId: string | undefined): boolean => deps.home && handedFrom(nodeId).some(cloudGuestDriven);
 
   /** Where the confinement rests on the conversation's own records, a thread opened from it would start with none, at the bot's own level. */
-  const outsideWorkStaysHere = (threadId: string): boolean => cloudGuestDriven(threadId) && (deps.team || deps.solo());
+  const outsideWorkStaysHere = (threadId: string): boolean => deps.platformConfined?.(threadId) === true || cloudGuestDriven(threadId) && (deps.team || deps.solo());
 
   /** The one rule for every reach: confined work goes nowhere that is not confined already. */
-  const mayReach = (fromThreadId: string, toThreadId: string): boolean => !cloudGuestDriven(fromThreadId) || cloudGuestDriven(toThreadId);
+  const mayReach = (fromThreadId: string, toThreadId: string): boolean => deps.platformConfined?.(fromThreadId)
+    ? fromThreadId === toThreadId
+    : !cloudGuestDriven(fromThreadId) || cloudGuestDriven(toThreadId);
 
   /** A routine's runs are confined as this conversation is, so a confined turn may start it. */
   const routineRunsConfined = (routineId: string): boolean => {

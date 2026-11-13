@@ -1,7 +1,7 @@
 import type { RequestAuth } from "../request-auth.ts";
 import { PASS, type RouteHandler } from "./table.ts";
 import { PluginRegistryError, type PluginRegistry } from "../plugins/registry.ts";
-import type { PluginGrantResources } from "../../shared/plugins/permissions.ts";
+import type { PluginGrantResources, PluginGrantTarget } from "../../shared/plugins/permissions.ts";
 import { LocalInstallError, installLocalPlugin } from "../plugins/local-install.ts";
 import { MarketError, type PluginMarketService } from "../plugins/market.ts";
 import { PluginChannelError, type PluginChannelStore } from "../plugins/channel-store.ts";
@@ -16,6 +16,7 @@ export interface PluginRouteDeps {
   botExists?(botId: string): boolean;
   /** The values a plugin reads from its work directory, and the status it reports. */
   config?: PluginConfigHost;
+  grantTargets?(): PluginGrantTarget[];
 }
 
 const RESOURCES = ["accounts", "devices", "memorySpaces", "resources"] as const;
@@ -69,6 +70,10 @@ export function createPluginRoutes(deps: PluginRouteDeps): RouteHandler {
     if (path !== "/api/plugins" && !path.startsWith("/api/plugins/")) return PASS;
     if (!deps.mayManage(auth)) return json(res, 403, { error: "Only an owner or administrator can manage plugins." });
     res.setHeader("Cache-Control", "no-store");
+
+    if (method === "GET" && path === "/api/plugins/grant-targets") {
+      return json(res, 200, { targets: deps.grantTargets?.() ?? [] });
+    }
 
     if (method === "POST" && path === "/api/plugins/local") {
       let body: { path?: unknown };
@@ -249,8 +254,8 @@ export function createPluginRoutes(deps: PluginRouteDeps): RouteHandler {
       const strings = (value: unknown, max: number) => typeof value === "string" && value.length >= 1 && value.length <= max ? value : null;
       const toolId = strings(body?.toolId, 120);
       const botId = strings(body?.botId, 120);
-      const principalId = strings(body?.principalId, 200);
-      const audienceId = strings(body?.audienceId, 200);
+      const principalId = strings(body?.principalId, 512);
+      const audienceId = strings(body?.audienceId, 512);
       const epoch = body?.epoch;
       const maxUses = body?.maxUses;
       const expiresAt = body?.expiresAt;

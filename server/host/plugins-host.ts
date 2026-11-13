@@ -17,6 +17,8 @@ import { MemorySpaceStore } from "../memory-spaces/store.ts";
 import { DeviceRegistry } from "../plugins/device-registry.ts";
 import { KanbanStore } from "../plugins/kanban.ts";
 import { createPluginConfigHost } from "../plugins/config-host.ts";
+import { createPluginUiRoutes } from "../routes/plugin-ui.ts";
+import type { PluginGrantTarget } from "../../shared/plugins/permissions.ts";
 
 export interface PluginsHostOptions {
   dataDir: string;
@@ -31,6 +33,9 @@ export interface PluginsHostOptions {
   outbox?: PlatformOutboxStore;
   /** The account store, when the caller shares it with the inbound host. */
   accounts?: PlatformAccountStore;
+  memory?: MemorySpaceStore;
+  generatePanel?(botId: string, prompt: string): Promise<string | null>;
+  grantTargets?(): PluginGrantTarget[];
 }
 
 /** The composed plugin registry, its HTTP surface, and the account store the inbound host shares. */
@@ -66,11 +71,12 @@ export function createPluginsHost(options: PluginsHostOptions): PluginsHost {
     ...(runtime?.call ? { call: (installationId, method, params, timeoutMs) => runtime.call!(installationId, method, params, timeoutMs) } : {}),
     ...(runtime?.isRunning ? { isRunning: (installationId) => runtime.isRunning!(installationId) } : {}),
   });
-  const plugins = createPluginRoutes({ registry: created, channels, market, mayManage: options.mayManage, botExists: (botId) => options.bots.has(botId), config: pluginConfig });
+  const plugins = createPluginRoutes({ registry: created, channels, market, mayManage: options.mayManage, botExists: (botId) => options.bots.has(botId), config: pluginConfig, grantTargets: options.grantTargets });
+  const ui = createPluginUiRoutes({ registry: created, dataDir: options.dataDir, mayManage: options.mayManage, generate: options.generatePanel });
   const platformAccounts = options.accounts ?? new PlatformAccountStore(options.dataDir);
   const platforms = createPlatformRoutes({
     accounts: platformAccounts,
-    memory: new MemorySpaceStore(options.dataDir),
+    memory: options.memory ?? new MemorySpaceStore(options.dataDir),
     bots: options.bots,
     mayManage: options.mayManage,
     ...(options.inbound ? { inbound: options.inbound } : {}),
@@ -86,6 +92,8 @@ export function createPluginsHost(options: PluginsHostOptions): PluginsHost {
   });
   return {
     route: async (context) => {
+      const uiAnswer = await ui(context);
+      if (uiAnswer !== PASS) return uiAnswer;
       const answered = await plugins(context);
       if (answered !== PASS) return answered;
       const platformAnswer = await platforms(context);

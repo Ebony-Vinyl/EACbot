@@ -21,6 +21,7 @@ describe("what a confined turn reaches of EACbot's own routes", () => {
     expect(outsideRouteRefused("POST", "/api/internal/options-card")).toBe(false);
     expect(outsideRouteRefused("POST", "/api/internal/coordinate-bots")).toBe(false);
     expect(outsideRouteRefused("post", "/api/internal/connectors/mcp")).toBe(false);
+    expect(outsideRouteRefused("POST", "/api/internal/plugins/mcp")).toBe(false);
     expect(outsideRouteRefused("POST", "/api/internal/mcp-http/server-a")).toBe(false);
   });
 

@@ -1,6 +1,6 @@
 # 插件平台验收设计
 
-状态：2026-11-07 设计，所有新插件用例尚未实施。本文是未来验收合同，不是测试通过报告，也不提供不存在的插件 CLI/API。具体源文件与新增脚本规划见[实施计划](../superpowers/plans/2026-11-07-eac-plugin-platform/01-platform.md)。
+状态截至 2026-11-13。下方保留验收合同并追加实际验证记录，按每项记录判断已验证范围。具体源文件与新增脚本规划见[实施计划](../superpowers/plans/2026-11-07-eac-plugin-platform/01-platform.md)。
 
 ## Context
 
@@ -186,3 +186,26 @@ pnpm build
 结束按启动器方式 Ctrl-C，清理自己创建的假服务/下载目录，保留脱敏日志。不按进程名杀服务，不删除全局 temp，不接触用户 live 数据。
 
 业务用例见[集成验收](plugin-integrations.md)，分发与部署见[发布验收](plugin-release.md)。
+
+
+## M4 代码与隔离验证（2026-11-13）
+
+基线提交为 `8b7b29f`，新增代码位于当前工作区。平台身份与受众、共享记忆回合接入和撤销、插件 UI 合同/渲染/版本存储均已有实现。生成面板通过所选 Bot 的模型实例，先应用模型策略与预算检查，再校验模型输出。第一版生成声明式面板，数据源为任务、用量与平台列表。高级插件面板复用不透明来源 frame 和既有桥接，额外检查 nonce、只读数据源及能力存活。
+
+平台群聊即使发送人为主人也过滤 About me、私有 Markdown、团队记忆和跨线程召回。共享空间成员撤销、权限收窄、删除及身份变化使旧能力失效，后续回合重建 provider session，并过滤旧消息、工具回放和压缩输入。包含共享内容的会话跳过自动私有日志与记忆捕获。旧平台映射缺少 conversation kind 时建立新线程映射，旧记录保留在会话列表。
+
+新增与相关测试包含以下实际入口。
+
+```sh
+pnpm exec vitest run shared/plugins/panel-frame.test.ts src/lib/plugin-slots.test.ts server/platform-memory.e2e.test.ts server/host/memory-context.test.ts server/host/platform-inbound.test.ts server/host/plugins-mcp.test.ts server/routes/shared-memory.test.ts server/routes/plugin-ui.test.ts server/plugins/ui-contributions.test.ts server/memory-spaces/store.test.ts
+```
+
+`server/platform-memory.e2e.test.ts` 使用真实隔离服务与 fake Claude 2.1.319，检查模型实际 system prompt 排除私有标记、撤销后新 PID 与旧 transcript 清除。持有回合能力测试经 agents 的 memory_update 正常入口写入共享空间，检查 provenance、session_search、私有日志拒绝与撤销后的 401。另一用例经配置模型生成面板，保存后由新存储实例读取磁盘记录。
+
+浏览器实际操作入口为连接应用 → 扩展 → 面板与主题。已操作 JSON 预览、保存 v1、编辑 v2、回滚 v3、主题应用及停用回退。后续浏览器复核安装临时沙箱面板并读取 fixture 当前任务，检查 sandbox 属性、布局选择刷新恢复、停用后 frame 移除与布局回退。390×844 下 documentWidth 为 390，dialogWidth 为 342。浏览器截图因 CDP Page.captureScreenshot 超时未取得，视觉截图验收保持待补。
+
+浏览器 fixture 使用临时数据目录，已结束的第二次服务 PID 为 18968，日志保留在本机临时目录 `eacbot-verification-evidence/server-1794556718480-24844.log`。第一次 UI fixture 日志为 `eacbot-verification-evidence/server-1794554470343-22832.log`。所有账户、任务及安装包均为测试数据。
+
+相关回归第一轮 21 个测试文件通过，共 486 项通过、1 项跳过。最终扩展回归 24 个文件，503 项通过、1 项跳过，另有 1 项隔离服务启动超时，单独重跑 `pnpm exec vitest run server/context-compaction.e2e.test.ts -t 'selected account.*off'` 通过，1 项通过、6 项因过滤跳过。普通会话压缩在前一轮 9 个文件、37 项回归中全部通过。最终 pnpm build 通过，包含前后端 TypeScript 和 Vite 产物，构建日志为本机临时目录 eacbot-verification-evidence/m4-final-build-20261113.log。构建仍输出既有 highlight CSS、Zod 注释与大 chunk 警告。`pnpm lint`、`pnpm check:contrast` 与 `git diff --check` 已通过，对比度脚本仍报告 midnight 已知基线缺口。`pnpm i18n:check` 被既有 stale translations 阻断，本次新增 en/zh 键无对应报错。文件体积棘轮仍报告三个基线问题，分别为 server/config.ts 1268 行、src/components/PluginsPanel.tsx 1019 行、src/state/store.tsx 3362 行，本次内容与 HEAD 一致。server/index.ts 已缩减至棘轮以内。
+
+完整 pnpm test、真实 NapCat 账户、真实外部模型服务、打包桌面与完整视觉验收保持待执行。群聊受限回合要求驱动提供 guestTurns=confined 能力，不支持的驱动返回拒绝。主题与布局选择保存到当前浏览器，生成面板和版本保存到工作区。M4 状态为代码已实现、待完整验收。
