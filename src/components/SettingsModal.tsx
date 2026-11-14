@@ -202,8 +202,8 @@ export function SettingsModal() {
     .filter((entry) => entry.id !== "organization" || Boolean(window.ogb?.organization))
     .filter((entry) => entry.id !== "cloudAccount" || Boolean(window.ogb?.cloudAccount || (window.ogb?.cloudPlan && state.config?.cloudHome === true)))
     .filter((entry) => entry.id !== "workspaces" || workspacesAvailable(state.config))
-    .filter((entry) => entry.id !== "people" || (!window.ogb && state.config?.cloudHome !== true))
-    .filter((entry) => entry.id !== "activity" || (!window.ogb && ownerOrAdmin === true))
+    .filter((entry) => entry.id !== "people" || state.config?.cloudHome !== true)
+    .filter((entry) => entry.id !== "activity" || ownerOrAdmin === true)
     .filter((entry) => entry.id !== "botAccess" || (Boolean(state.config?.team) && ownerOrAdmin === true));
   const availableSections = baseSections.filter((entry) => entry.id !== "skills" || skillsLibraryEnabled(state.config));
   const visibleSections = availableSections.filter((entry) => sectionMatches(entry, q));
