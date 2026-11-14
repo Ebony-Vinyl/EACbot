@@ -38,6 +38,7 @@ export interface PluginsHostOptions {
   generatePanel?(botId: string, prompt: string): Promise<string | null>;
   grantTargets?(): PluginGrantTarget[];
   tasks?: TaskRuntime;
+  recordPluginCall?: import("../plugins/registry.ts").PluginRegistryOptions["recordCall"];
 }
 
 /** The composed plugin registry, its HTTP surface, and the account store the inbound host shares. */
@@ -53,6 +54,7 @@ export function createPluginsHost(options: PluginsHostOptions): PluginsHost {
     ? new StdioPluginSupervisor({ dataDir: options.dataDir, onExit: (installationId, reason) => created.markRuntimeFailure(installationId, reason) })
     : undefined;
   const created = new PluginRegistry(new PluginInstallStore(options.dataDir), {
+    recordCall: options.recordPluginCall,
     hostVersion: options.hostVersion,
     host: options.host,
     platform: options.platform,

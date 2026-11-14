@@ -1,3 +1,4 @@
+import { usageEntrySchema, type UsageEntry } from "../shared/plugins/usage.ts";
 // Append-only usage rows under <data>/usage/ (0600): bookkeeping never fails the turn, and rows never carry message text.
 import { personOf } from "./usage-attribution.ts";
 import { readFileSync } from "node:fs";
@@ -21,6 +22,9 @@ export type UsageTrigger =
 
 export interface UsageRow {
   at: string;
+  taskId?: string;
+  accountId?: string;
+  metering?: Omit<UsageEntry, "at" | "botId">;
   botId: string;
   botName: string;
   threadId: string;
@@ -180,6 +184,7 @@ export function readUsage(dataDir: string, range: { from: Date; to: Date }): Usa
       try {
         const value: unknown = JSON.parse(line);
         if (!isUsageRow(value)) continue;
+        if (value.metering && !usageEntrySchema.safeParse({ ...value.metering, at: value.at, botId: value.botId }).success) continue;
         const at = Date.parse(value.at);
         if (at >= from && at <= to) rows.push(value);
       } catch {
@@ -300,6 +305,7 @@ export function summarizeUsage(rows: UsageRow[], groupBy: UsageGroupBy, prices: 
   const groups = new Map<string, UsageGroup>();
   const total = emptyGroup("total", "total");
   for (const row of rows) {
+    if (row.metering && row.metering.kind !== "model") continue;
     const { key, label } = groupOf(row, groupBy);
     let group = groups.get(key);
     if (!group) {

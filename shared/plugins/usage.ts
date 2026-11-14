@@ -9,6 +9,7 @@ export type UsageUnit = (typeof USAGE_UNITS)[number];
 export const usageCostSchema = z.object({
   state: z.enum(["actual", "estimated", "free", "unknown"]),
   amount: z.number().finite().min(0).optional(),
+  source: z.string().max(120).optional(),
   currency: z.enum(["USD", "CNY"]).optional(),
 }).strict().superRefine((cost, context) => {
   if ((cost.state === "actual" || cost.state === "estimated") && (cost.amount === undefined || cost.currency === undefined)) {
@@ -25,6 +26,10 @@ export const usageEntrySchema = z.object({
   botId: z.string().min(1).max(120),
   pluginInstallationId: z.string().max(120).optional(),
   model: z.string().max(200).optional(),
+  provider: z.string().max(200).optional(),
+  taskId: z.string().max(120).optional(),
+  accountId: z.string().max(120).optional(),
+  threadId: z.string().max(120).optional(),
   unit: z.enum(USAGE_UNITS),
   quantity: z.number().finite().min(0),
   cost: usageCostSchema,
@@ -37,7 +42,7 @@ export const usageEntrySchema = z.object({
 
 export type UsageEntry = z.infer<typeof usageEntrySchema>;
 
-export type UsageGroupBy = "bot" | "kind" | "plugin" | "model" | "day";
+export type UsageGroupBy = "bot" | "kind" | "plugin" | "model" | "day" | "provider" | "task" | "account";
 
 export interface UsageAggregate {
   key: string;
@@ -51,6 +56,9 @@ export interface UsageAggregate {
 
 function groupKey(entry: UsageEntry, by: UsageGroupBy): string {
   switch (by) {
+    case "provider": return entry.provider ?? "unknown";
+    case "task": return entry.taskId ?? "none";
+    case "account": return entry.accountId ?? "none";
     case "bot": return entry.botId;
     case "kind": return entry.kind;
     case "plugin": return entry.pluginInstallationId ?? "none";

@@ -207,7 +207,7 @@ export class Speaker {
     };
     const render = (utterance: string, block: number): Promise<Rendered> => {
       recordBlockTiming(opts.messageId, block, "renderStart");
-      return this.render(utterance, opts.voiceId, controller.signal).then(
+      return this.render(utterance, opts.voiceId, controller.signal, opts.botId).then(
         (blob) => {
           recordBlockTiming(opts.messageId, block, "renderDone");
           return { blob };
@@ -374,11 +374,11 @@ export class Speaker {
     return body.utterances ?? [];
   }
 
-  private async render(text: string, voiceId: string | undefined, signal: AbortSignal): Promise<Blob> {
+  private async render(text: string, voiceId: string | undefined, signal: AbortSignal, botId?: string): Promise<Blob> {
     const res = await fetch("/api/tts/speak", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ text, voiceId }),
+      body: JSON.stringify({ text, voiceId, botId }),
       signal,
     });
     if (!res.ok) {
