@@ -36,5 +36,10 @@ export function panelFrameRpc(method: string, params: Record<string, unknown>, d
     || Object.keys(args).some((key) => key !== "source") || !PANEL_DATA_SOURCES.includes((args as { source?: unknown }).source as PanelDataSource)) {
     throw new Error("This panel can only read tasks, usage or platforms.");
   }
-  return { content: [{ type: "text", text: JSON.stringify(deps.read((args as { source: PanelDataSource }).source)) }] };
+  const data = deps.read((args as { source: PanelDataSource }).source);
+  const encode = (value: unknown) => {
+    if (!deps.active()) throw new Error("Panel capability is unavailable.");
+    return { content: [{ type: "text", text: JSON.stringify(value) }] };
+  };
+  return data instanceof Promise ? data.then(encode) : encode(data);
 }

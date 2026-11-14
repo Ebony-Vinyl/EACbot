@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+import { readTaskPanelData } from "@/features/tasks/panel-data";
 import { useStore } from "@/state/store";
 import { t } from "@/lib/i18n";
 import type { UiPanelSpec } from "../../shared/plugins/panels";
@@ -27,15 +29,29 @@ function PanelContent({ spec, botId }: { spec: UiPanelSpec; botId?: string }) {
             </ul>
           </div>
         );
-        const rows = state.bots.filter((bot) => !botId || bot.id === botId).flatMap((bot) => {
-          if (item.source === "platforms") return bot.platformBinding ? [`${bot.name} · ${bot.platformBinding.platform}`] : [];
-          if (item.source === "usage") return (bot.tasks ?? []).filter((task) => task.usage).map((task) => `${bot.name} · ${task.title} · ${task.usage!.input + task.usage!.output} tokens`);
-          return (bot.tasks ?? []).map((task) => `${bot.name} · ${task.title} · ${task.busy ? t("pluginUi.running") : t("pluginUi.idle")}`);
-        }).slice(0, 30);
+        if (item.source !== "platforms") return <TaskPanelData key={index} source={item.source} title={item.title} botId={botId} />;
+        const rows = state.bots.filter((bot) => !botId || bot.id === botId).flatMap((bot) => bot.platformBinding ? [`${bot.name} · ${bot.platformBinding.platform}`] : []).slice(0, 30);
         return <div key={index}>{item.title && <h4 className="mb-1 font-medium">{item.title}</h4>}{rows.length
           ? <ul className="grid gap-1">{rows.map((text, row) => <li className="break-words" key={row}>{text}</li>)}</ul>
           : <p className="text-ink-secondary">{t("pluginUi.emptyData")}</p>}</div>;
       })}
     </div>
   </section>;
+}
+
+function TaskPanelData({ source, title, botId }: { source: "tasks" | "usage"; title?: string; botId?: string }) {
+  const [rows, setRows] = useState<Record<string, unknown>[]>([]);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    const controller = new AbortController();
+    const read = () => void readTaskPanelData(source, botId, controller.signal).then((data) => {
+      if (!controller.signal.aborted) { setRows(data); setError(""); }
+    }).catch((failure: Error) => { if (!controller.signal.aborted) { setRows([]); setError(failure.message); } });
+    read();
+    const timer = setInterval(read, 5000);
+    return () => { controller.abort(); clearInterval(timer); };
+  }, [source, botId]);
+  return <div>{title && <h4 className="mb-1 font-medium">{title}</h4>}
+    {error ? <p role="status">{error}</p> : rows.length ? <ul className="grid gap-1">{rows.map((row, index) => <li key={index} className="break-words">{source === "tasks" ? `${String(row.title)} · ${String(row.column)}` : `${String(row.kind)} · ${String(row.quantity)} ${String(row.unit)} · ${String((row.cost as { state: string }).state)}`}</li>)}</ul> : <p className="text-ink-secondary">{t("pluginUi.emptyData")}</p>}
+  </div>;
 }
