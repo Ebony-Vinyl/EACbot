@@ -140,6 +140,17 @@ describe("Settings rail groups", () => {
     expect(Object.values(rail(render())).flat()).not.toContain("botAccess");
   });
 
+  it("shows People to an owner, and not to a member or on a cloud home", () => {
+    fixture.ownerOrAdmin = false;
+    expect(Object.values(rail(render())).flat()).not.toContain("people");
+    fixture.ownerOrAdmin = null;
+    expect(Object.values(rail(render())).flat()).not.toContain("people");
+    fixture.ownerOrAdmin = true;
+    expect(rail(render()).account).toContain("people");
+    fixture.config = { cloudHome: true };
+    expect(Object.values(rail(render())).flat()).not.toContain("people");
+  });
+
   it("shows a paired remote client only Appearance, Remote access and Servers", () => {
     vi.stubGlobal("window", { ogb: { remoteClient: { active: true }, environments: {}, organization: {}, cloudAccount: {} } });
     expect(rail(render())).toEqual({ you: ["appearance", "companion"], computers: ["desktopWorkspaces"] });
