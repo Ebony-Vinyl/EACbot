@@ -9,6 +9,7 @@ import { bridgedCallTarget } from "./drivers/agents-bridge.ts";
 import { resolveCliSpawn } from "./env-path.ts";
 import { APP_ONLY_REFUSAL, AppObserver, GATE_APPS_ENV, modelVisible, parseAppMount, withUiExtension } from "./mcp-app-observer.ts";
 import { directoryCallTarget, isDirectoryTool } from "./mcp-directory.ts";
+import { mcpServerEnv } from "./mcp-env.ts";
 import { QUERY_TOOL, QUERY_TOOL_NAME, ResultStore, answerQuery, describeShape, exampleQuery } from "./mcp-shape.ts";
 import { fitToolList } from "./mcp-tool-schema.ts";
 import { DEFAULT_RESULT_BUDGET, type HeldResult, trimResultText, trimStructured } from "./mcp-trim.ts";
@@ -217,7 +218,8 @@ const appOnly = new Set<string>();
 const spec = upstreamSpec();
 if (SPILL_DIR) sweepSpill(SPILL_DIR);
 
-const childEnv: NodeJS.ProcessEnv = { ...process.env, ...spec.env };
+// The upstream server is third-party code: it gets PATH and machine settings, never the app's credentials.
+const childEnv = mcpServerEnv(process.env, spec.env);
 for (const key of Object.keys(childEnv)) if (key.startsWith("EAC_GATE_")) delete childEnv[key];
 
 // CreateProcess cannot exec an npm .cmd shim or a node-shebang script, and a shell would re-interpret JSON argv.
