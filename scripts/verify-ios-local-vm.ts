@@ -139,7 +139,7 @@ try {
 const fs = require('node:fs');
 let args = process.argv.slice(2);
 if (args[0] === '-H') args = args.slice(2);
-const labels = ${JSON.stringify({ "com.eacbot.local-vm": "1", "com.eacbot.cua-driver": CUA_DRIVER_VERSION, "com.eacbot.cua-base": BASE_IMAGE_DIGEST, "com.openmausbot.image-layer": IMAGE_LAYER_VERSION, "com.eacbot.workspace": "1" })};
+const labels = ${JSON.stringify({ "com.eacbot.local-vm": "1", "com.eacbot.cua-driver": CUA_DRIVER_VERSION, "com.eacbot.cua-base": BASE_IMAGE_DIGEST, "com.eacbot.image-layer": IMAGE_LAYER_VERSION, "com.eacbot.workspace": "1" })};
 const imageId = 'sha256:' + 'a'.repeat(64);
 const counter = ${JSON.stringify(join(scratch, "captures"))};
 const target = fs.existsSync(${JSON.stringify(fixtureTarget)}) ? JSON.parse(fs.readFileSync(${JSON.stringify(fixtureTarget)}, 'utf8')) : null;
@@ -153,7 +153,7 @@ else if (args[0] === 'exec') result = args.includes('--version') ? 'cua-driver $
   : args.includes('health_report') ? {schema_version:'1',overall:'ok',checks:[]} : {};
 else if (args[0] === 'info') result = 'fixture';
 else if (args[0] === 'image' && args[1] === 'inspect') result = [{Id:imageId,Config:{Labels:labels}}];
-else if (args[0] === 'inspect' && (args[1] === 'openmausbot-computer' || args[1] === target?.containerName)) result = [{
+else if (args[0] === 'inspect' && (args[1] === 'eacbot-computer' || args[1] === target?.containerName)) result = [{
   Config:{Image:${JSON.stringify(IMAGE)},Labels:args[1] === target?.containerName ? {...labels,${JSON.stringify(TARGET_LABEL)}:target.label} : labels,Env:['VNC_PW=fixture-password']},
   State:{Running:true},Image:imageId,
   Mounts:[{Type:'bind',Source:args[1] === target?.containerName

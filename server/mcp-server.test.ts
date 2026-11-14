@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-// scripts/mcp-server.ts snapshots process.env at import time: scrub ambient EAC_* / OPENMAUSBOT_* values first.
+// scripts/mcp-server.ts snapshots process.env at import time: scrub ambient EAC_* / EACBOT_* values first.
 import "./testing/scrub-ambient-omb-env.ts";
 
 import {
@@ -30,7 +30,7 @@ function jsonResponse(body: unknown, options: { ok?: boolean; status?: number; s
 afterEach(() => {
   vi.restoreAllMocks();
   globalThis.fetch = ORIGINAL_FETCH;
-  delete process.env.OPENMAUSBOT_TOKEN;
+  delete process.env.EACBOT_TOKEN;
   delete process.env.ALLOW_INSECURE_HTTP;
 });
 
@@ -705,10 +705,10 @@ describe("connection security and discovery", () => {
   it("accepts loopback HTTP and HTTPS origins, but rejects unsafe URL shapes", () => {
     expect(validateBaseUrl("http://127.0.0.1:8799/")).toBe("http://127.0.0.1:8799");
     expect(validateBaseUrl("http://[::1]:8799")).toBe("http://[::1]:8799");
-    expect(validateBaseUrl("https://maus.example.com")).toBe("https://maus.example.com");
-    expect(() => validateBaseUrl("ftp://maus.example.com")).toThrow("http:// or https://");
-    expect(() => validateBaseUrl("https://maus.example.com/api")).toThrow("origin without a path");
-    expect(() => validateBaseUrl("https://user:pass@maus.example.com")).toThrow("must not contain credentials");
+    expect(validateBaseUrl("https://eacbot.example.com")).toBe("https://eacbot.example.com");
+    expect(() => validateBaseUrl("ftp://eacbot.example.com")).toThrow("http:// or https://");
+    expect(() => validateBaseUrl("https://eacbot.example.com/api")).toThrow("origin without a path");
+    expect(() => validateBaseUrl("https://user:pass@eacbot.example.com")).toThrow("must not contain credentials");
     expect(() => validateBaseUrl("http://0.0.0.0:8799")).toThrow("Insecure cleartext HTTP");
   });
 
@@ -722,12 +722,12 @@ describe("connection security and discovery", () => {
   });
 
   it("rejects successful non-JSON responses and sends an optional bearer token", async () => {
-    process.env.OPENMAUSBOT_TOKEN = "proxy-token";
+    process.env.EACBOT_TOKEN = "proxy-token";
     globalThis.fetch = vi.fn(async (_url: any, options: any) => {
       expect(new Headers(options.headers).get("Authorization")).toBe("Bearer proxy-token");
       return { ...jsonResponse({}), json: vi.fn(async () => { throw new Error("not json"); }) };
     }) as any;
-    await expect(request("/api/health", {}, "https://maus.example.com")).rejects.toThrow("non-JSON response");
+    await expect(request("/api/health", {}, "https://eacbot.example.com")).rejects.toThrow("non-JSON response");
   });
 
   it("explains how to authorize packaged write refusals", async () => {
@@ -742,8 +742,8 @@ describe("connection security and discovery", () => {
   });
 
   it("requires an explicit destination before sending a bearer token", async () => {
-    process.env.OPENMAUSBOT_TOKEN = "proxy-token";
-    await expect(resolveBaseUrl()).rejects.toThrow("OPENMAUSBOT_URL or EAC_PORT");
+    process.env.EACBOT_TOKEN = "proxy-token";
+    await expect(resolveBaseUrl()).rejects.toThrow("EACBOT_URL or EAC_PORT");
   });
 
   it("validates direct tool arguments", () => {

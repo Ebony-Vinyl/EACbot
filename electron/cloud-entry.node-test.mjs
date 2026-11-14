@@ -27,7 +27,7 @@ test("the Cloud protocol is a fixed action without URL routing or credentials", 
   for (const value of [null, undefined, {}, ["eacbot://cloud"], "", "eacbot://cloud/", "eacbot://cloud?", "eacbot://cloud#",
     "eacbot://cloud?code=ABCDE-FGHJK", "eacbot://cloud#code=ABCD-EFGH-JKLM", "eacbot://cloud?url=https://home.example",
     "eacbot://cloud/pair", "eacbot://user@cloud", "eacbot://cloud:443", "eacbot://cloud.evil", "eacbot://CLOUD",
-    "OPENMAUSBOT://cloud", "eacbot:cloud", "eacbot:///cloud", "https://cloud", " eacbot://cloud", "eacbot://cloud ",
+    "EACBOT://cloud", "eacbot:cloud", "eacbot:///cloud", "https://cloud", " eacbot://cloud", "eacbot://cloud ",
     "eacbot://%63loud", "eacbot://organization", "eacbot://install?url=https://github.com/x/y"]) {
     assert.equal(isCloudDeepLink(value), false, String(value));
   }

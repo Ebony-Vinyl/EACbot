@@ -42,7 +42,7 @@ export type RoutineScheduleInput =
     endsAt?: number | null;
   };
 
-export type RoutineRunOn = "maus" | "cloud";
+export type RoutineRunOn = "eacbot" | "cloud";
 
 export type RoutineTarget = "bot" | "room-goal";
 export type RoutineGoalStatus =

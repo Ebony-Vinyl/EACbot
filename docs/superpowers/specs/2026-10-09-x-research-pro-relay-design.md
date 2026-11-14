@@ -11,7 +11,7 @@ bring-your-own token.
 
 Two repositories change:
 
-- **openmaus-cloud** (Admin): the X relay, its per-tier allowance, tokens for
+- **eacbot-cloud** (Admin): the X relay, its per-tier allowance, tokens for
   Cloud homes and for signed-in desktops.
 - **EACbot** (app): the included credential replaces the person's token;
   the desktop fetches its token from its Cloud sign-in; the bot setting shows
@@ -25,7 +25,7 @@ Two repositories change:
 - No bring-your-own treg token anywhere in the product.
 - The relay is the real gate. The app's check is presentation only.
 
-## Admin (openmaus-cloud)
+## Admin (eacbot-cloud)
 
 ### Relay
 

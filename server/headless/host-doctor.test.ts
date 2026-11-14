@@ -42,7 +42,7 @@ function probe(overrides: { files?: Record<string, string | null>; lists?: Recor
   };
 }
 
-const OPTIONS = { dataDir: "/srv/mausbot", port: 8799 };
+const OPTIONS = { dataDir: "/srv/eacbot", port: 8799 };
 const byId = (checks: HostCheck[], id: string) => checks.find((check) => check.id === id);
 
 describe("doctor --host", () => {
@@ -56,8 +56,8 @@ describe("doctor --host", () => {
       "ok    Unprivileged user namespaces are allowed",
       "ok    seccomp is available",
       "ok    cgroup v2",
-      "ok    412 GB free for /srv/mausbot",
-      "ok    /srv/mausbot is on an encrypted disk",
+      "ok    412 GB free for /srv/eacbot",
+      "ok    /srv/eacbot is on an encrypted disk",
       "ok    8 CPUs, 32 GB memory (a team of 20 needs 8 CPUs and 16 GB)",
       "ok    Port 8799 is free for the server",
       "ok    Ports 80 and 443 are free",
@@ -130,9 +130,9 @@ describe("doctor --host", () => {
 
   it("needs ports 80 and 443 for --domain, unless this server already answers", async () => {
     const taken = { files: { "/proc/net/tcp": tcp(22, 80, 8799), "/proc/net/tcp6": tcp(443) } };
-    expect(byId(await checkHost(probe(taken), { ...OPTIONS, domain: "maus.example.com" }), "web-ports"))
-      .toMatchObject({ status: "FAIL", message: "Ports 80 and 443 are taken, and --domain maus.example.com needs 80 and 443" });
-    const ours = await checkHost(probe({ ...taken, serverAnswers: async () => true }), { ...OPTIONS, domain: "maus.example.com" });
+    expect(byId(await checkHost(probe(taken), { ...OPTIONS, domain: "eacbot.example.com" }), "web-ports"))
+      .toMatchObject({ status: "FAIL", message: "Ports 80 and 443 are taken, and --domain eacbot.example.com needs 80 and 443" });
+    const ours = await checkHost(probe({ ...taken, serverAnswers: async () => true }), { ...OPTIONS, domain: "eacbot.example.com" });
     expect(byId(ours, "port")).toMatchObject({ status: "ok", message: "EACbot already answers on port 8799" });
     expect(byId(ours, "web-ports")!.status).toBe("warn");
   });
@@ -163,17 +163,17 @@ describe("doctor --host", () => {
     const watching = probe({ freeBytes: (path) => { seen.push(path); return 412 * GB; } });
     const ctx = (flags: Record<string, string | boolean>, env: NodeJS.ProcessEnv = {}) => ({ flags, env }) as unknown as VerbContext;
     await hostDoctor(ctx({ host: true }, { EAC_DATA_DIR: "/srv/from-env" }), watching);
-    const flagged = await hostDoctor(ctx({ host: true, "data-dir": "/srv/mausbot", port: "9000", domain: "Maus.Example.com" }), probe({
+    const flagged = await hostDoctor(ctx({ host: true, "data-dir": "/srv/eacbot", port: "9000", domain: "Mascot.Example.com" }), probe({
       freeBytes: (path) => { seen.push(path); return 412 * GB; }, files: { "/proc/net/tcp": tcp(443, 9000) } }));
-    expect(seen).toEqual(["/srv/from-env", "/srv/mausbot"]);
+    expect(seen).toEqual(["/srv/from-env", "/srv/eacbot"]);
     expect((flagged.result as { checks: HostCheck[] }).checks.filter((check) => check.status === "FAIL").map((check) => check.message))
-      .toEqual(["Port 9000 is taken by another program", "Port 443 is taken, and --domain maus.example.com needs 80 and 443"]);
+      .toEqual(["Port 9000 is taken by another program", "Port 443 is taken, and --domain eacbot.example.com needs 80 and 443"]);
     await expect(hostDoctor(ctx({ host: true, port: "99999" }), probe())).rejects.toMatchObject({ exitCode: 2 });
   });
 
   it("is doctor --host on the command line, and its flags belong to it", async () => {
     const io: HeadlessIo = { out: () => undefined, err: () => undefined, readStdin: async () => "" };
-    expect(await runHeadless(["doctor", "--domain", "maus.example.com"], { io, env: {} })).toBe(2);
+    expect(await runHeadless(["doctor", "--domain", "eacbot.example.com"], { io, env: {} })).toBe(2);
     expect(await runHeadless(["doctor", "--host", "--wait", "1m"], { io, env: {} })).toBe(2);
   });
 

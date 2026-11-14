@@ -45,23 +45,23 @@ export function myDefaultBot<T extends DefaultBotFields>(bots: readonly T[], vie
 type ChiefCandidate = DefaultBotFields & OwnedBot & { id: string; hidden?: boolean };
 
 /** The Chief of Staff in EACbot's scope (its department, or its person on a Team Cloud), if one is there to see. */
-export function chiefFor<T extends ChiefCandidate>(bots: readonly T[], maus: T | undefined): T | undefined {
-  const scope = chiefScope(maus ?? {});
+export function chiefFor<T extends ChiefCandidate>(bots: readonly T[], eacbot: T | undefined): T | undefined {
+  const scope = chiefScope(eacbot ?? {});
   return bots.find((bot) => bot.chiefOfStaff && !bot.hidden && chiefScope(bot) === scope);
 }
 
 /** The bots a person may make their Chief instead of EACbot: their own, in EACbot's scope, in their sidebar. */
-export function chiefChoices<T extends ChiefCandidate>(bots: readonly T[], maus: T | undefined, viewer: string | null | undefined): T[] {
-  const scope = chiefScope(maus ?? {});
+export function chiefChoices<T extends ChiefCandidate>(bots: readonly T[], eacbot: T | undefined, viewer: string | null | undefined): T[] {
+  const scope = chiefScope(eacbot ?? {});
   return bots.filter((bot) => !bot.defaultBot && !bot.hidden && !hiddenFromSidebar(bot, viewer) && chiefScope(bot) === scope);
 }
 
 /** The first run shows its Chief step only for a EACbot not yet introduced, where no other bot is the Chief in its
  * scope; otherwise the first run ends in the chat. */
-export function chiefStepFits<T extends ChiefCandidate>(bots: readonly T[], maus: (T & { welcomed?: boolean }) | undefined): boolean {
-  if (!maus || maus.welcomed || maus.hidden) return false;
-  const chief = chiefFor(bots, maus);
-  return !chief || chief.id === maus.id;
+export function chiefStepFits<T extends ChiefCandidate>(bots: readonly T[], eacbot: (T & { welcomed?: boolean }) | undefined): boolean {
+  if (!eacbot || eacbot.welcomed || eacbot.hidden) return false;
+  const chief = chiefFor(bots, eacbot);
+  return !chief || chief.id === eacbot.id;
 }
 
 let chiefStep = false;
@@ -83,8 +83,8 @@ export function useChiefStepOpen(): boolean {
 
 /** What Create saves on EACbot: seen, in the sidebar, and the Chief only where there is none, so a Chief someone
  * already has is never replaced. */
-export function createChiefPatch(maus: DefaultBotFields, chief: { id: string } | undefined): { welcomed: true; sidebarHidden?: false; chiefOfStaff?: true } {
-  return { welcomed: true, ...(maus.sidebarHidden ? { sidebarHidden: false as const } : {}), ...(chief ? {} : { chiefOfStaff: true as const }) };
+export function createChiefPatch(eacbot: DefaultBotFields, chief: { id: string } | undefined): { welcomed: true; sidebarHidden?: false; chiefOfStaff?: true } {
+  return { welcomed: true, ...(eacbot.sidebarHidden ? { sidebarHidden: false as const } : {}), ...(chief ? {} : { chiefOfStaff: true as const }) };
 }
 
 export type SetupStep = "ai" | "bots" | "apps" | "phone" | "cloud";

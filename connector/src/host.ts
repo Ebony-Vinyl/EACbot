@@ -14,7 +14,7 @@ const MAX_CLOCK_SKEW_S = 300;
 export interface HostReader {
   /** A /proc file's text, or null. */
   proc(path: string): string | null;
-  /** The installed seccomp profile (/etc/mausbot) and the one this connector carries, as text, or null. */
+  /** The installed seccomp profile (/etc/eacbot) and the one this connector carries, as text, or null. */
   installedSeccomp(): string | null;
   shippedSeccomp(): string | null;
   /** Bytes free and in total where Docker keeps its volumes. */
@@ -83,7 +83,7 @@ export function hostChecks(info: DockerInfo, reader: HostReader, extra: { clockS
     : { id: "profiles", ok: false, fix: "The bot box's security profiles on this server are missing or out of date. Run the install command again." });
   add(usernsAllowed(reader)
     ? { id: "userns", ok: true }
-    : { id: "userns", ok: false, fix: "Your server switches off a Linux feature our bots' safety box needs. Run: printf 'user.max_user_namespaces=63000\\nkernel.unprivileged_userns_clone=1\\n' | sudo tee /etc/sysctl.d/90-mausbot.conf && sudo sysctl --system" });
+    : { id: "userns", ok: false, fix: "Your server switches off a Linux feature our bots' safety box needs. Run: printf 'user.max_user_namespaces=63000\\nkernel.unprivileged_userns_clone=1\\n' | sudo tee /etc/sysctl.d/90-eacbot.conf && sudo sysctl --system" });
   if (extra.box) add(extra.box.ok ? { id: "box", ok: true } : { id: "box", ok: false, fix: extra.box.fix });
   const { free, total } = reader.disk();
   const freeGb = Math.floor(free / 1e9);
@@ -135,13 +135,13 @@ export function boxProbeFix(output: string): string {
   if (/Failed to make \/ slave/i.test(output)) return `Our bots' safety box can't start on this server yet: its AppArmor profile is not loaded. ${REINSTALL}`;
   if (/Can't mount proc/i.test(output)) return "Our bots' safety box can't start on this server yet: Docker here is too old to unmask /proc. Run: curl -fsSL https://get.docker.com | sudo sh";
   if (/setting up uid map/i.test(output)) return `Our bots' safety box can't start on this server yet: the box ran without its AppArmor profile. ${REINSTALL}`;
-  if (/Creating new namespace failed/i.test(output)) return "Our bots' safety box can't start on this server yet: Linux user namespaces are switched off. Run: printf 'user.max_user_namespaces=63000\\nkernel.unprivileged_userns_clone=1\\n' | sudo tee /etc/sysctl.d/90-mausbot.conf && sudo sysctl --system";
+  if (/Creating new namespace failed/i.test(output)) return "Our bots' safety box can't start on this server yet: Linux user namespaces are switched off. Run: printf 'user.max_user_namespaces=63000\\nkernel.unprivileged_userns_clone=1\\n' | sudo tee /etc/sysctl.d/90-eacbot.conf && sudo sysctl --system";
   return `Our bots' safety box can't start on this server yet. ${REINSTALL}`;
 }
 
 /** Runs BOX_PROBE in a throwaway container from `image` with the home's own security settings, as nobody. */
 export async function probeBox(docker: Docker, image: string, seccomp: string): Promise<BoxProbeResult> {
-  const name = `mausbot-probe-${randomBytes(4).toString("hex")}`;
+  const name = `eacbot-probe-${randomBytes(4).toString("hex")}`;
   try {
     await docker.createContainer(name, {
       Image: image,

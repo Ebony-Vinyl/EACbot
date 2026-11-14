@@ -18,7 +18,7 @@ let home = "";
 let base = "";
 let stderr = "";
 
-const envelope = (payload: Record<string, string>) => `<openmaus-goal>${JSON.stringify(payload)}</openmaus-goal>`;
+const envelope = (payload: Record<string, string>) => `<eacbot-goal>${JSON.stringify(payload)}</eacbot-goal>`;
 
 // turn 1 assigns the worker that never frees up; turn 2 (after the harness note) reassigns to the helper; turn 3 completes
 const reassignLeadReplies = [

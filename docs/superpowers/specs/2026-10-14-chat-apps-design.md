@@ -50,7 +50,7 @@ The product survey is in "Real products" below. Facts that could not be verified
 ## Decisions
 
 1. **One wire kind, `app`, for bot HTML and MCP apps.** Both are HTML in a sandboxed frame with a host bridge. Their differences sit in `source` and in which bridge methods are on. One renderer per platform, one document route, one test suite.
-2. **The bridge speaks MCP Apps for both sources.** Bot HTML gets a tiny injected helper (`window.mausbot`) that is itself a standard View, so the host has one protocol. A bot can also paste an SDK-built view into `show_html` and it works.
+2. **The bridge speaks MCP Apps for both sources.** Bot HTML gets a tiny injected helper (`window.eacbot`) that is itself a standard View, so the host has one protocol. A bot can also paste an SDK-built view into `show_html` and it works.
 3. **Implement the host side by hand, in one shared TypeScript module, not the official `AppBridge`.**
    - The subset we answer is small (about 12 methods).
    - The rules that matter to us (engagement gating, rate limits, method allowlist) live in that router, and must be the same on all three platforms.
@@ -156,7 +156,7 @@ Storage: `server/app-docs.ts` keeps documents content-addressed under `DATA_DIR/
 Two tools join the agents catalog in `server/drivers/agents-app-tools.ts`, spread into `TOOL_DEFINITIONS`, carried by `agents-call-cards.ts` to `POST /api/internal/options-card` with `tool: "show_html" | "update_html"`, and stored by `createAgentCard` → `server/chat-apps.ts`. `server/index.ts` is unchanged. The descriptions below are sent on every turn and pinned by `agents-catalog-wire.test.ts`:
 
 - `show_html({ html, title, height?, fallback_text? })` returns `Shown as app <messageId>. To change it, call update_html with app_id "<messageId>".`
-  > Show a small self-contained web page inline in this chat: an interactive mini app, a game, a chart or visualization, a calculator, a formatted report. For forms and choices use show_widget instead, and for plain data a markdown table. `html` is one HTML document (a fragment is wrapped) with inline style and script. It runs in a locked sandbox: no network requests (fetch, XHR and WebSockets fail), no cookies or storage, no popups, no form posts. Scripts, styles and fonts load only from cdnjs.cloudflare.com, cdn.jsdelivr.net, unpkg.com and Google Fonts; images must be inline data: URLs or come from those CDNs. Embed the data you need. The page sizes itself to its content, up to about 640px tall. Use the CSS variables --color-text-primary, --color-background-primary, --color-border-primary and --font-sans so it matches the person's theme. In the page, mausbot.send(text) sends text as the person's next message (only after they click in the page), mausbot.open(url) opens a link, and mausbot.setContext(text) tells you what the person is looking at, with their next message. At most 256 KB. Never put secrets in it. Not available in rooms.
+  > Show a small self-contained web page inline in this chat: an interactive mini app, a game, a chart or visualization, a calculator, a formatted report. For forms and choices use show_widget instead, and for plain data a markdown table. `html` is one HTML document (a fragment is wrapped) with inline style and script. It runs in a locked sandbox: no network requests (fetch, XHR and WebSockets fail), no cookies or storage, no popups, no form posts. Scripts, styles and fonts load only from cdnjs.cloudflare.com, cdn.jsdelivr.net, unpkg.com and Google Fonts; images must be inline data: URLs or come from those CDNs. Embed the data you need. The page sizes itself to its content, up to about 640px tall. Use the CSS variables --color-text-primary, --color-background-primary, --color-border-primary and --font-sans so it matches the person's theme. In the page, eacbot.send(text) sends text as the person's next message (only after they click in the page), eacbot.open(url) opens a link, and eacbot.setContext(text) tells you what the person is looking at, with their next message. At most 256 KB. Never put secrets in it. Not available in rooms.
 - `update_html({ app_id, html, title? })`
   > Replace a page you showed with show_html, in place. `app_id` is the id show_html returned. The page reloads, so anything the person did in it is lost.
 
@@ -182,7 +182,7 @@ After the CSP meta, the server adds:
 The helper is a standard View. It sends `ui/initialize` and `ui/notifications/initialized`, reports `ui/notifications/size-changed` from a ResizeObserver, applies `hostContext.styles.variables` and `theme` on initialize and on `ui/notifications/host-context-changed`, answers `ui/resource-teardown`, and exposes:
 
 ```ts
-window.mausbot = {
+window.eacbot = {
   send(text: string): Promise<void>,        // ui/message
   open(url: string): Promise<void>,         // ui/open-link
   setContext(text: string): Promise<void>,  // ui/update-model-context
@@ -362,7 +362,7 @@ The next message the person sends in that thread, on every path (start, steer, q
 --- end app context ---
 ```
 
-The block is marked delivered when the message is accepted. Bot HTML gets the same through `mausbot.setContext`.
+The block is marked delivered when the message is accepted. Bot HTML gets the same through `eacbot.setContext`.
 
 ### Offline, signed out, removed
 
@@ -408,7 +408,7 @@ What this means:
 
 | Direction | Method | v1 | Later |
 |---|---|---|---|
-| View → host | `ui/initialize` | answered: `protocolVersion` (the View's if it is `2026-01-26`, else `2026-01-26`), `hostInfo {name:"mausbot", version}`, `hostCapabilities`, `hostContext` | |
+| View → host | `ui/initialize` | answered: `protocolVersion` (the View's if it is `2026-01-26`, else `2026-01-26`), `hostInfo {name:"eacbot", version}`, `hostCapabilities`, `hostContext` | |
 | | `ui/notifications/initialized` | starts host → view traffic | |
 | | `ping` | `{}` | |
 | | `ui/notifications/size-changed` | sets the height (clamped); width ignored | |
@@ -500,12 +500,12 @@ There is no Allow bar: a change outside Full access is declined by the server, w
 
 - One `WKWebView` per live frame. Configuration:
   - `websiteDataStore = .nonPersistent()`;
-  - `WKURLSchemeHandler` for `mausbot-app://host/` serves only the bundled `app-host.html`; any other path is 404;
+  - `WKURLSchemeHandler` for `eacbot-app://host/` serves only the bundled `app-host.html`; any other path is 404;
   - `isInspectable` only in debug builds.
-- The host page's script and the `appHost` message handler live in their own `WKContentWorld("mausbot-app-host")`: the user script runs at document start in the main frame only. The handler also rejects any message whose `frameInfo.isMainFrame` is false or whose `securityOrigin` is not `mausbot-app://host`.
-- `WKNavigationDelegate` allows only the first load of `mausbot-app://host/app-host.html` and `about:srcdoc` / `about:blank` subframe loads. Everything else is `.cancel`.
+- The host page's script and the `appHost` message handler live in their own `WKContentWorld("eacbot-app-host")`: the user script runs at document start in the main frame only. The handler also rejects any message whose `frameInfo.isMainFrame` is false or whose `securityOrigin` is not `eacbot-app://host`.
+- `WKNavigationDelegate` allows only the first load of `eacbot-app://host/app-host.html` and `about:srcdoc` / `about:blank` subframe loads. Everything else is `.cancel`.
 - `WKUIDelegate`: `createWebViewWith` returns nil; media capture is denied; JS dialogs complete immediately.
-- `WKContentRuleList`, compiled per network set and cached by hash: block everything except `mausbot-app:`, `data:`, `blob:`, `about:`, and `https://` URLs on `network.connect ∪ network.resources` (or the bot-HTML CDNs). This duplicates the CSP at the network layer.
+- `WKContentRuleList`, compiled per network set and cached by hash: block everything except `eacbot-app:`, `data:`, `blob:`, `about:`, and `https://` URLs on `network.connect ∪ network.resources` (or the bot-HTML CDNs). This duplicates the CSP at the network layer.
 - Engagement: a `UITapGestureRecognizer` and a long-press recognizer with `cancelsTouchesInView = false` and simultaneous recognition. They push `engaged(at)` into the host page.
 - Links open in `SFSafariViewController` for http(s). Native calls the routes through the existing `Client`.
 
@@ -655,7 +655,7 @@ Tests:
 
 - happy-dom tests for the pool and the chrome;
 - an Electron security test that ports the probe in this spec (rules 1 to 6 and 8) against a real `AppDocument` from S2;
-- an isolated fixture run (`docs/verification/README.md`): a fake engine's `show_html` renders, `mausbot.send` lands as a "Sent from" message and starts a turn, and `update_html` reloads in place.
+- an isolated fixture run (`docs/verification/README.md`): a fake engine's `show_html` renders, `eacbot.send` lands as a "Sent from" message and starts a turn, and `update_html` reloads in place.
 
 ### S4. Server: MCP Apps plumbing (EACbot)
 
@@ -679,7 +679,7 @@ Tests:
 - `mcpRpc` (rules 15 and 18; signed-out 401 with `signIn`; removed server 410; a change declined outside Full access; rate limit);
 - `claude.ts` mounts a URL app server through the proxy and a non-app URL server natively, unchanged.
 
-### I1. iOS (mausbot-mobile)
+### I1. iOS (eacbot-mobile)
 
 Owns:
 
@@ -696,7 +696,7 @@ Owns:
 
 First step: confirm that a script in a `WKContentWorld` receives the iframe's `message` events and can `postMessage` into it. The fallback is the page world, plus the `isMainFrame` and origin checks, which stay either way.
 
-### A1. Android (mausbot-mobile)
+### A1. Android (eacbot-mobile)
 
 Owns:
 
@@ -766,14 +766,14 @@ S1 and S2 (2026-10-14). Small deviations from the text above, so later tasks bui
 
 - **Wire.** `AppPayload` also carries `blocked?: AppBlockedReason` (the spec's "row is still written with `blocked`"), and its `doc` is `""` when nothing was stored. `AppBlockedReason` adds `"unavailable"` (the UI resource could not be read: offline, wrong mime) for S4. `AppDocument` has no `source`: a document with `tool` is an MCP app, one without is bot HTML (`isMcpDocument` in `bridge.ts`).
 - **Bridge adapter.** `callRpc(method, params)`. `createAppBridge` also takes `source()` (the frame's window, for rule 9), `hostVersion`, `limits.maxHeight`, `log` and `timers`. It returns `{ handleMessage, contextChanged, teardown, dispose, initialized }`. A document with no `toolResult` is sent `{content: []}`.
-- **Phone host page.** Page → native adds `{ v: 1, type: "torn-down" }` after `teardown()` (Android cannot await the call). Android's native → page messages are JSON `{ v: 1, call, args }` over `postWebMessage`, heard on the injected `appHost` object, which the page leaves in place; the page's api is also `window.mausbotAppHost`. `load` takes `limits.height`, the row's starting height. The page has no CSP of its own (a srcdoc frame inherits its parent's policy).
+- **Phone host page.** Page → native adds `{ v: 1, type: "torn-down" }` after `teardown()` (Android cannot await the call). Android's native → page messages are JSON `{ v: 1, call, args }` over `postWebMessage`, heard on the injected `appHost` object, which the page leaves in place; the page's api is also `window.eacbotAppHost`. `load` takes `limits.height`, the row's starting height. The page has no CSP of its own (a srcdoc frame inherits its parent's policy).
 - **Send path.** The prompt is composed in four places in `server/index.ts`, so `acceptDirectSend`, `startOrQueueDirectMessage` and `startTurn` take one `app: { context?, fromApp? }` option: the context block goes in front of the composed prompt on start, steer and queue, and `fromApp` is stored on the user line on every path (the steer queue carries it). The route builds the block with `appContextBlock` and marks it delivered after acceptance; a retry of an accepted `sendId` carries none. `withAppContext(store, text, threadId)` returns `{ text, deliver }`. Guarded sends carry no app context.
 - **index.ts.** `resolveReplyTarget` moved to `server/replies.ts` (`replyTargetIn`, which now admits `app` rows) to keep the file at its ratcheted length. The internal card route passes `apps: chatApps` to `createAgentCard` and awaits it, so S4's `mcp_app` branch may be async.
 - **Routes.** The document route answers 404 "This app's page is not stored on this computer." for a row whose document is missing. `context` has a 120-a-minute per-row backstop (429). `rpc` checks the row (404), the method and `params` shape (400), then calls `deps.mcpRpc`; the 60-a-minute rate is left to `mcpRpc`, in the spec's order (`rowRate` in `server/chat-apps.ts` is there for it).
 - **Tools.** `update_html` answers `Updated app <id>.`; on an MCP row it is refused with 409, on another bot's or thread's row with 404. It drops the row's `context` (the page reloads).
 - **Replay.** `transcriptText` reads words an app sent as `[app: <title>]`, and a typed reply to an app row as `[replying to <speaker>'s app: “…”]`.
 - **Storage.** `DATA_DIR/app-docs/{html,data,doc}/<sha256>`; an MCP row's data blob also holds its filtered `network`. Sweeps run 30 s after start and 2 s after a thread is deleted, and never remove a file younger than ten minutes. `ChatApps.mcpAccess` is the hook S4 sets; until then an MCP row's document renders read-only (`blocked: server-removed`).
-- **Fixtures.** `scripts/gen-app-fixtures.ts <mausbot-mobile checkout>` writes `app-messages.json`, `app-documents.json` and `app-expectations.json` (with `appHostSha256`) under `ios/Tests/CompanionCoreTests/Fixtures`, and copies `app-host.html` to both phone apps. `node --experimental-strip-types scripts/build-app-host.ts [--check]` rebuilds the host page.
+- **Fixtures.** `scripts/gen-app-fixtures.ts <eacbot-mobile checkout>` writes `app-messages.json`, `app-documents.json` and `app-expectations.json` (with `appHostSha256`) under `ios/Tests/CompanionCoreTests/Fixtures`, and copies `app-host.html` to both phone apps. `node --experimental-strip-types scripts/build-app-host.ts [--check]` rebuilds the host page.
 
 S3, the desktop renderer and Electron (2026-10-14):
 

@@ -128,7 +128,7 @@ export interface HomeOptions {
   state: StateStore;
   log: Log;
   readHealth: HealthRead;
-  /** The seccomp profile install.sh put in /etc/mausbot, as JSON text. */
+  /** The seccomp profile install.sh put in /etc/eacbot, as JSON text. */
   seccomp: () => string;
   /** Free bytes where Docker keeps its volumes. */
   diskFree: () => number;
@@ -660,7 +660,7 @@ export class Home {
   }
 
   private async helper(image: string, mounts: Mount[], command: string[], caps: string[]): Promise<{ code: number; output: string }> {
-    const name = `mausbot-helper-${randomBytes(4).toString("hex")}`;
+    const name = `eacbot-helper-${randomBytes(4).toString("hex")}`;
     await this.docker.createContainer(name, helperSpec(image, mounts, command, caps));
     try {
       await this.docker.startContainer(name);

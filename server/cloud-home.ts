@@ -125,7 +125,7 @@ export function firstCloudTurnPatch(turn: { cloudHome: boolean; recorded: string
   return { onboarding: { firstTurnAt: (turn.now ?? new Date()).toISOString() } };
 }
 
-/** Must match openmaus-cloud's cloudRequestSignature. `target` is the path and query exactly as the Admin sent them. */
+/** Must match eacbot-cloud's cloudRequestSignature. `target` is the path and query exactly as the Admin sent them. */
 export function cloudRequestSignature(secret: string, timestamp: string, nonce: string, method: string, target: string, body: Buffer | string): string {
   const bodyHash = createHash("sha256").update(body).digest("base64url");
   return createHmac("sha256", secret).update(`v1\n${timestamp}\n${nonce}\n${method}\n${target}\n${bodyHash}`).digest("base64url");

@@ -58,8 +58,8 @@ function profiles(): Record<string, Profile> {
   all["default+legacy-switches"] = {
     env: { ...all.default!.env, EAC_ROOM_TURN: "1", EAC_OWN_THREAD_CREATION: "1", EAC_EXTERNAL_RUNTIME: "1", EAC_ACTIVE_WAITS: "0" },
   };
-  // The person's EACbot holds a Chief's powers and adds its notification pair; MAUSBOT_ADDS bounds what that costs.
-  for (const name of ["default", "skills+shared+voice"]) all[`${name}+mausbot`] = { env: { ...all[name]!.env, EAC_MAUSBOT: "1" } };
+  // The person's EACbot holds a Chief's powers and adds its notification pair; EACBOT_ADDS bounds what that costs.
+  for (const name of ["default", "skills+shared+voice"]) all[`${name}+eacbot`] = { env: { ...all[name]!.env, EAC_BOT_TOOLS: "1" } };
   // A chat that can never pick its computer: its Works on is Off, or it works on its team's computer. A room is one too.
   all["default+no-computer-pick"] = { env: { ...all.default!.env, EAC_COMPUTER_SELECTION: "0" } };
   for (const name of ["default", "non-chief"]) all[`${name}+room`] = { env: { ...all[name]!.env, EAC_COMPUTER_SELECTION: "0", EAC_ROOM: "1" } };
@@ -72,9 +72,9 @@ const CHIEF_ONLY_TOOLS = ["create_bot", "list_team_setup", "list_team_library", 
 const CHIEF_TARGET_TOOLS = ["propose_profile", "propose_model"];
 const CHIEF_PROFILE_TARGET = " A Chief of Staff may pass for_bot_id (from list_bots) for a requested change to another bot in its section.";
 const TEAMWORK_TOOLS = ["list_room_targets", "coordinate_bots", "assignment_status", "list_bots", "list_rooms", "list_threads", "close_thread", "start_thread", "post_to_room"];
-const MAUSBOT_TOOLS = ["list_unread_notifications", "mark_notifications_read"];
+const EACBOT_TOOLS = ["list_unread_notifications", "mark_notifications_read"];
 /** EACbot's tools may make its list at most this much longer than the same Chief's without them. */
-const MAUSBOT_ADDS = 0.02;
+const EACBOT_ADDS = 0.02;
 const RESEARCH_TOOLS = ["x_search", "research_search", "research_endpoint", "research_call"];
 /** Only on the person's own Cloud: never on the fullest profile, a Team Cloud's. */
 const OWN_CLOUD_TOOLS = ["ask_for_computer"];
@@ -102,8 +102,8 @@ const BUDGET_BASELINE: Record<string, number> = {
   "skills+shared+voice+cloud-home": 64782,
   "skills+shared+voice+non-chief+cloud-home": 55566,
   "default+legacy-switches": 59416,
-  "default+mausbot": 60129,
-  "skills+shared+voice+mausbot": 66102,
+  "default+eacbot": 60129,
+  "skills+shared+voice+eacbot": 66102,
   "skills+shared+voice+escalations": 66281,
   "skills+shared+voice+escalations+x": 70551,
   "skills+shared+voice+escalations+x+team": 69416,
@@ -214,7 +214,7 @@ describe("agents proxy tools/list golden", () => {
       for (const tool of toolsOf(wires[name]!)) {
         if (profile.env.EAC_CLOUD_HOME === "1" && (tool.name === "select_computer" || OWN_CLOUD_TOOLS.includes(tool.name))) continue;
         if (profile.env.EAC_CHIEF_OF_STAFF === "0" && CHIEF_TARGET_TOOLS.includes(tool.name)) continue;
-        if (profile.env.EAC_MAUSBOT === "1" && MAUSBOT_TOOLS.includes(tool.name)) continue;
+        if (profile.env.EAC_BOT_TOOLS === "1" && EACBOT_TOOLS.includes(tool.name)) continue;
         expect(JSON.stringify(tool), `${name}: ${tool.name}`).toBe(full.get(tool.name));
       }
     }
@@ -433,12 +433,12 @@ describe("agents proxy tools/list wire size", () => {
     expect(rows.length).toBeGreaterThan(0);
   });
 
-  it.each(Object.keys(PROFILES).filter((name) => name.endsWith("+mausbot")))("%s adds at most 2% to the same Chief's list", (name) => {
-    const without = name.slice(0, -"+mausbot".length);
+  it.each(Object.keys(PROFILES).filter((name) => name.endsWith("+eacbot")))("%s adds at most 2% to the same Chief's list", (name) => {
+    const without = name.slice(0, -"+eacbot".length);
     const tools = toolsOf(wires[name]!).map((tool) => tool.name);
-    expect(tools.slice(-MAUSBOT_TOOLS.length)).toEqual(MAUSBOT_TOOLS);
-    expect(tools.slice(0, -MAUSBOT_TOOLS.length)).toEqual(toolsOf(wires[without]!).map((tool) => tool.name));
-    expect(bytes(wires[name]!)).toBeLessThanOrEqual(Math.floor(bytes(wires[without]!) * (1 + MAUSBOT_ADDS)));
+    expect(tools.slice(-EACBOT_TOOLS.length)).toEqual(EACBOT_TOOLS);
+    expect(tools.slice(0, -EACBOT_TOOLS.length)).toEqual(toolsOf(wires[without]!).map((tool) => tool.name));
+    expect(bytes(wires[name]!)).toBeLessThanOrEqual(Math.floor(bytes(wires[without]!) * (1 + EACBOT_ADDS)));
   });
 
   it.each(Object.keys(PROFILES))("%s stays within 2% of its budget baseline", (name) => {

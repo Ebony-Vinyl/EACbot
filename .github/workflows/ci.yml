@@ -760,17 +760,17 @@ jobs:
         if: ${{ !cancelled() && runner.os == 'macOS' }}
         run: test "$(defaults read "/Applications/Google Chrome.app/Contents/Info.plist" CFBundleShortVersionString)" = "$(cat "$RUNNER_TEMP/chrome-version")"
       - name: S4 inside the server image's runtime, as its own user
-        # maus, with its real home, as the server runs there. The image's
+        # eacbot, with its real home, as the server runs there. The image's
         # Chrome for Testing has no setuid sandbox helper yet, so this leg
         # runs with the operator opt-out; the host legs keep the sandbox.
         # Vitest writes its bundled config beside it and its cache under
-        # node_modules/.vite, so those two places are opened to maus. It runs
+        # node_modules/.vite, so those two places are opened to eacbot. It runs
         # even when the host leg failed: they test different Chromes.
         if: ${{ !cancelled() && runner.os == 'Linux' }}
         run: |
           docker build --target runtime -t omb-runtime:s4 .
           mkdir -p node_modules/.vite && chmod a+w . node_modules/.vite
-          docker run --rm --init --shm-size=512m --user maus -e CI=true \
+          docker run --rm --init --shm-size=512m --user eacbot -e CI=true \
             -e EAC_CDP_CHROME=/opt/eacbot-browser/chrome -e EAC_CDP_HOST=container -e EAC_BROWSER_SANDBOX=0 \
             -v "$PWD:/src" -w /src omb-runtime:s4 \
             node node_modules/vitest/vitest.mjs run server/browser/cdp/s4- server/browser/checklist.e2e server/browser/passkey-wall.e2e server/browser/viewers/viewers.e2e server/browser/viewers/stream-v2.e2e --reporter=verbose --silent=false

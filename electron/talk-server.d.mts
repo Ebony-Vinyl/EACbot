@@ -2,7 +2,7 @@ import type { DesktopPrefs } from "./desktop-prefs.mjs";
 
 export declare const QUICK_ASKS_TITLE: "Quick asks";
 /** `starting`: this computer's server is not up yet; `moved`: its bots moved to My Cloud, so it takes no asks. */
-export type TalkServerErrorCode = "server-down" | "starting" | "no-mausbot" | "refused" | "moved" | "lost";
+export type TalkServerErrorCode = "server-down" | "starting" | "no-eacbot" | "refused" | "moved" | "lost";
 export declare class TalkServerError extends Error {
   constructor(code: TalkServerErrorCode);
   readonly code: TalkServerErrorCode;
@@ -33,7 +33,7 @@ export declare function createTalkServer(options: {
   /** This computer's server is on its way up, so a request that can't reach it says "starting". */
   starting?: () => boolean;
 }): {
-  /** Rejects with TalkServerError "server-down", "starting", "no-mausbot", "refused" or "moved". One call runs at a
+  /** Rejects with TalkServerError "server-down", "starting", "no-eacbot", "refused" or "moved". One call runs at a
    * time; a call while one runs gets the same promise. */
   prepare(): Promise<TalkChat>;
   /** Rejects with TalkServerError "server-down", "starting", "refused", "moved" or "lost", or with `signal.reason`. */

@@ -25,7 +25,7 @@ const directories: string[] = [];
 afterEach(async () => { for (const directory of directories.splice(0)) await removeTempDir(directory); });
 const directory = () => { const value = mkdtempSync(join(tmpdir(), "omb-cloud-home-")); directories.push(value); return value; };
 
-// Shapes exactly as openmaus-cloud's provisioner writes them.
+// Shapes exactly as eacbot-cloud's provisioner writes them.
 const secret = "S".repeat(43);
 const machineId = "3f9c2a4e-8b1d-4c6e-9a7f-2d5e8c1b0a93";
 const contract = (extra: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv => ({
@@ -150,7 +150,7 @@ it("matches the Admin's signature byte for byte", () => {
 });
 
 it("signs a health read over its method, path and query, byte for byte as the Admin does", () => {
-  // Same vector in openmaus-cloud tests/cloud-health.test.ts:
+  // Same vector in eacbot-cloud tests/cloud-health.test.ts:
   // printf 'v1\n1800000000\nnonce-fixture-0001\nGET\n/api/cloud/health?after=0\n<b64url sha256 of the empty body>' | openssl dgst -sha256 -hmac k -binary | base64url
   expect(cloudRequestSignature("k", "1800000000", "nonce-fixture-0001", "GET", "/api/cloud/health?after=0", "")).toBe("qX07j43XUqYYi8T3l9T8WnC-hWLZSYuuvmRguJpbJKc");
   expect(cloudRequestSignature("k", "1800000000", "nonce-fixture-0001", "GET", "/api/cloud/health?after=1", "")).not.toBe("qX07j43XUqYYi8T3l9T8WnC-hWLZSYuuvmRguJpbJKc");
@@ -384,8 +384,8 @@ it("gives the edge only its routing name and the server the contract, never a ga
   expect(edge.EAC_CLOUD_PUBLIC_HOST).toBe(cloudHomeHost(config));
   expect(JSON.stringify(edge)).not.toContain(token);
   expect(JSON.stringify(edge)).not.toContain(secret);
-  expect(passwdIds("root:x:0:0::/root:/bin/sh\nmaus:x:1001:1002::/data:/bin/bash\n", "maus")).toEqual({ uid: 1001, gid: 1002 });
-  expect(passwdIds("root:x:0:0::/root:/bin/sh\n", "maus")).toBeNull();
+  expect(passwdIds("root:x:0:0::/root:/bin/sh\neacbot:x:1001:1002::/data:/bin/bash\n", "eacbot")).toEqual({ uid: 1001, gid: 1002 });
+  expect(passwdIds("root:x:0:0::/root:/bin/sh\n", "eacbot")).toBeNull();
 });
 
 it("holds requests at the edge while the server starts only when the Admin asked for it (a plan that sleeps)", () => {
@@ -424,7 +424,7 @@ it("gives the server only an allow-listed environment: a secret added later, a t
   expect(dropped).not.toContain("EAC_CLOUD_BOOTSTRAP_SECRET");
 });
 
-it("the root supervisor runs and trusts only root's code, never the volume's or anything maus could rewrite", () => {
+it("the root supervisor runs and trusts only root's code, never the volume's or anything eacbot could rewrite", () => {
   const files = ["/usr/local/bin/node", "/app/dist-server/cloud-home-start.js", "/app/dist-server/index.js", "/usr/local/bin/caddy", "/app/cloud/Caddyfile"];
   const image = (overrides: Record<string, { uid: number; mode: number }> = {}) => (path: string) =>
     overrides[path] ?? { uid: 0, mode: path.includes(".") || path.endsWith("node") || path.endsWith("caddy") ? 0o100755 : 0o40755 };
@@ -466,7 +466,7 @@ it("ships an edge and a Fly template that keep the server private", () => {
   expect(caddy.slice(homeStart, homeEnd)).toContain("handle /hooks/* {");
   expect(caddy.match(/header_up X-Forwarded-For \{client_ip\}/g)).toHaveLength(upstreams.length);
   expect(caddy.match(/lb_try_interval 50ms/g)).toHaveLength(upstreams.length);
-  // The root supervisor's code is root's, maus owns only the volume; the image's last step refuses to build otherwise.
+  // The root supervisor's code is root's, eacbot owns only the volume; the image's last step refuses to build otherwise.
   const dockerfile = readFileSync(join(import.meta.dirname, "../Dockerfile"), "utf8");
   const image = dockerfile.slice(dockerfile.indexOf("FROM runtime AS cloud-home"), dockerfile.indexOf("FROM runtime AS server"));
   const check = image.indexOf('untrusted="$(find /app /usr/local/bin/caddy /usr/local/bin/cloudflared \\( ! -user root -o ! -type l -perm /022 \\) -print)"');
@@ -494,7 +494,7 @@ it("ships an edge and a Fly template that keep the server private", () => {
 it("the Cloud launcher starts the server again only when it asks to after a restore, and only a few times in a row", () => {
   const launcher = readFileSync(join(import.meta.dirname, "cloud-home-start.ts"), "utf8");
   expect(launcher).toContain("const policy = restartPolicy();");
-  // The volume is prepared (and the previous machine's lease cleared) through one helper, as `maus`, before any child starts.
+  // The volume is prepared (and the previous machine's lease cleared) through one helper, as `eacbot`, before any child starts.
   expect(launcher).toContain("const prepare = () => prepareCloudHomeData(home, cloudHomeDataDir(env, home), config.machineId);");
   expect(launcher.indexOf("prepared = prepare();")).toBeLessThan(launcher.indexOf("runServer();"));
   expect(launcher).toContain("if (!policy.again(code, stopping)) return false;");
@@ -580,7 +580,7 @@ const capStatus = (bounding: string, effective = bounding) => `Name:\tnode\nCapI
 // CHOWN, KILL, SETGID, SETUID; with SETPCAP and SYS_ADMIN, as the connector grants an image that drops them.
 const FOUR = "00000000000000e1", WITH_SYS_ADMIN = "00000000002001e1";
 
-it("the Cloud supervisor hardens the host before anything runs as maus: hidepid on /proc and Fly's socket folder root-only, each a note, never fatal", () => {
+it("the Cloud supervisor hardens the host before anything runs as eacbot: hidepid on /proc and Fly's socket folder root-only, each a note, never fatal", () => {
   const calls: string[] = [];
   const run = (status: number, exists = true, files: Record<string, string> = {}) => ({
     exec: (command: string, args: string[]) => { calls.push(`${command} ${args.join(" ")}`); return { status, stderr: status ? "mount: permission denied\n" : "" }; },
@@ -632,14 +632,14 @@ it("reads a capability bit the way the kernel writes it", () => {
 });
 
 it("takes an own server's secrets from the root-only file the connector mounts, and only the secrets it knows", () => {
-  const file = "/run/mausbot/secrets.json";
+  const file = "/run/eacbot/secrets.json";
   const fs = (overrides: { file?: { uid: number; mode: number; symlink?: boolean }; dir?: { uid: number; mode: number }; text?: string; exists?: boolean } = {}) => ({
     exists: () => overrides.exists ?? true,
     lstat: () => {
       const entry = overrides.file ?? { uid: 0, mode: 0o100400 };
       return { ...entry, isFile: () => !entry.symlink, isSymbolicLink: () => Boolean(entry.symlink) };
     },
-    stat: (path: string) => (path === file ? overrides.file ?? { uid: 0, mode: 0o100400 } : path === "/run/mausbot" ? overrides.dir ?? { uid: 0, mode: 0o40700 } : { uid: 0, mode: 0o40755 }),
+    stat: (path: string) => (path === file ? overrides.file ?? { uid: 0, mode: 0o100400 } : path === "/run/eacbot" ? overrides.dir ?? { uid: 0, mode: 0o40700 } : { uid: 0, mode: 0o40755 }),
     read: () => overrides.text ?? JSON.stringify({
       EAC_CLOUD_BOOTSTRAP_SECRET: secret, EAC_CLOUD_BOAT_TOKEN: `box_omb_${"b".repeat(43)}`, EAC_CLOUD_TUNNEL_TOKEN: "t".repeat(40),
       EAC_PUBLIC_URL: "https://elsewhere.example", PATH: "/tmp",
@@ -649,7 +649,7 @@ it("takes an own server's secrets from the root-only file the connector mounts, 
   expect(readCloudSecretsFile("/data", file, fs({ exists: false }))).toEqual({});
   expect(() => readCloudSecretsFile("/data", file, fs({ file: { uid: 0, mode: 0o100644 } }))).toThrow("readable by others than root");
   expect(() => readCloudSecretsFile("/data", file, fs({ file: { uid: 1001, mode: 0o100400 } }))).toThrow(`${file} is not root's`);
-  expect(() => readCloudSecretsFile("/data", file, fs({ dir: { uid: 0, mode: 0o40777 } }))).toThrow("/run/mausbot is writable by others than root");
+  expect(() => readCloudSecretsFile("/data", file, fs({ dir: { uid: 0, mode: 0o40777 } }))).toThrow("/run/eacbot is writable by others than root");
   expect(() => readCloudSecretsFile("/data", file, fs({ file: { uid: 0, mode: 0o120777, symlink: true } }))).toThrow("is not a plain file");
   expect(() => readCloudSecretsFile("/data", file, fs({ text: "[1]" }))).toThrow("is not a JSON object");
   expect(() => readCloudSecretsFile("/data", "/data/secrets.json", fs())).toThrow("is on the volume");

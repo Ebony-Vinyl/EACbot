@@ -1196,7 +1196,7 @@
       "mcp_server"
     ]
   },
-  "default+mausbot": {
+  "default+eacbot": {
     "bytes": 60560,
     "sha256": "52c68e86816e9f10241999c8bc24c235a28da09b89d1f1a106b15e5d0c377143",
     "tools": [
@@ -1249,7 +1249,7 @@
       "mark_notifications_read"
     ]
   },
-  "skills+shared+voice+mausbot": {
+  "skills+shared+voice+eacbot": {
     "bytes": 66533,
     "sha256": "df6aee1bdad6acbc6c6ca9356719e00ba25b947b529c42ff2bfc2d03e2126003",
     "tools": [

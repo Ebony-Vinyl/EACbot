@@ -81,7 +81,7 @@ export class TaskRuntime {
       schedule: schedule ?? { type: "once", at: Date.now() + 60_000 },
       enabled: false,
       overlap: "skip",
-      runOn: "maus",
+      runOn: "eacbot",
       durationMinutes: 10,
     };
     const previous = task.routineId

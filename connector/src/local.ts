@@ -1,4 +1,4 @@
-// Jobs from root on this server: `mausbot-connector job <type> [args]`, run with `docker exec` in the connector's
+// Jobs from root on this server: `eacbot-connector job <type> [args]`, run with `docker exec` in the connector's
 // container, sends one job over a Unix socket in the container's own /tmp, which nothing outside the container can
 // open. It goes through the same checks, queue and audit log as a job from EACbot, and is recorded as `local`.
 import { randomBytes } from "node:crypto";

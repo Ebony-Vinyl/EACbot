@@ -1,4 +1,4 @@
-// The server owner's own rules for what EACbot may do here: /etc/mausbot/policy.json on the host, root's, which the
+// The server owner's own rules for what EACbot may do here: /etc/eacbot/policy.json on the host, root's, which the
 // connector reads (mounted read-only) before each job EACbot sends and never writes. Jobs root runs on the server
 // itself are the owner's own and are not limited by it.
 //

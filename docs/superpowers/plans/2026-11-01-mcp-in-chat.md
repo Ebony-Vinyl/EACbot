@@ -10,16 +10,16 @@ A new internal route factory (`createInternalMcpRoutes`) behind the bot capabili
 cards. One `mcp_server` tool replaces `add_mcp_server`. Approval cards reuse the generic option card. The sign-in card
 reuses the connector card with `source: "mcp"`, so every existing client can draw it.
 
-**Tech Stack:** TypeScript (Node server, React/Electron desktop), vitest, zod; Swift (iOS) and Kotlin (Android) in mausbot-mobile.
+**Tech Stack:** TypeScript (Node server, React/Electron desktop), vitest, zod; Swift (iOS) and Kotlin (Android) in eacbot-mobile.
 
 **Spec:** `docs/superpowers/specs/2026-11-01-mcp-in-chat-design.md`. Read it before any task. Its tables ("The bot
 tool", "What a bot may touch", "Error handling") are the requirements.
 
 ## Global Constraints
 
-- Work only in `/Users/omkar/Desktop/openmaus/OpenGrokBot-mcp-in-chat` (branch `feat/mcp-in-chat`). Never touch the
+- Work only in `/Users/omkar/Desktop/eacbot/OpenGrokBot-mcp-in-chat` (branch `feat/mcp-in-chat`). Never touch the
   `OpenGrokBot/` checkout.
-- Phone work goes only in a mausbot-mobile worktree, never in EACbot.
+- Phone work goes only in a eacbot-mobile worktree, never in EACbot.
 - Never push and never open a PR. Commit locally only.
 - Run tests with `pnpm vitest run <files>`, typecheck with `pnpm typecheck`, lint with `pnpm lint`.
 - Regenerate catalog goldens with `UPDATE_AGENTS_CATALOG_GOLDENS=1 pnpm vitest run server/drivers/agents-catalog-wire.test.ts server/drivers/agents-bridge-wire.test.ts`.
@@ -320,9 +320,9 @@ tool", "What a bot may touch", "Error handling") are the requirements.
   - A bot removes a server.
   - Capture screenshots for the report.
 
-### Task 7: Phone polish (mausbot-mobile, own worktree and branch)
+### Task 7: Phone polish (eacbot-mobile, own worktree and branch)
 
-**Files (mausbot-mobile `origin/main` worktree, branch `feat/mcp-sign-in-card`):**
+**Files (eacbot-mobile `origin/main` worktree, branch `feat/mcp-sign-in-card`):**
 - iOS:
   - Modify `ios/Sources/CompanionCore/ConnectorRequest.swift` (decode `source`)
   - Modify `ios/App/Cards/ConnectorRequestCardView.swift` (MCP title and button, refusal text)

@@ -321,7 +321,7 @@ because it uses the harness-side `generateText` seam, not the engine's own compa
 
 ### 0.8 Benchmark track: the headless driver (`scripts/bench/run.ts`, `POST /api/bench/run`)
 
-`maus bench run --bot <id> --task <file|string> --cwd <dir> --budget "steps=200,tokens=400000,minutes=30" --out <dir>`
+`eacbot bench run --bot <id> --task <file|string> --cwd <dir> --budget "steps=200,tokens=400000,minutes=30" --out <dir>`
 starts one fresh detached thread on one bot (exactly what routines do: `createTask(activate=false)` +
 `startTurn(... { automationSource: "bench" })`), blocks until settle or budget, and writes
 `trajectory.json` (the thread's messages + digests + usage + prompt shapes) and `result.json`

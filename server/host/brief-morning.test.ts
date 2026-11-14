@@ -133,7 +133,7 @@ describe("the morning brief", () => {
     const s = setup({ zone: "UTC", start: "2026-10-22T08:00:00Z", overnight: "While you slept, I sorted 3 emails." });
     await s.brief.active("desktop", "UTC", "en");
     await s.brief.report({ routine: {} as never, at: s.now(), meetings: [s.meeting(Date.parse("2026-10-22T10:00:00Z"))], clashes: [] });
-    s.runs.push({ id: "w1", routineId: "watch", routineName: "Keep an eye on my day", target: "bot", botId: s.chief.id, runOn: "maus", scheduledFor: s.now(), status: "running", manual: false, createdAt: s.now(), deliver: "brief" });
+    s.runs.push({ id: "w1", routineId: "watch", routineName: "Keep an eye on my day", target: "bot", botId: s.chief.id, runOn: "eacbot", scheduledFor: s.now(), status: "running", manual: false, createdAt: s.now(), deliver: "brief" });
     await s.tick();
     expect(s.pushed).toEqual([]);
     s.advance(19 * MINUTE);

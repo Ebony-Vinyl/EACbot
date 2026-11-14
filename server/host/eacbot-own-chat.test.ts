@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { createEACbotOwnChat } from "./mausbot-own-chat.ts";
+import { createEACbotOwnChat } from "./eacbot-own-chat.ts";
 
 const key = (email: string) => `key:${email}`;
 function world(starters: Record<string, string> = {}) {
   const moved: string[] = [];
   const bots = [
-    { id: "maus-mira", threadId: "t-mira", defaultBot: { person: "Mira@Acme.test" } },
-    { id: "maus-place", threadId: "t-place", defaultBot: {} },
+    { id: "mascot-mira", threadId: "t-mira", defaultBot: { person: "Mira@Acme.test" } },
+    { id: "mascot-place", threadId: "t-place", defaultBot: {} },
     { id: "sales", threadId: "t-sales" },
   ];
   const own = createEACbotOwnChat({
@@ -24,7 +24,7 @@ describe("a member's own EACbot's main chat", () => {
     const w = world();
     expect(await w.own.claimAll()).toBe(1);
     expect(w.starters).toEqual({ "t-mira": "key:mira@acme.test" });
-    expect(w.moved).toEqual(["maus-mira -> maus-mira--member-key:mira@acme.test (key:mira@acme.test)"]);
+    expect(w.moved).toEqual(["mascot-mira -> mascot-mira--member-key:mira@acme.test (key:mira@acme.test)"]);
   });
 
   it("is marked theirs before anything waits on the notes", () => {

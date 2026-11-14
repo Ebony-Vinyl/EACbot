@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type SyntheticEvent } from "react";
 import { Crown } from "lucide-react";
-import { BotAvatar, MausAvatar } from "@/components/Avatar";
+import { BotAvatar, MascotAvatar } from "@/components/Avatar";
 import { usePrefersReducedMotion } from "@/components/mascot-clock";
 import { cn } from "@/lib/cn";
 import { chiefChoices, chiefFor, createChiefPatch, DEFAULT_BOT_NAME, myDefaultBot, setWelcomingBot, stageIntro, useViewerEmail } from "@/lib/default-bot";
 import { t } from "@/lib/i18n";
-import { FLIGHT_MS, landInSidebar } from "@/lib/mausbot-landing";
+import { FLIGHT_MS, landInSidebar } from "@/lib/eacbot-landing";
 import { useStore, type Bot } from "@/state/store";
 
 /** Clicks, Enter and Space wait this long after the dialog opens, so a double click on Next never presses Create. */
@@ -37,9 +37,9 @@ export function ChiefIntro({ replay, onDone, onLeave, onLater }: { replay: boole
   const { state, dispatch } = useStore();
   const reduced = usePrefersReducedMotion();
   const viewer = useViewerEmail();
-  const maus = myDefaultBot(state.bots, viewer);
-  const chief = chiefFor(state.bots, maus);
-  const choices = chiefChoices(state.bots, maus, viewer);
+  const eacbot = myDefaultBot(state.bots, viewer);
+  const chief = chiefFor(state.bots, eacbot);
+  const choices = chiefChoices(state.bots, eacbot, viewer);
   const [choosing, setChoosing] = useState(false);
   const [picked, setPicked] = useState<string | null>(null);
   const [leaving, setLeaving] = useState(false);
@@ -52,10 +52,10 @@ export function ChiefIntro({ replay, onDone, onLeave, onLater }: { replay: boole
     return () => clearTimeout(timer);
   }, []);
   useEffect(() => {
-    if (!maus) return;
-    setWelcomingBot(maus.id);
+    if (!eacbot) return;
+    setWelcomingBot(eacbot.id);
     return () => setWelcomingBot(null);
-  }, [maus?.id]);
+  }, [eacbot?.id]);
   useEffect(() => {
     const first = dialog.current?.querySelector<HTMLElement>(choosing ? "[role=radio][tabindex='0']" : "[data-primary]");
     (first ?? dialog.current)?.focus({ preventScroll: true });
@@ -76,25 +76,25 @@ export function ChiefIntro({ replay, onDone, onLeave, onLater }: { replay: boole
   };
 
   const create = () => {
-    if (leaving || !maus) return;
-    const patch = createChiefPatch(maus, chief);
-    if (!replay) stageIntro(maus.id);
+    if (leaving || !eacbot) return;
+    const patch = createChiefPatch(eacbot, chief);
+    if (!replay) stageIntro(eacbot.id);
     landInSidebar({
       from: avatar.current,
-      botId: maus.id,
+      botId: eacbot.id,
       reduced,
       commit: () => {
         setWelcomingBot(null);
-        dispatch({ type: "updateBot", botId: maus.id, patch });
+        dispatch({ type: "updateBot", botId: eacbot.id, patch });
       },
     });
-    leave(maus.id, reduced ? CHIEF_FADE_MS : FLIGHT_MS);
+    leave(eacbot.id, reduced ? CHIEF_FADE_MS : FLIGHT_MS);
   };
 
   const keep = (bot: Bot) => {
     if (leaving) return;
     setWelcomingBot(null);
-    if (maus && !maus.welcomed) dispatch({ type: "updateBot", botId: maus.id, patch: { welcomed: true } });
+    if (eacbot && !eacbot.welcomed) dispatch({ type: "updateBot", botId: eacbot.id, patch: { welcomed: true } });
     if (!bot.chiefOfStaff) dispatch({ type: "updateBot", botId: bot.id, patch: { chiefOfStaff: true } });
     leave(bot.id, CHIEF_FADE_MS);
   };
@@ -179,7 +179,7 @@ export function ChiefIntro({ replay, onDone, onLeave, onLater }: { replay: boole
         <>
           <div className="flex flex-col items-center gap-4 px-6 pb-4 pt-6 text-center">
             <span ref={avatar} className="relative flex">
-              {maus ? <BotAvatar bot={maus} size={AVATAR_SIZE} motion="arrive" /> : <MausAvatar color="chrome" size={AVATAR_SIZE} label={DEFAULT_BOT_NAME} />}
+              {eacbot ? <BotAvatar bot={eacbot} size={AVATAR_SIZE} motion="arrive" /> : <MascotAvatar color="chrome" size={AVATAR_SIZE} label={DEFAULT_BOT_NAME} />}
               <ChiefBadge />
             </span>
             <div className="flex flex-col gap-2">
@@ -193,7 +193,7 @@ export function ChiefIntro({ replay, onDone, onLeave, onLater }: { replay: boole
                 <span className="truncate">{t("onboarding.chief.choose")}</span>
               </button>
             )}
-            <button type="button" data-primary="" data-chief-create="" onClick={create} disabled={!maus} className={cn(PRIMARY, "w-full min-w-0")}>
+            <button type="button" data-primary="" data-chief-create="" onClick={create} disabled={!eacbot} className={cn(PRIMARY, "w-full min-w-0")}>
               <span className="truncate">{t("onboarding.chief.create")}</span>
             </button>
           </div>

@@ -61,7 +61,7 @@ with the normal approval cards, model picker and reasoning-effort control.
 - "Full access" / "Auto-accept edits" approval levels (dsh has no modes; it
   stays ask/auto like Kimi and Hermes).
 - Phone apps: engines come from the server, phones only need a provider mark;
-  that is a separate mausbot-mobile change and is noted in the hand-over.
+  that is a separate eacbot-mobile change and is noted in the hand-over.
 - Managed download of dsh; npm is the install route.
 
 ## Anti-goals
@@ -90,7 +90,7 @@ with the normal approval cards, model picker and reasoning-effort control.
   `session/new` in a temp cwd, read `configOptions[id=model]`, `session/close`,
   end stdin, kill. Options become `<provider>/<model>` with dsh's own names as
   labels; `currentValue` becomes the default. Any failure throws so the core
-  keeps the last usable catalog. Timeout 60 s (`OPENMAUS_DEEPSEEK_MODELS_TIMEOUT_MS`).
+  keeps the last usable catalog. Timeout 60 s (`EAC_DEEPSEEK_MODELS_TIMEOUT_MS`).
   `resolveModelsOnCreate: false`.
 - Model and reasoning effort ride the core's existing OpenCode-shaped path
   (builder's call, replacing the `effortLevels` + `configureSession` draft

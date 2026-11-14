@@ -83,7 +83,7 @@ const storedSchema = z.object({
   name: z.string(),
   prompt: z.string(),
   botId: z.string().min(1),
-  runOn: z.enum(["maus", "cloud"]),
+  runOn: z.enum(["eacbot", "cloud"]),
   enabled: z.boolean(),
   app: z.string().min(1),
   appName: z.string(),
@@ -275,7 +275,7 @@ export class AppTriggerManager {
     if (duplicate) throw new AppTriggerError(`The same automation already exists (${duplicate.id}). Use trigger_info to review it, then change that one instead.`, 409);
     const now = this.now();
     const trigger: StoredTrigger = {
-      id: input.id ?? randomUUID(), name, prompt, botId: input.botId, runOn: input.runOn ?? "maus", enabled: input.enabled ?? true,
+      id: input.id ?? randomUUID(), name, prompt, botId: input.botId, runOn: input.runOn ?? "eacbot", enabled: input.enabled ?? true,
       app, appName: appLabel(app), event: type.slug, eventName: type.name || type.slug, delivery: type.type === "poll" ? "poll" : "instant",
       accountId: account.id, ...(account.alias ? { accountLabel: account.alias } : {}), config, ...(filter ? { filter } : {}),
       remote: { state: "pending" }, ...(input.sourceThreadId ? { sourceThreadId: input.sourceThreadId } : {}),

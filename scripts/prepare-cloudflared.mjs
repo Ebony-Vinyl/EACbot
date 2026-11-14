@@ -252,7 +252,7 @@ async function stageTarget(root, target) {
     return;
   }
 
-  const scratch = mkdtempSync(join(tmpdir(), `openmaus-cloudflared-${target}-`));
+  const scratch = mkdtempSync(join(tmpdir(), `eacbot-cloudflared-${target}-`));
   try {
     const payload = await releaseBytes(asset);
     verifySha256(payload, asset.sha256, asset.name);

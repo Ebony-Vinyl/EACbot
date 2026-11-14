@@ -70,7 +70,7 @@ client:
    "env": {
      "ELECTRON_RUN_AS_NODE": "1",
      "EAC_PORT": "8799",
-     "OPENMAUSBOT_TOKEN": "omb_sess_..."
+     "EACBOT_TOKEN": "omb_sess_..."
    }
    ```
 
@@ -109,12 +109,12 @@ With no configuration, the MCP process probes EACbot's three desktop ports (`879
 and accepts only a health response that identifies itself as EACbot. This handles the desktop's normal
 fallback when another local process already owns port 8799.
 
-Set `EAC_PORT` to force one local port, or `OPENMAUSBOT_URL` to use an explicit HTTP(S) origin. Cleartext remote
+Set `EAC_PORT` to force one local port, or `EACBOT_URL` to use an explicit HTTP(S) origin. Cleartext remote
 HTTP is rejected unless `ALLOW_INSECURE_HTTP=true`; HTTPS should be used outside loopback. An optional
-`OPENMAUSBOT_TOKEN` is sent as a bearer token for authenticated reverse proxies. When a token is set, an
-explicit `OPENMAUSBOT_URL` or `EAC_PORT` is required so the credential is never sent while probing unrelated
-local ports. `OPENMAUSBOT_MCP_TIMEOUT_MS` can set an HTTP timeout between 1,000 and 120,000 milliseconds.
-In packaged builds, `OPENMAUSBOT_TOKEN` is required for mutating tools as
+`EACBOT_TOKEN` is sent as a bearer token for authenticated reverse proxies. When a token is set, an
+explicit `EACBOT_URL` or `EAC_PORT` is required so the credential is never sent while probing unrelated
+local ports. `EACBOT_MCP_TIMEOUT_MS` can set an HTTP timeout between 1,000 and 120,000 milliseconds.
+In packaged builds, `EACBOT_TOKEN` is required for mutating tools as
 described above; it is not a generic reverse-proxy secret.
 
 ## Tools

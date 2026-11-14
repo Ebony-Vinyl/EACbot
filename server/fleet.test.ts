@@ -127,10 +127,10 @@ describe("plans", () => {
     expect(steps.find((step) => step.kind === "append-once")).toEqual({ kind: "append-once", path: "/etc/caddy/Caddyfile", line: "import /etc/caddy/omb.d/*.caddy" });
     expect(argvOf(steps)).toEqual(["systemctl daemon-reload", "systemctl enable --now eacbot-fence.service", "systemctl reload caddy"]);
     expect(() => initPlan({ domain: "not a domain", node: "n", script: "s", layout })).toThrow("domain name");
-    const withAgent = initPlan({ domain: "agentada.cc", node: "/usr/bin/node", script: "/usr/lib/node_modules/eacbot/cli.js", operator: "maus", layout });
-    expect(withAgent.registry.operator).toBe("maus");
+    const withAgent = initPlan({ domain: "agentada.cc", node: "/usr/bin/node", script: "/usr/lib/node_modules/eacbot/cli.js", operator: "eacbot", layout });
+    expect(withAgent.registry.operator).toBe("eacbot");
     const agent = withAgent.steps.find((step) => step.kind === "write" && step.path === "/etc/systemd/system/eacbot-fleet.service");
-    expect(agent).toMatchObject({ content: expect.stringContaining("fleet agent --socket /run/eacbot/fleet.sock --group maus") });
+    expect(agent).toMatchObject({ content: expect.stringContaining("fleet agent --socket /run/eacbot/fleet.sock --group eacbot") });
     expect(agent).toMatchObject({ content: expect.stringContaining("RuntimeDirectory=eacbot") });
     expect(argvOf(withAgent.steps)).toContain("systemctl enable --now eacbot-fleet.service");
     expect(() => initPlan({ domain: "agentada.cc", node: "n", script: "s", operator: "Not A User", layout })).toThrow("Unix user");

@@ -249,7 +249,7 @@ describe("importing onto a Starter Cloud", () => {
     const app = await onStarter(5);
     const before = app.snapshot();
     const { parseTeamManifest } = await import("./team-manifest.ts");
-    const manifest = parseTeamManifest({ format: "openmaus.team", version: 2, team: { name: "Desk", members: [{ key: "helper", name: "Helper", appearance: { color: "blue" } }] } });
+    const manifest = parseTeamManifest({ format: "eacbot.team", version: 2, team: { name: "Desk", members: [{ key: "helper", name: "Helper", appearance: { color: "blue" } }] } });
     expect(() => app.importer.importTeamManifest(manifest, { mode: "add", cwd: null }, app.deps))
       .toThrow(expect.objectContaining({ code: "bot_limit", status: 409 }));
     expect(app.snapshot()).toBe(before);

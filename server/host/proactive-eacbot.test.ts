@@ -60,7 +60,7 @@ function withRuns(runs: RoutineRun[]): void {
   writeFileSync(join(DATA_DIR, "routines.json"), JSON.stringify({ ...file, runs: [...(file.runs ?? []), ...runs] }));
 }
 const watchRun = (routine: Routine, fields: Partial<RoutineRun>): RoutineRun => ({
-  id: `run-${Math.random().toString(36).slice(2)}`, routineId: routine.id, routineName: routine.name, target: "bot", botId: routine.botId, runOn: "maus",
+  id: `run-${Math.random().toString(36).slice(2)}`, routineId: routine.id, routineName: routine.name, target: "bot", botId: routine.botId, runOn: "eacbot",
   scheduledFor: Date.now(), status: "completed", manual: false, checkKey: "key-1", deliver: "brief", access: "read-and-draft", createdAt: Date.now() - 60_000, ...fields,
 });
 
@@ -83,21 +83,21 @@ describe("EACbot keeps an eye on the day", () => {
   it("on a new install, its EACbot is the Chief and gets the one watch, once", () => {
     const first = start();
     first.store.seedIfEmpty();
-    const maus = ensureDefaultBot(first.store, { dataDir: DATA_DIR })!;
-    expect(maus).toMatchObject({ chiefOfStaff: true, defaultBot: {} });
-    expect(first.proactive.ensureWatch()).toMatchObject({ name: WATCH_NAME, botId: maus.id, enabled: true });
+    const eacbot = ensureDefaultBot(first.store, { dataDir: DATA_DIR })!;
+    expect(eacbot).toMatchObject({ chiefOfStaff: true, defaultBot: {} });
+    expect(first.proactive.ensureWatch()).toMatchObject({ name: WATCH_NAME, botId: eacbot.id, enabled: true });
     const again = start();
     expect(again.proactive.ensureWatch()).toBeNull();
-    expect(again.briefing().map((routine) => routine.botId)).toEqual([maus.id]);
+    expect(again.briefing().map((routine) => routine.botId)).toEqual([eacbot.id]);
   });
 
   it("on an install where EACbot comes later, the watch is made on EACbot, not the Chief", () => {
     const first = start();
     const clive = first.store.createBot({ name: "Clive" });
     first.store.setChiefOfStaff(clive.id);
-    const maus = ensureDefaultBot(first.store, { dataDir: DATA_DIR })!;
-    expect(proactiveOwner(first.store)?.id).toBe(maus.id);
-    expect(first.proactive.ensureWatch()!.botId).toBe(maus.id);
+    const eacbot = ensureDefaultBot(first.store, { dataDir: DATA_DIR })!;
+    expect(proactiveOwner(first.store)?.id).toBe(eacbot.id);
+    expect(first.proactive.ensureWatch()!.botId).toBe(eacbot.id);
     expect(start().briefing()).toHaveLength(1);
   });
 
@@ -109,22 +109,22 @@ describe("EACbot keeps an eye on the day", () => {
     const checksState = JSON.stringify({ version: 1, routines: { [watch.id]: { mailCursor: 1_000, judged: ["m0", "m1"], runsCursor: 2_000 } } });
     writeFileSync(join(DATA_DIR, CHECKS_FILE), checksState);
     withRuns([watchRun(watch, {}), watchRun(watch, { checkKey: "key-2" })]);
-    const maus = ensureDefaultBot(first.store, { dataDir: DATA_DIR })!;
+    const eacbot = ensureDefaultBot(first.store, { dataDir: DATA_DIR })!;
     const before = json("routines.json").routines.find((routine: Routine) => routine.id === watch.id);
 
     const after = start();
     after.proactive.ensureWatch();
     const [moved] = after.briefing();
     expect(after.briefing()).toHaveLength(1);
-    expect(moved).toMatchObject({ id: watch.id, botId: maus.id, enabled: false, prompt: "Watch for Ada.", checks: ["calendar", "mail", "runs"], access: "read-and-draft",
+    expect(moved).toMatchObject({ id: watch.id, botId: eacbot.id, enabled: false, prompt: "Watch for Ada.", checks: ["calendar", "mail", "runs"], access: "read-and-draft",
       deliver: "brief", schedule: before.schedule, nextRunAt: null, createdAt: before.createdAt });
     expect(readFileSync(join(DATA_DIR, CHECKS_FILE), "utf8")).toBe(checksState);
     expect(checkRunsLeft(after.routines.listRuns(), watch.id, Date.now())).toBe(CHECK_RUNS_PER_DAY - 2);
-    expect(json(BRIEF_FILE).home).toEqual({ botId: maus.id, threadId: maus.threadId });
+    expect(json(BRIEF_FILE).home).toEqual({ botId: eacbot.id, threadId: eacbot.threadId });
     expect(json(BRIEF_FILE).introducedOn).toBeUndefined();
     expect(briefCards(after.store, after.store.bot(clive.id)!), "past cards stay where they were").toHaveLength(1);
     expect(after.store.bot(clive.id)?.chiefOfStaff).toBe(true);
-    expect(json(WATCH_FILE).handed).toEqual({ [watch.id]: maus.id });
+    expect(json(WATCH_FILE).handed).toEqual({ [watch.id]: eacbot.id });
 
     const settled = after.routines.listRoutines().find((routine) => routine.id === watch.id)!.updatedAt;
     after.proactive.ensureWatch();
@@ -140,55 +140,55 @@ describe("EACbot keeps an eye on the day", () => {
   it("an install whose watch.json predates the handover still hands over once", () => {
     const { first, watch } = existingInstall();
     writeFileSync(join(DATA_DIR, WATCH_FILE), JSON.stringify({ version: 1, routineId: watch.id, createdAt: 1 }));
-    const maus = ensureDefaultBot(first.store, { dataDir: DATA_DIR })!;
+    const eacbot = ensureDefaultBot(first.store, { dataDir: DATA_DIR })!;
     const after = start();
     expect(after.proactive.ensureWatch()).toBeNull();
-    expect(after.briefing().map((routine) => [routine.id, routine.botId, routine.enabled])).toEqual([[watch.id, maus.id, true]]);
+    expect(after.briefing().map((routine) => [routine.id, routine.botId, routine.enabled])).toEqual([[watch.id, eacbot.id, true]]);
   });
 
   it("finishes a handover a restart cut short, without a second watch", async () => {
     const { first, clive, watch } = existingInstall();
     await first.proactive.brief.report({ routine: watch, at: Date.now(), picked: [{ email: ada, why: "Ada needs the numbers.", needsReply: true }] });
     expect(json(BRIEF_FILE).home.botId).toBe(clive.id);
-    const maus = ensureDefaultBot(first.store, { dataDir: DATA_DIR })!;
+    const eacbot = ensureDefaultBot(first.store, { dataDir: DATA_DIR })!;
     // The routine was moved, and the server stopped before the brief and watch.json followed.
-    first.routines.update(watch.id, { botId: maus.id });
+    first.routines.update(watch.id, { botId: eacbot.id });
     const marker = readFileSync(join(DATA_DIR, WATCH_FILE), "utf8");
 
     const after = start();
     after.proactive.ensureWatch();
-    expect(after.briefing().map((routine) => [routine.id, routine.botId, routine.enabled])).toEqual([[watch.id, maus.id, true]]);
-    expect(json(BRIEF_FILE).home).toEqual({ botId: maus.id, threadId: maus.threadId });
+    expect(after.briefing().map((routine) => [routine.id, routine.botId, routine.enabled])).toEqual([[watch.id, eacbot.id, true]]);
+    expect(json(BRIEF_FILE).home).toEqual({ botId: eacbot.id, threadId: eacbot.threadId });
     expect(readFileSync(join(DATA_DIR, WATCH_FILE), "utf8")).not.toBe(marker);
-    expect(json(WATCH_FILE).handed[watch.id]).toBe(maus.id);
+    expect(json(WATCH_FILE).handed[watch.id]).toBe(eacbot.id);
   });
 
   it("never leaves two watches on: the Chief's is the one kept, EACbot's own is paused, and none is deleted", () => {
     const { first, watch } = existingInstall();
-    const maus = ensureDefaultBot(first.store, { dataDir: DATA_DIR })!;
-    const own = first.routines.create({ name: "EACbot's watch", prompt: "Watch.", botId: maus.id, enabled: true, checks: ["mail"], deliver: "brief",
+    const eacbot = ensureDefaultBot(first.store, { dataDir: DATA_DIR })!;
+    const own = first.routines.create({ name: "EACbot's watch", prompt: "Watch.", botId: eacbot.id, enabled: true, checks: ["mail"], deliver: "brief",
       schedule: { type: "interval", everyMinutes: 15, anchorAt: Date.now() + 60_000 } });
     const after = start();
     after.proactive.ensureWatch();
-    expect(after.briefing().map((routine) => [routine.id, routine.botId, routine.enabled]).sort()).toEqual([[own.id, maus.id, false], [watch.id, maus.id, true]].sort());
+    expect(after.briefing().map((routine) => [routine.id, routine.botId, routine.enabled]).sort()).toEqual([[own.id, eacbot.id, false], [watch.id, eacbot.id, true]].sort());
     expect(after.on().map((routine) => routine.id)).toEqual([watch.id]);
   });
 
   it("keeps the person's pause: a paused watch moves paused, and nothing else is left on", () => {
     const { first, watch } = existingInstall();
     first.routines.update(watch.id, { enabled: false });
-    const maus = ensureDefaultBot(first.store, { dataDir: DATA_DIR })!;
-    first.routines.create({ name: "EACbot's watch", prompt: "Watch.", botId: maus.id, enabled: true, checks: ["mail"], deliver: "brief",
+    const eacbot = ensureDefaultBot(first.store, { dataDir: DATA_DIR })!;
+    first.routines.create({ name: "EACbot's watch", prompt: "Watch.", botId: eacbot.id, enabled: true, checks: ["mail"], deliver: "brief",
       schedule: { type: "interval", everyMinutes: 15, anchorAt: Date.now() + 60_000 } });
     const after = start();
     after.proactive.ensureWatch();
-    expect(after.briefing().find((routine) => routine.id === watch.id)).toMatchObject({ botId: maus.id, enabled: false });
+    expect(after.briefing().find((routine) => routine.id === watch.id)).toMatchObject({ botId: eacbot.id, enabled: false });
     expect(after.on()).toEqual([]);
   });
 
   it("waits while a run of the watch is queued or working, then hands it over", () => {
     const { first, clive, watch } = existingInstall();
-    const maus = ensureDefaultBot(first.store, { dataDir: DATA_DIR })!;
+    const eacbot = ensureDefaultBot(first.store, { dataDir: DATA_DIR })!;
     const queued = watchRun(watch, { status: "queued" });
     withRuns([queued]);
     const busy = start();
@@ -198,7 +198,7 @@ describe("EACbot keeps an eye on the day", () => {
     writeFileSync(join(DATA_DIR, "routines.json"), JSON.stringify({ ...file, runs: file.runs.map((run: RoutineRun) => ({ ...run, status: "completed", finishedAt: Date.now() })) }));
     const idle = start();
     idle.proactive.ensureWatch();
-    expect(idle.briefing().map((routine) => routine.botId)).toEqual([maus.id]);
+    expect(idle.briefing().map((routine) => routine.botId)).toEqual([eacbot.id]);
   });
 
   it("hands nothing over on a computer whose bots moved to My Cloud", () => {
@@ -213,19 +213,19 @@ describe("EACbot keeps an eye on the day", () => {
     const { first, clive, watch } = existingInstall();
     await first.proactive.brief.report({ routine: watch, at: Date.now(), picked: [{ email: { ...ada, id: "m0" }, why: "Earlier today.", needsReply: false }] });
     expect(briefCards(first.store, clive)).toHaveLength(1);
-    const maus = ensureDefaultBot(first.store, { dataDir: DATA_DIR })!;
-    first.store.patchBot(maus.id, { sidebarHidden: true, welcomed: true });
+    const eacbot = ensureDefaultBot(first.store, { dataDir: DATA_DIR })!;
+    first.store.patchBot(eacbot.id, { sidebarHidden: true, welcomed: true });
     const after = start();
     after.proactive.ensureWatch();
     const moved = after.briefing()[0]!;
     await after.proactive.brief.report({ routine: moved, at: Date.now(), picked: [{ email: ada, why: "Ada needs the numbers.", needsReply: true }] });
-    const hidden = after.store.bot(maus.id)!;
+    const hidden = after.store.bot(eacbot.id)!;
     expect(hidden.sidebarHidden).toBe(true);
     expect(briefCards(after.store, hidden)).toHaveLength(1);
     expect(JSON.stringify(briefCards(after.store, hidden)[0]!.widget!.root)).toContain("Tell me to stop, or what to watch for.");
     expect(briefCards(after.store, after.store.bot(clive.id)!), "today's earlier card stays with the Chief").toHaveLength(1);
-    expect(after.notified.at(-1)).toMatchObject({ kind: "brief", botId: maus.id, threadId: hidden.threadId });
-    expect(await after.proactive.brief.active("desktop", "UTC")).toMatchObject({ open: { botId: maus.id, threadId: hidden.threadId } });
+    expect(after.notified.at(-1)).toMatchObject({ kind: "brief", botId: eacbot.id, threadId: hidden.threadId });
+    expect(await after.proactive.brief.active("desktop", "UTC")).toMatchObject({ open: { botId: eacbot.id, threadId: hidden.threadId } });
     await after.proactive.checks.check(moved, { manual: true });
     expect(after.store.messagesFor(hidden.threadId).filter((message) => message.setupSuggestion)).toHaveLength(1);
     expect(after.store.messagesFor(clive.threadId).filter((message) => message.setupSuggestion)).toEqual([]);
@@ -258,7 +258,7 @@ describe("EACbot keeps an eye on the day", () => {
   it("moves to My Cloud with EACbot, untouched as it looks, once the person changed the watch, and is the only watch on there", async () => {
     // This computer: the watch was handed to a EACbot nobody has opened yet.
     const { first, clive, watch } = existingInstall();
-    const maus = ensureDefaultBot(first.store, { dataDir: DATA_DIR })!;
+    const eacbot = ensureDefaultBot(first.store, { dataDir: DATA_DIR })!;
     const here = start();
     here.proactive.ensureWatch();
     const deps = (place: ReturnType<typeof start>): MoveKindsDeps => ({ dataDir: DATA_DIR, store: place.store, routines: () => place.routines, calls: () => null, webhooks: () => null,
@@ -273,15 +273,15 @@ describe("EACbot keeps an eye on the day", () => {
       move: { items: (bots, only) => moveItems(deps(here), bots, only), botParts: () => ({}) },
     });
     const carries = (key: string, options: { move: boolean }) => cloudSendSummary(sources(true), options).items.some((item) => item.key === key);
-    expect(carries(`bot:${maus.id}`, { move: true }), "the watch as the server made it is nobody's use").toBe(false);
+    expect(carries(`bot:${eacbot.id}`, { move: true }), "the watch as the server made it is nobody's use").toBe(false);
     here.routines.update(watch.id, { prompt: "Watch for Ada." });
-    expect(carries(`bot:${maus.id}`, { move: false }), "a send without the routines leaves it as it was").toBe(false);
+    expect(carries(`bot:${eacbot.id}`, { move: false }), "a send without the routines leaves it as it was").toBe(false);
     const carried = cloudSendSummary(sources(true), { move: true }).items;
-    expect(carried.some((item) => item.key === `bot:${maus.id}`)).toBe(true);
-    expect(carried.find((item) => item.key === `routine:${watch.id}`)).toMatchObject({ bot: maus.id });
+    expect(carried.some((item) => item.key === `bot:${eacbot.id}`)).toBe(true);
+    expect(carried.find((item) => item.key === `routine:${watch.id}`)).toMatchObject({ bot: eacbot.id });
     expect(cloudSendSummary(sources(false), { move: true }).items.some((item) => item.key === `routine:${watch.id}`), "without its routines it looked unused").toBe(false);
     const pick = (bot: BotRecord) => Object.fromEntries(MOVE_BOT_FIELDS.map((name) => [name, (bot as unknown as Record<string, unknown>)[name] ?? null]));
-    const mausFields = pick(here.store.bot(maus.id)!), cliveFields = pick(here.store.bot(clive.id)!);
+    const eacbotFields = pick(here.store.bot(eacbot.id)!), cliveFields = pick(here.store.bot(clive.id)!);
     const routine = kindRecord(deps(here), "routine", watch.id)!;
 
     // My Cloud: its own EACbot and its own watch, then this computer's bots, then its automations, as a move sends them.
@@ -300,19 +300,19 @@ describe("EACbot keeps an eye on the day", () => {
       return status;
     };
     cloud.store.createBot({ name: "Clive" }, { id: clive.id, seedMessages: false });
-    cloud.store.createBot({ name: "EACbot" }, { id: maus.id, seedMessages: false });
+    cloud.store.createBot({ name: "EACbot" }, { id: eacbot.id, seedMessages: false });
     expect(await take(`bot:${clive.id}`, cliveFields)).toBe(200);
-    expect(await take(`bot:${maus.id}`, mausFields)).toBe(200);
+    expect(await take(`bot:${eacbot.id}`, eacbotFields)).toBe(200);
     cloud.proactive.ensureWatch();
-    expect(proactiveOwner(cloud.store)?.id).toBe(maus.id);
+    expect(proactiveOwner(cloud.store)?.id).toBe(eacbot.id);
     expect(await take(`routine:${watch.id}`, routine.record, routine.runs)).toBe(200);
     cloud.routines.update(watch.id, { enabled: true });
     cloud.proactive.ensureWatch();
     cloud.proactive.ensureWatch();
 
-    expect(cloud.on().map((one) => [one.id, one.botId, one.prompt])).toEqual([[watch.id, maus.id, "Watch for Ada."]]);
+    expect(cloud.on().map((one) => [one.id, one.botId, one.prompt])).toEqual([[watch.id, eacbot.id, "Watch for Ada."]]);
     expect(cloud.briefing().find((one) => one.id === own.id)).toMatchObject({ botId: starter.id, enabled: false });
     expect(cloud.briefing()).toHaveLength(2);
-    expect(json(BRIEF_FILE).home).toEqual({ botId: maus.id, threadId: cloud.store.bot(maus.id)!.threadId });
+    expect(json(BRIEF_FILE).home).toEqual({ botId: eacbot.id, threadId: cloud.store.bot(eacbot.id)!.threadId });
   });
 });

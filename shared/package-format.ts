@@ -1,4 +1,4 @@
-// The EACbot package file ("openmaus.package"), v1 or v2; every reader
+// The EACbot package file ("eacbot.package"), v1 or v2; every reader
 // returns v2. The single validation gate for the server, the renderer and the
 // Admin upload, so it imports only zod, yaml, croner and pure shared modules
 // (no Buffer, no node:*). The schema has no field for chat history, secrets,
@@ -10,10 +10,10 @@ import { z } from "zod";
 import { BOT_PROFILE_LIMITS, fitsOnOneLine } from "./bot-profile.ts";
 import { redactSecretsInText } from "./redact.ts";
 import { normalizeCronSchedule } from "./routine-schedule.ts";
-import { MAUS_COLOR_NAMES } from "./wire.ts";
+import { MASCOT_COLOR_NAMES } from "./wire.ts";
 import { isSkillName, parseSkillMd, scanSkillText, SKILL_FILE_MAX_BYTES } from "./skill-md.ts";
 
-export const PACKAGE_FORMAT = "openmaus.package";
+export const PACKAGE_FORMAT = "eacbot.package";
 /** The newest version this module reads and writes. */
 export const PACKAGE_VERSION = 2;
 /** Canonical UTF-8 bytes of the whole document. */
@@ -199,7 +199,7 @@ const exampleSchema = z.object({
 });
 
 const packageDocumentV1Schema = z.object({
-  format: z.literal(PACKAGE_FORMAT, { error: "This is not an OpenMaus package" }),
+  format: z.literal(PACKAGE_FORMAT, { error: "This is not an EACbot package" }),
   version: z.literal(PACKAGE_V1_VERSION, { error: "Package version is not supported" }),
   package: z.object({
     id: requiredText(80).regex(/^[a-z0-9][a-z0-9-]*$/, { message: "must be a lowercase slug" }),
@@ -222,7 +222,7 @@ const packageDocumentV1Schema = z.object({
       description: optionalText(4_000),
       soul: soulSchema.optional(),
       appearance: z.object({
-        color: z.enum(MAUS_COLOR_NAMES, { error: "is not supported" }),
+        color: z.enum(MASCOT_COLOR_NAMES, { error: "is not supported" }),
         mascotExpression: optionalText(80),
         mascotBody: optionalText(40),
       }),
@@ -236,7 +236,7 @@ const packageDocumentV1Schema = z.object({
       name: requiredText(80),
       agent: key,
       prompt: requiredText(20_000),
-      runOn: z.enum(["maus", "cloud"]),
+      runOn: z.enum(["eacbot", "cloud"]),
       schedule: packageRoutineScheduleSchema,
       durationMinutes: z.number().int().min(5).max(240),
       timeoutMinutes: z.number().int().min(5).max(240).optional(),
@@ -310,7 +310,7 @@ const avatarSchema = z.object({
 });
 
 const appearanceSchema = z.object({
-  color: z.enum(MAUS_COLOR_NAMES, { error: "is not supported" }),
+  color: z.enum(MASCOT_COLOR_NAMES, { error: "is not supported" }),
   mascotExpression: optionalText(80),
   mascotBody: optionalText(40),
   avatar: avatarSchema.optional(),
@@ -362,7 +362,7 @@ const routineSchema = z.object({
   /** Present = a room goal (runs on this computer, no continuity). */
   room: key.optional(),
   prompt: requiredText(20_000),
-  runOn: z.enum(["maus", "cloud"]),
+  runOn: z.enum(["eacbot", "cloud"]),
   schedule: packageRoutineScheduleSchema,
   durationMinutes: z.number().int().min(5).max(240),
   timeoutMinutes: z.number().int().min(1).max(1_440).optional(),
@@ -426,7 +426,7 @@ const connectionSchema = z.object({
 });
 
 export const packageDocumentSchema = z.object({
-  format: z.literal(PACKAGE_FORMAT, { error: "This is not an OpenMaus package" }),
+  format: z.literal(PACKAGE_FORMAT, { error: "This is not an EACbot package" }),
   version: z.literal(PACKAGE_VERSION, { error: "Package version is not supported" }),
   package: z.object({
     /** The package slug: its identity across releases. */
@@ -673,7 +673,7 @@ function checkV2References(pkg: PackageDefinition): void {
     if (!agents.has(routine.agent)) throw invalid(`Routine ${routine.key} references unknown agent: ${routine.agent}`);
     if (routine.room === undefined) continue;
     if (!rooms.has(routine.room)) throw invalid(`Routine ${routine.key} references unknown group chat: ${routine.room}`);
-    if (routine.runOn !== "maus") throw invalid(`Routine ${routine.key} is a group chat goal, which only runs on this computer`);
+    if (routine.runOn !== "eacbot") throw invalid(`Routine ${routine.key} is a group chat goal, which only runs on this computer`);
     if (routine.continuity) throw invalid(`Routine ${routine.key} is a group chat goal, which cannot carry continuity`);
     // The goal scheduler refuses a lead who is not in the room.
     if (!roomMembers.get(routine.room)!.has(routine.agent)) {
@@ -760,7 +760,7 @@ export function parsePackageDocument(value: unknown, options: { trust?: PackageT
     document = upgradeV1(parsePackageV1(value));
   } else {
     if (!value || typeof value !== "object" || Array.isArray(value) || (value as { format?: unknown }).format !== PACKAGE_FORMAT) {
-      throw new PackageFormatError("not_a_package", "This is not an OpenMaus package");
+      throw new PackageFormatError("not_a_package", "This is not an EACbot package");
     }
     const version = (value as { version?: unknown }).version;
     if (typeof version === "number" && Number.isInteger(version) && version > PACKAGE_VERSION) {

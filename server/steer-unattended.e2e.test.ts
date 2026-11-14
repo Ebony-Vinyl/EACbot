@@ -134,7 +134,7 @@ posixOnly("a steered message does not lift the unattended mark on its own", () =
       name: "Nightly build",
       prompt: "Handle the incoming build event",
       botId: bot.id,
-      runOn: "maus",
+      runOn: "eacbot",
     });
     expect(hook.status).toBe(201);
     const delivered = await fetch(hook.body.credential.url, {

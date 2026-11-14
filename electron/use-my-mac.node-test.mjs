@@ -251,11 +251,11 @@ test("lending on opens the app at login, out of sight; off removes only the logi
   assert.equal(win.startedHidden(), true);
   assert.equal(createOpenAtLogin({ app: windows, file: path.join(dir, "win.json"), platform: "win32", home: dir, argv: ["EACbot.exe"] }).startedHidden(), false);
   const config = path.join(dir, "config");
-  const linux = createOpenAtLogin({ app: fakeApp(), file: path.join(dir, "linux.json"), platform: "linux", home: dir, env: { XDG_CONFIG_HOME: config, APPIMAGE: "/home/me/Apps/Open Maus$Bot.AppImage" } });
+  const linux = createOpenAtLogin({ app: fakeApp(), file: path.join(dir, "linux.json"), platform: "linux", home: dir, env: { XDG_CONFIG_HOME: config, APPIMAGE: "/home/me/Apps/Open Mascot$Bot.AppImage" } });
   linux.follow(true);
   const entry = path.join(config, "autostart", "eacbot.desktop");
-  assert.equal(await readFile(entry, "utf8"), autostartEntry("/home/me/Apps/Open Maus$Bot.AppImage"));
-  assert.match(await readFile(entry, "utf8"), /^Exec="\/home\/me\/Apps\/Open Maus\\\$Bot\.AppImage" --omb-hidden$/m);
+  assert.equal(await readFile(entry, "utf8"), autostartEntry("/home/me/Apps/Open Mascot$Bot.AppImage"));
+  assert.match(await readFile(entry, "utf8"), /^Exec="\/home\/me\/Apps\/Open Mascot\\\$Bot\.AppImage" --omb-hidden$/m);
   linux.follow(false);
   await assert.rejects(readFile(entry, "utf8"), { code: "ENOENT" });
   await mkdir(path.dirname(entry), { recursive: true });

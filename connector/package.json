@@ -1,5 +1,5 @@
 {
-  "name": "mausbot-connector",
+  "name": "eacbot-connector",
   "private": true,
   "type": "module",
   "description": "Runs a EACbot Cloud home on a server of its owner's, under EACbot's control, over one outbound connection.",

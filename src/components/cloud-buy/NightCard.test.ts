@@ -3,12 +3,12 @@ import { readFileSync } from "node:fs";
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { MAUS_COLOR_NAMES } from "@/lib/mascot";
+import { MASCOT_COLOR_NAMES } from "@/lib/mascot";
 
 type Seen = { color: string; state: string; animated: boolean; trackPointer?: boolean; size: number };
 vi.mock("@/components/Avatar", () => ({
-  MausAvatar: ({ color, state, animated, trackPointer, size: _size, ...choreography }: Seen) => createElement("i", {
-    "data-maus": color, "data-state": state, "data-animated": String(animated), "data-pointer": String(trackPointer),
+  MascotAvatar: ({ color, state, animated, trackPointer, size: _size, ...choreography }: Seen) => createElement("i", {
+    "data-mascot": color, "data-state": state, "data-animated": String(animated), "data-pointer": String(trackPointer),
     "data-extra": Object.keys(choreography).join(",") }),
 }));
 const { NightCard } = await import("./NightCard");
@@ -17,7 +17,7 @@ const { NightCard } = await import("./NightCard");
 let host: HTMLDivElement, root: Root;
 const render = async (small = false) => { await act(async () => { root.render(createElement(NightCard, { small, children: createElement("h2", null, "EACbot Cloud") })); }); };
 const card = () => host.querySelector<HTMLElement>("[data-night-card]")!;
-const mascots = () => [...host.querySelectorAll<HTMLElement>("[data-maus]")];
+const mascots = () => [...host.querySelectorAll<HTMLElement>("[data-mascot]")];
 const animated = () => mascots().map(node => node.dataset.animated);
 const motion = () => ["twinkle", "z", "shoot"].map(name => host.querySelectorAll(`.cloud-night-${name}`).length);
 
@@ -38,10 +38,10 @@ it("the scene is hidden from screen readers: the card's own text is what is read
 
 it("three of the app's own mascots ride the cloud in three colours, each in a calm state, never following the pointer", async () => {
   await render();
-  const colors = mascots().map(node => node.dataset.maus!);
+  const colors = mascots().map(node => node.dataset.mascot!);
   expect(colors).toHaveLength(3);
   expect(new Set(colors).size).toBe(3);
-  for (const color of colors) expect(MAUS_COLOR_NAMES).toContain(color);
+  for (const color of colors) expect(MASCOT_COLOR_NAMES).toContain(color);
   expect(mascots().map(node => node.dataset.state)).toEqual(["working", "idle", "thinking"]);
   expect(mascots().map(node => node.dataset.extra), "no faces, gazes or motions laid on top").toEqual(["", "", ""]);
   expect(mascots().map(node => node.dataset.pointer)).toEqual(["false", "false", "false"]);

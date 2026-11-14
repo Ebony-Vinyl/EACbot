@@ -44,13 +44,13 @@ describe("browser unread indicator", () => {
   });
 
   it("keeps the page's own title, such as a white-label name or a preview page's", () => {
-    const doc = { title: "Isolated OpenMaus Chat" };
+    const doc = { title: "Isolated EACbot Chat" };
     vi.stubGlobal("document", doc);
     vi.stubGlobal("navigator", {});
     showBrowserUnread(0);
-    expect(doc.title).toBe("Isolated OpenMaus Chat");
+    expect(doc.title).toBe("Isolated EACbot Chat");
     showBrowserUnread(1);
-    expect(doc.title).toBe("(1) Isolated OpenMaus Chat");
+    expect(doc.title).toBe("(1) Isolated EACbot Chat");
   });
 
   it("still sets the title where the Badging API is missing or refuses", () => {

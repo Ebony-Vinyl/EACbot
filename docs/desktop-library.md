@@ -29,7 +29,7 @@ update controls: the catalog always names the newest release.
 ## What main does with a new pointer
 
 1. `GET /api/desktop/library` (at most 256 KiB, 20 s). The catalog must be an
-   `openmaus.org-library` version 1 envelope for **this** Organization. A
+   `eacbot.org-library` version 1 envelope for **this** Organization. A
    malformed envelope or another Organization's catalog is refused whole and
    the last good catalog stays. A malformed entry is dropped on its own;
    unknown fields are ignored.

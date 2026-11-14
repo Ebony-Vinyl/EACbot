@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { setLocale } from "@/lib/i18n";
 import type { WhatsNewAction, WhatsNewSlide, WhatsNewView } from "@/lib/whats-new";
 
-vi.mock("@/components/Avatar", () => ({ MausAvatar: ({ color }: { color: string }) => createElement("i", { "data-maus": color }) }));
+vi.mock("@/components/Avatar", () => ({ MascotAvatar: ({ color }: { color: string }) => createElement("i", { "data-mascot": color }) }));
 const { WhatsNewPopup } = await import("./WhatsNewPopup");
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;

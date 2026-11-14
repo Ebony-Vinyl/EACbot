@@ -92,7 +92,7 @@ describe("a create button with no room", () => {
   });
 
   it("leaves the EACbot out of the count, as the server does", async () => {
-    await mount([botNamed("maus", { defaultBot: {} } as never), ...five().slice(1)], STARTER);
+    await mount([botNamed("eacbot", { defaultBot: {} } as never), ...five().slice(1)], STARTER);
     created = () => json({ bot: botNamed("new") }, 201);
     await send({ type: "newBot" });
     await vi.waitFor(() => expect(creates).toBe(1));

@@ -310,7 +310,7 @@ async function main() {
       prompt: "Check Discord for new bug reports and file them.",
       target: "bot",
       botId: kiwi.id,
-      runOn: "maus",
+      runOn: "eacbot",
       enabled: true,
       schedule: { type: "interval", everyMinutes: 5, anchorAt: Date.now() },
     }),

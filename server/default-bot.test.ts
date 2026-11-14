@@ -41,9 +41,9 @@ describe("EACbot, every person's helper", () => {
     again.seedIfEmpty();
     boot(again);
     expect(again.bots).toHaveLength(1);
-    const maus = placeEACbots(again)[0]!;
-    expect(maus).toMatchObject({ name: "EACbot", color: "chrome", chiefOfStaff: true, defaultBot: {} });
-    expect(intros(again, maus)).toHaveLength(1);
+    const eacbot = placeEACbots(again)[0]!;
+    expect(eacbot).toMatchObject({ name: "EACbot", color: "chrome", chiefOfStaff: true, defaultBot: {} });
+    expect(intros(again, eacbot)).toHaveLength(1);
   });
 
   it("leaves a Team Cloud member's EACbot uncrowned: it reaches no bot everyone sees, so a crown would promise work it can't hand on", () => {
@@ -62,15 +62,15 @@ describe("EACbot, every person's helper", () => {
     store.setChiefOfStaff(chief.id);
     store.createBot({ name: "Writer", title: "Writer", soul: "Write." });
     const before = structuredClone(store.bot(chief.id));
-    const maus = boot(store)!;
-    expect(maus).toMatchObject({ name: "EACbot", color: "chrome", defaultBot: {} });
-    expect(maus.chiefOfStaff).toBeFalsy();
-    expect(chiefLevel(maus)).toBe(true);
+    const eacbot = boot(store)!;
+    expect(eacbot).toMatchObject({ name: "EACbot", color: "chrome", defaultBot: {} });
+    expect(eacbot.chiefOfStaff).toBeFalsy();
+    expect(chiefLevel(eacbot)).toBe(true);
     expect(store.bot(chief.id)).toEqual(before);
-    expect(intros(store, maus)).toHaveLength(1);
+    expect(intros(store, eacbot)).toHaveLength(1);
     const restarted = new Store(selection);
     boot(restarted);
-    expect(placeEACbots(restarted).map((bot) => bot.id)).toEqual([maus.id]);
+    expect(placeEACbots(restarted).map((bot) => bot.id)).toEqual([eacbot.id]);
     expect(restarted.bots).toHaveLength(3);
     expect(restarted.bots.filter((bot) => bot.chiefOfStaff).map((bot) => bot.id)).toEqual([chief.id]);
   });
@@ -105,10 +105,10 @@ describe("EACbot, every person's helper", () => {
   it("makes EACbot the Chief of a place that has none, so the brief has someone to come from", () => {
     const store = new Store(selection);
     store.createBot({ name: "Pixel" });
-    const maus = boot(store)!;
-    expect(store.bot(maus.id)?.chiefOfStaff).toBe(true);
-    expect(briefChief(store)?.id).toBe(maus.id);
-    expect(intros(store, maus)[0]?.text).toContain("Hey! I'm EACbot. I'm new here. I'm here to be your Chief of Staff. I can manage your other bots.");
+    const eacbot = boot(store)!;
+    expect(store.bot(eacbot.id)?.chiefOfStaff).toBe(true);
+    expect(briefChief(store)?.id).toBe(eacbot.id);
+    expect(intros(store, eacbot)[0]?.text).toContain("Hey! I'm EACbot. I'm new here. I'm here to be your Chief of Staff. I can manage your other bots.");
   });
 
   it("makes an adopted EACbot the Chief when its place has none left", () => {
@@ -125,22 +125,22 @@ describe("EACbot, every person's helper", () => {
     const store = new Store(selection);
     const chief = store.createBot({ name: "Clive" });
     store.setChiefOfStaff(chief.id);
-    const maus = boot(store)!;
-    expect(store.bot(maus.id)?.chiefOfStaff).toBeFalsy();
-    expect(briefChief(store)?.id).toBe(maus.id);
-    expect(intros(store, maus)[0]?.text).toContain("your helper for everything here");
-    expect(intros(store, maus)[0]?.text).toContain("keep an eye on your day");
-    expect(intros(store, maus)[0]?.text).not.toContain("Chief of Staff");
+    const eacbot = boot(store)!;
+    expect(store.bot(eacbot.id)?.chiefOfStaff).toBeFalsy();
+    expect(briefChief(store)?.id).toBe(eacbot.id);
+    expect(intros(store, eacbot)[0]?.text).toContain("your helper for everything here");
+    expect(intros(store, eacbot)[0]?.text).toContain("keep an eye on your day");
+    expect(intros(store, eacbot)[0]?.text).not.toContain("Chief of Staff");
   });
 
   it("keeps a EACbot Chief hidden from the sidebar working as the Chief", () => {
     const store = new Store(selection);
-    const maus = boot(store)!;
-    store.patchBot(maus.id, { sidebarHidden: true });
+    const eacbot = boot(store)!;
+    store.patchBot(eacbot.id, { sidebarHidden: true });
     const restarted = new Store(selection);
     boot(restarted);
-    expect(restarted.bot(maus.id)).toMatchObject({ chiefOfStaff: true, sidebarHidden: true });
-    expect(briefChief(restarted)?.id).toBe(maus.id);
+    expect(restarted.bot(eacbot.id)).toMatchObject({ chiefOfStaff: true, sidebarHidden: true });
+    expect(briefChief(restarted)?.id).toBe(eacbot.id);
   });
 
   it("knows a renamed EACbot by its mark: no second one on update, Chief tools kept", () => {
@@ -148,64 +148,64 @@ describe("EACbot, every person's helper", () => {
     store.createBot({ name: "Writer" });
     const chief = store.createBot({ name: "Clive" });
     store.setChiefOfStaff(chief.id);
-    const maus = boot(store)!;
-    store.patchBot(maus.id, { name: "Jarvis", color: "blue" });
+    const eacbot = boot(store)!;
+    store.patchBot(eacbot.id, { name: "Jarvis", color: "blue" });
     const restarted = new Store(selection);
     boot(restarted);
-    expect(placeEACbots(restarted).map((bot) => [bot.id, bot.name])).toEqual([[maus.id, "Jarvis"]]);
-    expect(chiefLevel(restarted.bot(maus.id))).toBe(true);
+    expect(placeEACbots(restarted).map((bot) => [bot.id, bot.name])).toEqual([[eacbot.id, "Jarvis"]]);
+    expect(chiefLevel(restarted.bot(eacbot.id))).toBe(true);
     expect(restarted.bots).toHaveLength(3);
   });
 
   it("never takes a first bot that is not a new install's EACbot: it gets a EACbot beside it", () => {
     const store = new Store(selection);
     const pixel = store.createBot({ name: "Pixel" });
-    const maus = boot(store)!;
-    expect(maus.id).not.toBe(pixel.id);
+    const eacbot = boot(store)!;
+    expect(eacbot.id).not.toBe(pixel.id);
     expect(store.bot(pixel.id)?.defaultBot).toBeUndefined();
   });
 
   it("introduces itself once: not again after the asks were answered or dismissed, nor after a restart", () => {
     const store = new Store(selection);
-    const maus = boot(store)!;
-    const [intro] = intros(store, maus);
+    const eacbot = boot(store)!;
+    const [intro] = intros(store, eacbot);
     expect(intro?.card?.options).toHaveLength(4);
-    store.appendMessage(maus.threadId, { role: "user", kind: "text", text: "What can you do?" });
-    expect(store.messagesFor(maus.threadId).find((message) => message.id === intro!.id)?.card?.dismissed).toBe(true);
+    store.appendMessage(eacbot.threadId, { role: "user", kind: "text", text: "What can you do?" });
+    expect(store.messagesFor(eacbot.threadId).find((message) => message.id === intro!.id)?.card?.dismissed).toBe(true);
     for (let restart = 0; restart < 2; restart++) boot(new Store(selection));
     const after = new Store(selection);
-    expect(intros(after, after.bot(maus.id)!)).toHaveLength(1);
+    expect(intros(after, after.bot(eacbot.id)!)).toHaveLength(1);
   });
 
   it("never counts its intro as something that needs the person", () => {
     const store = new Store(selection);
-    const maus = boot(store)!;
-    expect(intros(store, maus)).toHaveLength(1);
+    const eacbot = boot(store)!;
+    expect(intros(store, eacbot)).toHaveLength(1);
     expect(mdb.attentionRows(0).filter((row) => row.kind === "options")).toEqual([]);
   });
 
   it("is hidden, never deleted or archived, and a hidden EACbot is never made again", () => {
     const store = new Store(selection);
-    const maus = boot(store)!;
+    const eacbot = boot(store)!;
     const other = store.createBot({ name: "Writer" });
-    expect(() => store.deleteBot(maus.id)).toThrow(/EACbot can't be deleted or archived/);
-    expect(store.bot(maus.id)).toBeTruthy();
-    expect(defaultBotPatchRefusal(maus, { hidden: true })).toMatch(/Show EACbot in the sidebar/);
+    expect(() => store.deleteBot(eacbot.id)).toThrow(/EACbot can't be deleted or archived/);
+    expect(store.bot(eacbot.id)).toBeTruthy();
+    expect(defaultBotPatchRefusal(eacbot, { hidden: true })).toMatch(/Show EACbot in the sidebar/);
     expect(defaultBotPatchRefusal(other, { sidebarHidden: true })).toMatch(/Only EACbot/);
-    expect(defaultBotPatchRefusal(maus, { sidebarHidden: "yes" })).toBe("sidebarHidden must be true or false");
-    expect(defaultBotPatchRefusal(maus, { sidebarHidden: true })).toBeNull();
-    store.patchBot(maus.id, { sidebarHidden: true });
+    expect(defaultBotPatchRefusal(eacbot, { sidebarHidden: "yes" })).toBe("sidebarHidden must be true or false");
+    expect(defaultBotPatchRefusal(eacbot, { sidebarHidden: true })).toBeNull();
+    store.patchBot(eacbot.id, { sidebarHidden: true });
     const restarted = new Store(selection);
     boot(restarted);
-    expect(placeEACbots(restarted).map((bot) => [bot.id, bot.sidebarHidden])).toEqual([[maus.id, true]]);
-    restarted.patchBot(maus.id, { sidebarHidden: false });
-    expect(new Store(selection).bot(maus.id)?.sidebarHidden).toBe(false);
+    expect(placeEACbots(restarted).map((bot) => [bot.id, bot.sidebarHidden])).toEqual([[eacbot.id, true]]);
+    restarted.patchBot(eacbot.id, { sidebarHidden: false });
+    expect(new Store(selection).bot(eacbot.id)?.sidebarHidden).toBe(false);
   });
 
   it("is never made twice for one place, even once its mark is gone", () => {
     const store = new Store(selection);
-    const maus = boot(store)!;
-    store.patchBot(maus.id, { defaultBot: undefined });
+    const eacbot = boot(store)!;
+    store.patchBot(eacbot.id, { defaultBot: undefined });
     expect(boot(store)).toBeNull();
     expect(store.bots).toHaveLength(1);
   });
@@ -268,10 +268,10 @@ describe("EACbot, every person's helper", () => {
       cloud.seedIfEmpty();
       boot(cloud);
       const starter = placeEACbots(cloud)[0]!;
-      const arrivingMaus = cloud.createBot({ name: "EACbot" }, { id: "desk-maus-000001", seedMessages: false });
-      expect(await arrive(cloud, arrivingMaus.id, fields({ defaultBot: {}, sidebarHidden: true, welcomed: true }))).toBe(200);
-      expect(placeEACbots(cloud).map((bot) => bot.id)).toEqual([arrivingMaus.id]);
-      expect(cloud.bot(arrivingMaus.id)).toMatchObject({ sidebarHidden: true, welcomed: true });
+      const arrivingMascot = cloud.createBot({ name: "EACbot" }, { id: "desk-mascot-000001", seedMessages: false });
+      expect(await arrive(cloud, arrivingMascot.id, fields({ defaultBot: {}, sidebarHidden: true, welcomed: true }))).toBe(200);
+      expect(placeEACbots(cloud).map((bot) => bot.id)).toEqual([arrivingMascot.id]);
+      expect(cloud.bot(arrivingMascot.id)).toMatchObject({ sidebarHidden: true, welcomed: true });
       expect(cloud.bot(starter.id)).toMatchObject({ chiefOfStaff: true });
       expect(cloud.bot(starter.id)?.hidden).toBeFalsy();
       const pixel = cloud.createBot({ name: "Pixel" }, { id: "desk-chief-00001", seedMessages: false });
@@ -279,7 +279,7 @@ describe("EACbot, every person's helper", () => {
       expect(cloud.bot(starter.id)).toMatchObject({ hidden: true });
       expect(cloud.bot(starter.id)?.defaultBot).toBeUndefined();
       expect(cloud.bots.filter((bot) => bot.chiefOfStaff).map((bot) => bot.id)).toEqual([pixel.id]);
-      expect(placeEACbots(cloud).map((bot) => bot.id)).toEqual([arrivingMaus.id]);
+      expect(placeEACbots(cloud).map((bot) => bot.id)).toEqual([arrivingMascot.id]);
     });
 
     it("still makes one EACbot on My Cloud when this computer's arrives renamed and with its own picture", async () => {
@@ -288,7 +288,7 @@ describe("EACbot, every person's helper", () => {
       boot(cloud);
       const starter = placeEACbots(cloud)[0]!;
       cloud.patchBot(starter.id, { name: "Starter" });
-      const arriving = cloud.createBot({ name: "Jarvis" }, { id: "desk-maus-000003", seedMessages: false });
+      const arriving = cloud.createBot({ name: "Jarvis" }, { id: "desk-mascot-000003", seedMessages: false });
       cloud.patchBot(arriving.id, { avatarUrl: "/api/attachments/jarvis.png", avatarCrop: "circle" });
       expect(await arrive(cloud, arriving.id, fields({ defaultBot: {}, welcomed: true }))).toBe(200);
       expect(placeEACbots(cloud).map((bot) => [bot.id, bot.name, bot.avatarUrl])).toEqual([[arriving.id, "Jarvis", "/api/attachments/jarvis.png"]]);
@@ -299,7 +299,7 @@ describe("EACbot, every person's helper", () => {
       const cloud = new Store(selection);
       const theirs = boot(cloud)!;
       cloud.appendMessage(theirs.threadId, { role: "user", kind: "text", text: "Hi" });
-      const arriving = cloud.createBot({ name: "EACbot" }, { id: "desk-maus-000002", seedMessages: false });
+      const arriving = cloud.createBot({ name: "EACbot" }, { id: "desk-mascot-000002", seedMessages: false });
       expect(await arrive(cloud, arriving.id, fields({ defaultBot: {} }))).toBe(200);
       expect(placeEACbots(cloud).map((bot) => bot.id)).toEqual([arriving.id]);
       expect(cloud.bot(theirs.id)?.hidden).toBeFalsy();
@@ -308,8 +308,8 @@ describe("EACbot, every person's helper", () => {
     it("comes home to exactly the one EACbot My Cloud had, and makes none", () => {
       const cloud = new Store(selection);
       cloud.seedIfEmpty();
-      const mausOnCloud = boot(cloud)!;
-      cloud.patchBot(mausOnCloud.id, { name: "Jarvis", sidebarHidden: true });
+      const eacbotOnCloud = boot(cloud)!;
+      cloud.patchBot(eacbotOnCloud.id, { name: "Jarvis", sidebarHidden: true });
       const backup = readFileSync(join(DATA_DIR, "bots.json"), "utf8");
       for (const file of ["bots.json", "default-bot.json"]) rmSync(join(DATA_DIR, file), { force: true });
       const desk = new Store(selection);
@@ -320,7 +320,7 @@ describe("EACbot, every person's helper", () => {
       const home = new Store(selection);
       home.seedIfEmpty();
       boot(home);
-      expect(home.bots.map((bot) => bot.id)).toEqual([mausOnCloud.id]);
+      expect(home.bots.map((bot) => bot.id)).toEqual([eacbotOnCloud.id]);
       expect(placeEACbots(home)[0]).toMatchObject({ name: "Jarvis", sidebarHidden: true });
     });
   });

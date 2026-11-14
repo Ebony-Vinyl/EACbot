@@ -1,4 +1,4 @@
-// dweb's HTTP API (the local OpenMaus network daemon) as MCP tools over stdio JSON-RPC 2.0: dweb_status,
+// dweb's HTTP API (the local EACbot network daemon) as MCP tools over stdio JSON-RPC 2.0: dweb_status,
 // dweb_repo_status, dweb_opencode_models, dweb_opencode_run (waits up to 5 min). Env:
 //   DWEB_URL  base URL of the local dweb daemon (http://127.0.0.1:49737)
 import readline from "node:readline";

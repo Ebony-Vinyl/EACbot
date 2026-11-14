@@ -65,7 +65,7 @@ function profiles(): Record<string, Record<string, string>> {
   all["skills+shared+voice+escalations+x+team"] = { ...all["skills+shared+voice+escalations+x"]!, EAC_TEAM_PEOPLE: "1" };
   all["skills+shared+voice+escalations+x+team+images"] = { ...all["skills+shared+voice+escalations+x+team"]!, EAC_IMAGE_GENERATION: "1" };
   all["default+legacy-switches"] = { ...all.default!, EAC_ROOM_TURN: "1", EAC_OWN_THREAD_CREATION: "1", EAC_EXTERNAL_RUNTIME: "1", EAC_ACTIVE_WAITS: "0" };
-  for (const name of ["default", "skills+shared+voice"]) all[`${name}+mausbot`] = { ...all[name]!, EAC_MAUSBOT: "1" };
+  for (const name of ["default", "skills+shared+voice"]) all[`${name}+eacbot`] = { ...all[name]!, EAC_BOT_TOOLS: "1" };
   all["default+no-computer-pick"] = { ...all.default!, EAC_COMPUTER_SELECTION: "0" };
   for (const name of ["default", "non-chief"]) all[`${name}+room`] = { ...all[name]!, EAC_COMPUTER_SELECTION: "0", EAC_ROOM: "1" };
   all["default+images"] = { ...all.default!, EAC_IMAGE_GENERATION: "1" };
@@ -105,8 +105,8 @@ const BUDGET_BASELINE: Record<string, number> = {
   "skills+shared+voice+escalations+x": 18069,
   "skills+shared+voice+escalations+x+team": 18085,
   "default+legacy-switches": 17486,
-  "default+mausbot": 17538,
-  "skills+shared+voice+mausbot": 18042,
+  "default+eacbot": 17538,
+  "skills+shared+voice+eacbot": 18042,
   "default+no-computer-pick": 16274,
   "default+room": 16213,
   "non-chief+room": 16096,

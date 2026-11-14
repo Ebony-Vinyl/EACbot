@@ -3,7 +3,7 @@
 import type { ServerResponse } from "node:http";
 
 import type { json as sendJson } from "../harness/http.ts";
-import { listUnread, markRead, type NotificationsHost } from "../mausbot-notifications.ts";
+import { listUnread, markRead, type NotificationsHost } from "../eacbot-notifications.ts";
 import { markNotificationLogRead, recentNotificationLog } from "../message-db.ts";
 import { PASS } from "./table.ts";
 

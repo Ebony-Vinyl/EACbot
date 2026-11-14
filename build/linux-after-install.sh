@@ -8,8 +8,8 @@ set -eu
 # bot's separate Chrome uses its normal user-namespace sandbox, with an exact
 # root-owned AppArmor allowlist on Ubuntu 24.04. Never disable the sandbox or
 # change the machine-wide user-namespace restriction.
-if [ -n "${OPENMAUSBOT_POSTINSTALL_TEST_ROOT:-}" ]; then
-  TEST_ROOT="$(realpath -e -- "$OPENMAUSBOT_POSTINSTALL_TEST_ROOT")"
+if [ -n "${EACBOT_POSTINSTALL_TEST_ROOT:-}" ]; then
+  TEST_ROOT="$(realpath -e -- "$EACBOT_POSTINSTALL_TEST_ROOT")"
   case "$TEST_ROOT" in
     /tmp/*) APP_ROOT=$TEST_ROOT ;;
     *)

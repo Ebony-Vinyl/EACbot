@@ -67,7 +67,7 @@ describe("message-db", () => {
   it("finds the first-reply rescue rows that never settled or ended", () => {
     const rescue = (id: string, state: Record<string, true> = {}) => msg(id, "", {
       role: "bot", kind: "activity",
-      tool: { name: "notice: Maus hasn't heard back from OpenCode yet.", ok: true,
+      tool: { name: "notice: Mascot hasn't heard back from OpenCode yet.", ok: true,
         rescue: { botId: "b", threadId: "t1", turnId: id, instanceId: "opencodeGo", ai: "OpenCode", ...state } },
     });
     insertMessage("t1", rescue("open"));

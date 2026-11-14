@@ -44,7 +44,7 @@ const INSTRUCTIONS_MAX = 20_000;
 const definitionSchema = z.object({
   name: z.string().trim().min(1, "A webhook trigger needs a name").max(NAME_MAX),
   instructions: z.string().trim().max(INSTRUCTIONS_MAX).default(""),
-  runOn: z.enum(["maus", "cloud"]).default("maus"),
+  runOn: z.enum(["eacbot", "cloud"]).default("eacbot"),
   eventTypes: z.array(z.string().trim().min(1).max(200)).max(20).optional(),
 }).strict();
 const changesSchema = definitionSchema.partial().strict()

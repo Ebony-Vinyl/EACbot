@@ -33,7 +33,7 @@ import {
   type PackageDocument,
 } from "../shared/package-format.ts";
 
-export const ORG_LIBRARY_FORMAT = "openmaus.org-library";
+export const ORG_LIBRARY_FORMAT = "eacbot.org-library";
 export const ORG_LIBRARY_CATALOG_MAX_BYTES = 256 * 1024;
 export const ORG_LIBRARY_MAX_ENTRIES = 100;
 export const ORG_LIBRARY_REPORT_MAX_ENTRIES = 100;

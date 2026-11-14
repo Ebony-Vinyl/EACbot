@@ -11,7 +11,7 @@ const record = (value: unknown): value is Json => value !== null && typeof value
 /** Every switch on: each tool the catalog can list, in the form tools/list sends it. */
 const LISTED = availableTools(catalogProfileFromEnv({
   EAC_BOT_ID: WATCHER_OPTIONS_CARD_BOT_ID, EAC_CHIEF_OF_STAFF: "1", EAC_SKILL_AUTHORING_ENABLED: "1", EAC_SHARED_COMPUTERS_ENABLED: "1",
-  EAC_VOICE_NOTES: "1", EAC_X_RESEARCH: "1", EAC_RESEARCH: "1", EAC_ESCALATIONS: "1", EAC_TEAM_PEOPLE: "1", EAC_MAUSBOT: "1",
+  EAC_VOICE_NOTES: "1", EAC_X_RESEARCH: "1", EAC_RESEARCH: "1", EAC_ESCALATIONS: "1", EAC_TEAM_PEOPLE: "1", EAC_BOT_TOOLS: "1",
 }));
 
 /** Each keyword the advertised node lacks, with where it sat in the full one. */

@@ -15,7 +15,7 @@ const HOST = "omb-t-0123456789ab.fly.dev";
 const FORWARDED = { host: HOST, "x-forwarded-for": "203.0.113.9", "x-forwarded-proto": "https" };
 const CLAUDE = { instanceId: "claude", model: "claude-sonnet-5" };
 const PACKAGE = JSON.parse(readFileSync(join(SERVER_DIR, "..", "shared", "package-fixtures", "full-team.v2.json"), "utf8"));
-const manifest = (name: string) => ({ format: "openmaus.team", version: 2, team: { name, members: [{ key: "helper", name: `${name} helper`, appearance: { color: "blue" } }] } });
+const manifest = (name: string) => ({ format: "eacbot.team", version: 2, team: { name, members: [{ key: "helper", name: `${name} helper`, appearance: { color: "blue" } }] } });
 
 class Cloud {
   home = mkdtempSync(join(tmpdir(), "omb-bot-limit-"));
@@ -144,8 +144,8 @@ describe("a Starter Cloud's bots, on a real server", () => {
   it("makes five beside its EACbot, says so in config, then refuses each way of making one and writes nothing", async () => {
     await starter();
     expect(await cloud.config()).toMatchObject({ cloudStarter: true, botLimit: 5 });
-    const mausBot = (await cloud.bots()).filter((bot) => bot.defaultBot);
-    expect(mausBot).toHaveLength(1);
+    const eacbotBot = (await cloud.bots()).filter((bot) => bot.defaultBot);
+    expect(eacbotBot).toHaveLength(1);
     await cloud.fill(5);
     const held = (await cloud.bots()).map((bot) => bot.id).sort();
     expect(held).toHaveLength(6);

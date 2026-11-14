@@ -23,7 +23,7 @@ export interface CatalogProfile {
   /** A Team Cloud: message_person is mounted. */
   team?: boolean;
   /** The person's EACbot with a Chief's powers: its notification tools are mounted. */
-  mausbot?: boolean;
+  eacbot?: boolean;
   /** A direct chat whose bot may pick where it works (Works on is not Off and no team computer is its own): select_computer
    * is mounted, and the harness refuses a pick on any turn but a person's own message. */
   computerSelection?: boolean;
@@ -46,7 +46,7 @@ export function catalogProfileFromEnv(env: NodeJS.ProcessEnv): CatalogProfile {
     botId: env.EAC_BOT_ID ?? "",
     escalations: env.EAC_ESCALATIONS === "1",
     team: env.EAC_TEAM_PEOPLE === "1",
-    mausbot: env.EAC_MAUSBOT === "1",
+    eacbot: env.EAC_BOT_TOOLS === "1",
     computerSelection: env.EAC_COMPUTER_SELECTION === "1",
     room: env.EAC_ROOM === "1",
     imageGeneration: env.EAC_IMAGE_GENERATION === "1",

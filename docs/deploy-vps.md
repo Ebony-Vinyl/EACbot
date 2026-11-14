@@ -55,18 +55,18 @@ ssh root@YOUR_SERVER_IP
 ```
 
 For paths A and C, use the same unprivileged Linux account for setup and the
-running service. The examples below use `maus` with home `/home/maus`. From an
+running service. The examples below use `eacbot` with home `/home/eacbot`. From an
 administrator shell, create it if it does not already exist, then switch to it:
 
 ```sh
-sudo useradd --create-home --shell /bin/bash maus
-sudo -iu maus
+sudo useradd --create-home --shell /bin/bash eacbot
+sudo -iu eacbot
 ```
 
-The login shell also changes into `/home/maus`; run setup there, not from `/root`.
+The login shell also changes into `/home/eacbot`; run setup there, not from `/root`.
 Run the `npx` commands and engine sign-ins below in this account. Keep a separate
 administrator shell for system packages and systemd. If you already signed in as
-root, sign in again as `maus`; those accounts have different homes and credentials.
+root, sign in again as `eacbot`; those accounts have different homes and credentials.
 
 ## Path A: a public address with one command
 
@@ -90,9 +90,9 @@ Skip to "Install and sign the engines in".
 
 ## Path B: your own domain, with Docker
 
-One container for the server plus Caddy for HTTPS at `https://maus.example.com`.
+One container for the server plus Caddy for HTTPS at `https://eacbot.example.com`.
 
-1. **Point a name at the server.** In your DNS provider add an **A record** (name `maus`, value the server's public IP). After a few minutes `ping maus.example.com` should answer with that IP. Ports 80 and 443 must be open; most providers open them by default.
+1. **Point a name at the server.** In your DNS provider add an **A record** (name `eacbot`, value the server's public IP). After a few minutes `ping eacbot.example.com` should answer with that IP. Ports 80 and 443 must be open; most providers open them by default.
 2. **Install Docker:**
 
    ```sh
@@ -105,7 +105,7 @@ One container for the server plus Caddy for HTTPS at `https://maus.example.com`.
    ```sh
    git clone https://github.com/milind-soni/EACbot && cd EACbot/deploy
    cp .env.example .env
-   nano .env                # DOMAIN=maus.example.com ; ENGINES=@anthropic-ai/claude-code @openai/codex
+   nano .env                # DOMAIN=eacbot.example.com ; ENGINES=@anthropic-ai/claude-code @openai/codex
    ```
 
    `ENGINES` lists the engine CLIs baked into your image, separated by spaces. Change it later and rebuild if you add one.
@@ -117,7 +117,7 @@ One container for the server plus Caddy for HTTPS at `https://maus.example.com`.
    docker compose ps        # omb "healthy", caddy "running"
    ```
 
-   Caddy requests the certificate on its own; give it a minute. Then `https://maus.example.com` shows a page asking for a pairing code. That is correct: nothing works until you pair.
+   Caddy requests the certificate on its own; give it a minute. Then `https://eacbot.example.com` shows a page asking for a pairing code. That is correct: nothing works until you pair.
 
 In this path, every `npx eacbot …` command below is run inside the container instead:
 
@@ -127,13 +127,13 @@ docker compose exec omb node dist-server/eacbot.js pair --label "My MacBook"
 
 ## Path C: only your Tailscale network
 
-From the administrator shell, install Tailscale on the server and sign in (`curl -fsSL https://tailscale.com/install.sh | sh && sudo tailscale up`). Enable HTTPS certificates for your tailnet once in the admin console (DNS → HTTPS Certificates), then run this from the `maus` shell:
+From the administrator shell, install Tailscale on the server and sign in (`curl -fsSL https://tailscale.com/install.sh | sh && sudo tailscale up`). Enable HTTPS certificates for your tailnet once in the admin console (DNS → HTTPS Certificates), then run this from the `eacbot` shell:
 
 ```sh
 npx eacbot serve --tailscale
 ```
 
-Tailscale terminates HTTPS with its own certificate and the pairing link uses the server's MagicDNS name (`https://maus.tail1234.ts.net`). Only devices on your tailnet can reach it, which is a very good property for a server that can run tools.
+Tailscale terminates HTTPS with its own certificate and the pairing link uses the server's MagicDNS name (`https://eacbot.tail1234.ts.net`). Only devices on your tailnet can reach it, which is a very good property for a server that can run tools.
 
 ## Give the bots a browser (optional)
 
@@ -145,7 +145,7 @@ administrator shell:
 sudo -H npx --yes eacbot browser install --with-deps
 ```
 
-Then install the browser in the service account's home, from the `maus` shell:
+Then install the browser in the service account's home, from the `eacbot` shell:
 
 ```sh
 npx --yes eacbot browser install
@@ -164,7 +164,7 @@ gets its own isolated session whose logins persist across restarts.
 
 The npm EACbot package does not install model engine CLIs. For paths A and C,
 install the engine you use in the service account, then sign it in. For example,
-from the `maus` shell, for Claude:
+from the `eacbot` shell, for Claude:
 
 ```sh
 npm install --global --prefix "$HOME/.local" @anthropic-ai/claude-code
@@ -214,7 +214,7 @@ npx eacbot status                # what the server says about itself
 ## Keep it running
 
 `npx eacbot serve` is a plain foreground process. For systemd (paths A and C),
-install a chosen release first, from the `maus` shell. Replace `X.Y.Z` with the
+install a chosen release first, from the `eacbot` shell. Replace `X.Y.Z` with the
 published version you want to run:
 
 ```sh
@@ -231,11 +231,11 @@ Description=EACbot server
 After=network-online.target
 
 [Service]
-User=maus
-WorkingDirectory=/home/maus
-Environment=HOME=/home/maus
-Environment=PATH=/home/maus/.local/bin:/usr/local/bin:/usr/bin:/bin
-ExecStart=/home/maus/.local/bin/eacbot serve --tunnel --no-pair
+User=eacbot
+WorkingDirectory=/home/eacbot
+Environment=HOME=/home/eacbot
+Environment=PATH=/home/eacbot/.local/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/home/eacbot/.local/bin/eacbot serve --tunnel --no-pair
 Restart=always
 RestartSec=5
 
@@ -261,7 +261,7 @@ same release without an npm install prompt or an implicit upgrade.
 
   ```sh
   sudo systemctl stop eacbot
-  sudo -iu maus npm install --global --prefix /home/maus/.local eacbot@X.Y.Z
+  sudo -iu eacbot npm install --global --prefix /home/eacbot/.local eacbot@X.Y.Z
   sudo systemctl start eacbot
   ```
 
@@ -349,7 +349,7 @@ For paths A and C, an administrator can allow only a trusted, root-owned Chrome
 copy. Find the service user's downloaded executable:
 
 ```sh
-find /home/maus/.agent-browser/browsers -type f -name chrome -executable
+find /home/eacbot/.agent-browser/browsers -type f -name chrome -executable
 ```
 
 Use its actual `chrome-VERSION` directory in every path below; `VERSION` is a
@@ -358,7 +358,7 @@ libraries, to a new location that the service user cannot modify:
 
 ```sh
 sudo install -d -o root -g root -m 0755 /opt/eacbot-browser
-sudo cp -R /home/maus/.agent-browser/browsers/chrome-VERSION /opt/eacbot-browser/
+sudo cp -R /home/eacbot/.agent-browser/browsers/chrome-VERSION /opt/eacbot-browser/
 sudo chown -R root:root /opt/eacbot-browser/chrome-VERSION
 sudo chmod -R go-w /opt/eacbot-browser/chrome-VERSION
 ```
@@ -391,7 +391,7 @@ Environment=AGENT_BROWSER_EXECUTABLE_PATH=/opt/eacbot-browser/chrome-VERSION/chr
 ```
 
 For a foreground server, export `AGENT_BROWSER_EXECUTABLE_PATH` to that same
-path in the `maus` shell before starting `serve`. After a Chrome update, copy the
+path in the `eacbot` shell before starting `serve`. After a Chrome update, copy the
 new version and update both the AppArmor profile and service environment; the
 root-owned copy is not updated by the browser installer. Keep
 `kernel.apparmor_restrict_unprivileged_userns=1`.

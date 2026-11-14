@@ -78,7 +78,7 @@ const readyEntry: CompanyBackupEntry = {
   createdAt: Date.parse("2026-09-12T10:00:00Z"), completedAt: Date.parse("2026-09-12T10:01:00Z"),
 };
 const summary: WorkspaceBackupSummary = {
-  format: "openmaus.workspace-backup", version: 1, id: READY_ID, createdAt: "2026-09-12T10:00:00Z",
+  format: "eacbot.workspace-backup", version: 1, id: READY_ID, createdAt: "2026-09-12T10:00:00Z",
   appVersion: "0.0.0-fixture", files: 9, directories: 3, bytes: 4096, bots: 2, groups: 1, threads: 4,
   messages: 8, warnings: ["Fixture archive warning"], exclusions: ["Saved account credentials and connections"],
 };

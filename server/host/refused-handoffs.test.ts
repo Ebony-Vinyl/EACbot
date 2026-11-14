@@ -9,8 +9,8 @@ const rooms: RosterMember = { id: "rooms", name: "Rooms", visibility: B };
 const hours: RosterMember = { id: "hours", name: "Staff Hours", visibility: B };
 const books: RosterMember = { id: "books", name: "Bookkeeping", visibility: "admins" };
 const listed: RosterMember = { ...rooms, id: "listed", name: "Listed", peers: ["hours"] };
-const mausbot: RosterMember = { id: "maus", name: "EACbot", visibility: { people: ["olive@acme.test"] }, defaultBot: { person: "olive@acme.test" } };
-const bots = [rooms, hours, books, listed, mausbot];
+const eacbot: RosterMember = { id: "eacbot", name: "EACbot", visibility: { people: ["olive@acme.test"] }, defaultBot: { person: "olive@acme.test" } };
+const bots = [rooms, hours, books, listed, eacbot];
 
 function fixture(over: { writer?: string; asked?: string | null; run?: boolean; own?: boolean } = {}) {
   const lines: Array<{ to: string; delivery: Delivery }> = [];

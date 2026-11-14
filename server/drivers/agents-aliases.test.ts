@@ -12,7 +12,7 @@ import { agentsMcp } from "./agents-mcp.ts";
 
 const EVERYTHING = {
   EAC_BOT_ID: "bot-alias", EAC_CHIEF_OF_STAFF: "1", EAC_SKILL_AUTHORING_ENABLED: "1", EAC_SHARED_COMPUTERS_ENABLED: "1",
-  EAC_VOICE_NOTES: "1", EAC_X_RESEARCH: "1", EAC_RESEARCH: "1", EAC_ESCALATIONS: "1", EAC_TEAM_PEOPLE: "1", EAC_MAUSBOT: "1",
+  EAC_VOICE_NOTES: "1", EAC_X_RESEARCH: "1", EAC_RESEARCH: "1", EAC_ESCALATIONS: "1", EAC_TEAM_PEOPLE: "1", EAC_BOT_TOOLS: "1",
 };
 const LISTED = new Set(availableTools(catalogProfileFromEnv(EVERYTHING)).map((tool) => tool.name));
 

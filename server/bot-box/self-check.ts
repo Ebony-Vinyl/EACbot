@@ -48,7 +48,7 @@ export interface SelfCheckResult extends BoxChecks {
   error?: string;
 }
 
-const MARKER_PREFIX = "OPENMAUSBOT-BOX-CANARY-";
+const MARKER_PREFIX = "EACBOT-BOX-CANARY-";
 
 /** The host's own path out through the gate socket: whether the public internet answers at all. */
 function hostConnect(socketPath: string, target: string): Promise<string> {

@@ -70,7 +70,7 @@
 - **会话 cookie**：cookie 名由端口和环境 ID 组成（`server/request-auth.ts:257-274`），`SessionRegistry.authenticate()` 校验哈希、过期和个人 scope（`server/sessions.ts:603-617`）。cookie 请求必须同源；跨源返回 403（`server/request-auth.ts:580-587`）。
 - **bearer token**：只有 `Authorization: Bearer omb_sess_...` 会被当成会话 bearer（`server/request-auth.ts:250-255,563-571`）；其他 bearer 由具体路由自己解释，例如内部能力令牌（`server/index.ts:13012-13015`）或 Bot API。脚本 token 是 `token: true` 的会话，到期不续（`server/sessions.ts:65-66,458-459,624`）。
 - **admin**：`requiredScope()` 默认返回 `admin`，只有 `CLIENT_ALLOW` 里明确列出的方法和路径才是 `client`（`server/request-auth.ts:276-277,431-438`）。`GET /api/auth/sessions` 不在 `CLIENT_ALLOW`，所以只有 admin 能列出会话（`server/index.ts:12941-12942`）。
-- **companion**：桌面壳把 `x-openmausbot-companion-auth` 与 `x-openmausbot-companion: 1`、设备 ID 一起校验；通过后直接给 `admin+client` 回环 scope（`server/request-auth.ts:607-615`）。token 初始是空字符串，只有 Electron 通过私有端口发来 43 字符 token 后才可用（`server/index.ts:779-780,1466-1475`；`electron/main.mjs:1089-1095`）。
+- **companion**：桌面壳把 `x-eacbot-companion-auth` 与 `x-eacbot-companion: 1`、设备 ID 一起校验；通过后直接给 `admin+client` 回环 scope（`server/request-auth.ts:607-615`）。token 初始是空字符串，只有 Electron 通过私有端口发来 43 字符 token 后才可用（`server/index.ts:779-780,1466-1475`；`electron/main.mjs:1089-1095`）。
 - **CLI owner**：`eacbot serve` 在 service 信任下把每启动一次的 43 字符 token 从 stdin 交给子进程；它只打开 `/api/auth/pairing` 的 GET/POST（`server/request-auth.ts:513-524,623-629`；`server/index.ts:765-777`）。这是给 CLI 自己配对用的，不是通用管理员 token。
 - **stream ticket**：EventSource 不能设 header，所以先用会话换一次性 ticket；ticket 只对 `/api/events` 生效，5 分钟、一次性、每会话最多 5 个、兑换不续期（`server/sessions.ts:32,678-696`；`server/index.ts:12848-12850`）。
 - **hosted contract**：`x-omb-hosted-contract-version` 只声明 Admin 与 workspace 的 wire 版本；不携带身份，也不替代 session（`server/hosted-contract.ts:1-14`；`enterprise/server/workspace-access.ts:54-67`）。
@@ -87,7 +87,7 @@
 | stream ticket | `redeemStreamTicket()` | 仅 `/api/events` | 401 |
 | admin scope | `requiredScope()` 默认分支 | `/api/auth/sessions`、配置、人员、Webhook 创建 | 403 |
 | client scope | `CLIENT_ALLOW` 明确条目 | 发消息、任务、例程、显示字段、登录卡 | 403 |
-| companion | `x-openmausbot-companion-auth` + 设备 ID | 手机伴侣专用动作 | 403 |
+| companion | `x-eacbot-companion-auth` + 设备 ID | 手机伴侣专用动作 | 403 |
 | CLI owner | stdin 43 字符 token + 固定路径 | 仅 `/api/auth/pairing` | 403 或走普通 service |
 | 内部能力 | `authorizedInternalCapability()` | `/api/internal/*` | 401/403 |
 | hosted contract | 版本头 | 仅 hosted 兼容检查 | 409 或 503 |

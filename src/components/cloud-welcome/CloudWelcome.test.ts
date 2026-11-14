@@ -73,7 +73,7 @@ beforeEach(() => {
   fixture.imported = null;
   fixture.state = {
     connected: true, selectedId: "b1", activeView: "chat", routines: [], groups: [],
-    bots: [{ id: "b1", threadId: "t1", name: "Maus" }, { id: "b2", threadId: "t2", name: "Ada", chiefOfStaff: true }],
+    bots: [{ id: "b1", threadId: "t1", name: "Mascot" }, { id: "b2", threadId: "t2", name: "Ada", chiefOfStaff: true }],
     instances: [claude, codex],
     config: { cloudHome: true, onboarding: { ...EMPTY_ONBOARDING }, profile: { name: "", email: "", aboutMe: "" } },
   };

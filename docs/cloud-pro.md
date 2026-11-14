@@ -21,7 +21,7 @@ person connects their own AI ([Trial Claude credit](#trial-claude-credit)).
 This page is the EACbot half of a contract with three parties:
 
 - **the home machine**: this repository's `cloud-home` image (`Dockerfile`, `deploy/fly/`);
-- **the Admin** (openmaus-cloud, `docs/consumer-cloud.md` there): provisions
+- **the Admin** (eacbot-cloud, `docs/consumer-cloud.md` there): provisions
   the app, holds the machine's signing secret, and answers the desktop's Cloud
   session;
 - **the desktop app**: signs in to Cloud, lists the machine under Servers,
@@ -1088,15 +1088,15 @@ differs from the previous one only in those (a few MB) unless Chrome, an
 engine, Grok's pin, or the Node base image changed in between.
 
 At boot the launcher, running as root, hands the volume's mount point to the
-`maus` user, locks the volume for as long as it runs (`flock` on the volume's
+`eacbot` user, locks the volume for as long as it runs (`flock` on the volume's
 root: a second home on a volume a live home holds refuses to start, which
 Docker on your own server does not prevent by itself), binds the volume to
-this machine as `maus` (`/data/.omb-cloud-home.json`; another machine's
+this machine as `eacbot` (`/data/.omb-cloud-home.json`; another machine's
 volume, or an unmarked volume with data on it, is refused), clears the
 data-directory lease records another machine or container left on it (a home
 killed uncleanly leaves one, and on one Docker host every container shares the
 boot id while its pids start again from 1, so the lease names its pid
-namespace and its process's start time too), and runs two children as `maus`: the
+namespace and its process's start time too), and runs two children as `eacbot`: the
 server on `127.0.0.1:8799` (webhooks on `127.0.0.1:8800`) and Caddy on
 `:8080`. It stays a small root supervisor: if either child exits, both stop
 and Fly restarts the machine. The one exception: after a restore commits
@@ -1117,14 +1117,14 @@ what the image sets and the parts of the boot contract that are not secret
 (`serverEnvironmentAllowed`). Anything else, a secret the platform adds
 later included, never reaches it; the launcher logs the names it left out,
 never their values. The launcher's own environment and memory belong to
-root, out of `maus`'s reach. A server started without the pipe (tests,
+root, out of `eacbot`'s reach. A server started without the pipe (tests,
 development) reads them from its environment and says so in its log.
 
-The launcher runs and trusts only code `maus` cannot change: the image
+The launcher runs and trusts only code `eacbot` cannot change: the image
 makes `/app` root's and not writable by anyone else, and the launcher
 refuses to start if Node, itself, the server's entry point, Caddy or its
 config (or any folder above them) is not root's, is writable by others, or
-is on the volume. Only the `/data` volume is `maus`'s.
+is on the volume. Only the `/data` volume is `eacbot`'s.
 
 `HOME=/data`, so `~/.claude`, `~/.codex`, `~/.grok` and EACbot's own
 data (`/data/.eacbot`) persist on the volume.
@@ -1232,7 +1232,7 @@ provider outage. So on a Cloud home (`server/engine-memory.ts`):
   tasks that waited for memory and how long, turns stopped for it, processes
   the kernel stopped, and minutes the machine stalled on memory (its `full
   avg10` at 20% or more). The Admin offers a bigger plan from it
-  (openmaus-cloud `server/cloud-room.ts`).
+  (eacbot-cloud `server/cloud-room.ts`).
 
 ### Why the server stays on loopback
 
@@ -1260,7 +1260,7 @@ start.
 
 | Variable | Value |
 | --- | --- |
-| `EAC_PUBLIC_URL` | `https://` and the name people use, e.g. `https://mausbot.acme.eu`. Its DNS points at the server. |
+| `EAC_PUBLIC_URL` | `https://` and the name people use, e.g. `https://eacbot.acme.eu`. Its DNS points at the server. |
 | `EAC_CLOUD_EDGE_TLS` | `1`: the edge gets and renews a Let's Encrypt certificate for that name and serves it on 443. Unset or `0`: the edge serves only `:8080`, for the agent, and something else ends TLS. |
 | `EAC_CLOUD_TRUSTED_PROXIES` | Only when the owner's own proxy stands in front: its addresses or ranges (`10.0.0.5`, `10.0.0.0/24`, `private_ranges`), separated by spaces or commas, at most 32. Unset: none. A `/0` range, a host name or anything else stops the home with a message naming the variable. |
 | `EAC_CLOUD_CLIENT_IP_HEADER` | The header those proxies put the client's address in. Default `X-Forwarded-For`; it needs `EAC_CLOUD_TRUSTED_PROXIES`. |
@@ -1306,7 +1306,7 @@ so a client's own `X-Forwarded-For` or `Cf-Connecting-IP` changes nothing.
 `EAC_PUBLIC_URL` and `EAC_CLOUD_TUNNEL_TOKEN`. The home then runs the pinned
 `cloudflared` from its image (`/usr/local/bin/cloudflared`, the release
 `scripts/prepare-cloudflared.mjs` checks) as its own user, `omb-tunnel`: the
-token rides that process's environment, which `maus`, and so no bot or engine,
+token rides that process's environment, which `eacbot`, and so no bot or engine,
 can read. If it stops, the launcher starts it again after 5 s, doubling to
 5 minutes. The control plane points every tunnel at `127.0.0.1:8812`, where
 the edge (`deploy/fly/Caddyfile.tunnel`) listens on loopback only and believes
@@ -1336,7 +1336,7 @@ own Fly private network, so no machine can reach another's over 6PN.
 
 ## Boot contract
 
-Set by openmaus-cloud's provisioner (`server/cloud-machines.ts`). Any of the
+Set by eacbot-cloud's provisioner (`server/cloud-machines.ts`). Any of the
 first four switches the server into Cloud home mode; then all of them are
 required and the whole contract is validated. A partial or invalid contract
 stops the server before it serves, with a message that names the variable and
@@ -1444,7 +1444,7 @@ computers belong to this machine on every request.
   starts inherits them, including tools that copy its environment as it is
   (the browser, docker, ssh, MCP bridges), and no process finds them in the
   server's `/proc/<pid>/environ`. They are still in the server's memory, and
-  that is the remaining exposure: the server runs as `maus`, like every
+  that is the remaining exposure: the server runs as `eacbot`, like every
   engine, so a process running as the same user that may trace it (the
   kernel's ptrace policy, `kernel.yama.ptrace_scope`, decides) could read
   them there. That is why a guest's turn gets no shell (above); the complete
@@ -1476,7 +1476,7 @@ installation if it has none, keeps the token owner-only in
 `config.json`), checks it with the service, and retries with backoff while the
 service is down. A Cloud home nobody uses Connected Apps on registers nothing
 at start. An owner's own Composio project key still wins. The details are in
-[composio.md](composio.md#mausbot-cloud). `EAC_COMPOSIO_BROKER_URL` (env, not
+[composio.md](composio.md#eacbot-cloud). `EAC_COMPOSIO_BROKER_URL` (env, not
 secret, optional) points a Cloud at another service, such as a staging one;
 `EAC_CONNECTED_APPS_REGISTER=0` switches managed registration off entirely.
 

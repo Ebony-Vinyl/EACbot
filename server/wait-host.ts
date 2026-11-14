@@ -77,7 +77,7 @@ export function createWaitHost(deps: WaitHostDeps): Pick<WaitManagerOptions, "so
         webhookName: wait.label,
         prompt: `[Wait finished: ${wait.label}] ${wait.followUp}`,
         botId: wait.botId,
-        runOn: "maus",
+        runOn: "eacbot",
         deliveryId: wait.id,
         receivedAt: now(),
         eventSource: "wait",

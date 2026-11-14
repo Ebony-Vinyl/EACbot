@@ -257,7 +257,7 @@ posixOnly("authorization decisions are logged", () => {
         name: "Nightly build",
         prompt: "Handle the incoming build event",
         botId: bot.id,
-        runOn: "maus",
+        runOn: "eacbot",
       });
       expect(hook.status).toBe(201);
       const delivered = await fetch(hook.body.credential.url, {

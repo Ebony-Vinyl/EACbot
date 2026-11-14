@@ -139,7 +139,7 @@ One active call per harness. Responsibilities, moved from today's renderer
    to send `session.close`, so no session is left open.
 8. **Bound to whoever started it.** A call remembers the sign-in that started
    it and, for a phone, the paired device the companion vouched for
-   (`x-openmausbot-companion-device` on `POST /api/live/session`). A phone's
+   (`x-eacbot-companion-device` on `POST /api/live/session`). A phone's
    requests reach the harness as the computer's own (loopback), so only the
    companion knows when a phone is unpaired: it then sends
    `POST /api/live/device-revoked` over its authenticated relay path, and the
@@ -156,7 +156,7 @@ One active call per harness. Responsibilities, moved from today's renderer
 | `POST /api/live/call/end` | `{ callId }` | `200 { call }` after `session.closed` or 5 s |
 | `GET /api/live/call` | — | `200 { call: LiveCallState \| null }` |
 | `PATCH /api/live/settings` | `{ voice?, readTypedReplies?, idleMinutes? }` | `200 { live: LiveSettings }` — non-secret settings only; the key is never writable from a phone |
-| `POST /api/live/device-revoked` | — (headers `x-openmausbot-companion: 1` and `x-openmausbot-companion-device`; under the desktop app also the companion's private relay token) | `200 { call: LiveCallState \| null }` (the call it ended) · `403` without the companion marker · `400` without a well-formed device id. The companion's own notice that it unpaired a phone: not on the phone allowlist (`companion/src/routes.ts` `COMPANION_NOTICES`); the harness accepts it only with the relay token, or from loopback for a standalone harness |
+| `POST /api/live/device-revoked` | — (headers `x-eacbot-companion: 1` and `x-eacbot-companion-device`; under the desktop app also the companion's private relay token) | `200 { call: LiveCallState \| null }` (the call it ended) · `403` without the companion marker · `400` without a well-formed device id. The companion's own notice that it unpaired a phone: not on the phone allowlist (`companion/src/routes.ts` `COMPANION_NOTICES`); the harness accepts it only with the relay token, or from loopback for a standalone harness |
 
 `LiveCallState = { callId, botId, threadId, client, voice, startedAt, status: "connecting" | "live" | "ending" | "ended", endReason?, error? }`,
 with `endReason` one of the codes under **End reasons**. A phone's
@@ -194,7 +194,7 @@ marks a user line an external interface sent through the guarded send route
 
 ### The call id and the call row
 
-Added 2026-10-06 (the harness half of SupaMaus/mausbot-mobile
+Added 2026-10-06 (the harness half of Supamaus/eacbot-mobile
 `docs/superpowers/specs/2026-10-06-grok-style-live-calls-design.md`).
 
 - **Call id.** Every user line a call delivers carries `callId`, the call's
@@ -422,7 +422,7 @@ hold and the line they show:
   stay per platform. Presentation includes where the call lives on screen:
   the desktop keeps the call bar above the composer, and the phones may show
   an app-wide dock that opens into a full-screen call with a live transcript
-  (mausbot-mobile spec 2026-10-06-grok-style-live-calls-design). That
+  (eacbot-mobile spec 2026-10-06-grok-style-live-calls-design). That
   transcript is the phone's own data-channel captions, kept in memory for
   the current call only: the voice's words are still never stored or sent
   anywhere.

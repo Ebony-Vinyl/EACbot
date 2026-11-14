@@ -580,7 +580,7 @@ describe("independent bot tasks through the isolated control surface", () => {
     const botId = created.bot.id;
     const selectedThread = created.bot.activeTaskId;
     const routine = await api("POST", "/api/routines", {
-      name: "Captured routine provider", prompt: "ROUTINE_PROVIDER_OWNER", botId, runOn: "maus", enabled: false,
+      name: "Captured routine provider", prompt: "ROUTINE_PROVIDER_OWNER", botId, runOn: "eacbot", enabled: false,
       schedule: { type: "daily", time: "10:00", weekdays: [1] },
     });
     expect(routine.status).toBe(201);
@@ -721,7 +721,7 @@ describe("independent bot tasks through the isolated control surface", () => {
     const created = await tool("create_bot", { name: "Unattended fixture", instance_id: "claude", model: models[0] });
     const botId = created.bot.id;
     expect((await api("PATCH", `/api/bots/${botId}`, { approvalMode: "auto" })).status).toBe(200);
-    const hook = await api("POST", "/api/webhooks", { name: "Fixture event", prompt: "UNATTENDED_ONLY", botId, runOn: "maus" });
+    const hook = await api("POST", "/api/webhooks", { name: "Fixture event", prompt: "UNATTENDED_ONLY", botId, runOn: "eacbot" });
     expect(hook.status).toBe(201);
     const delivered = await fetch(hook.body.credential.url, { method: "POST", body: "{}", headers: { "content-type": "application/json" } });
     expect(delivered.status).toBe(202);

@@ -1,8 +1,8 @@
 # Windows/WSL2 entry point. Run setup once, then pass Compose arguments verbatim.
 $ErrorActionPreference = 'Stop'
 if (-not $args.Count -or $args[0] -in @('--help', '-h', 'help')) {
-    Write-Output 'Usage: .\deploy\podman\maus.ps1 setup | <compose arguments>'
-    Write-Output 'Example: .\deploy\podman\maus.ps1 up -d --build'
+    Write-Output 'Usage: .\deploy\podman\eacbot.ps1 setup | <compose arguments>'
+    Write-Output 'Example: .\deploy\podman\eacbot.ps1 up -d --build'
     Write-Output 'Options: EAC_PODMAN_MACHINE (default eacbot), EAC_PODMAN_ENV_FILE (default .env)'
     exit 0
 }

@@ -11,7 +11,7 @@ its menu's **Hide from sidebar** also turns off.
 ```sh
 pnpm exec vitest run server/default-bot.test.ts server/default-bot.e2e.test.ts \
   server/team-setup-requests.test.ts src/lib/default-bot.test.ts src/components/EACbotWelcome.test.ts \
-  src/lib/mausbot-landing.test.ts
+  src/lib/eacbot-landing.test.ts
 ```
 
 - `server/default-bot.test.ts`: a fresh install gets one EACbot once; an
@@ -23,7 +23,7 @@ pnpm exec vitest run server/default-bot.test.ts server/default-bot.e2e.test.ts \
 - `server/default-bot.e2e.test.ts`: on a real fixture server, `DELETE
   /api/bots/:id` answers 409, the switch hides and shows it, and a EACbot that
   is not the Chief creates a bot with `create_bot`.
-- `server/mausbot-notifications.test.ts`, `server/drivers/agents-mausbot-tools.test.ts`
+- `server/eacbot-notifications.test.ts`, `server/drivers/agents-eacbot-tools.test.ts`
   and the second case of `server/default-bot.e2e.test.ts`: EACbot alone gets
   `list_unread_notifications` and `mark_notifications_read`, listed last.
   The list returns the unread feed (bounded, trimmed) with a lean per item;
@@ -35,7 +35,7 @@ pnpm exec vitest run server/default-bot.test.ts server/default-bot.e2e.test.ts \
   such an item is the person's, to be marked read only if they said so.
   Personal installs only (refused on any team server); no other bot may call
   them. The list is annotated read-only like the other reviewed reads.
-  `server/drivers/agents-catalog-wire.test.ts` budgets the `+mausbot` profiles,
+  `server/drivers/agents-catalog-wire.test.ts` budgets the `+eacbot` profiles,
   each within 2% of the same Chief's list without them.
 - `server/team-setup-requests.test.ts` ("EACbot's Chief-level team setup"):
   it adds specialists like a Chief but never changes who the Chief is.
@@ -44,7 +44,7 @@ pnpm exec vitest run server/default-bot.test.ts server/default-bot.e2e.test.ts \
   now turns the switch off, a name, colour, look or uploaded picture is saved as
   the bot's own edit screen saves it, a renamed EACbot is still found by its
   mark, and a new install's intro offers only the setup still to do.
-- `src/lib/mausbot-landing.test.ts`: the rows already in the sidebar glide down
+- `src/lib/eacbot-landing.test.ts`: the rows already in the sidebar glide down
   by the new row's height, the avatar lands in the new slot and leaves nothing
   behind, reduced motion only fades the row in, and a hidden sidebar just adds it.
 - `server/default-bot.test.ts` also: a place with no Chief gets EACbot as its
@@ -69,14 +69,14 @@ finish the first-run welcome and its tour, then:
 3. Its sidebar menu offers **Hide from sidebar**, not Archive or Delete; the
    switch in Settings → General brings it back.
 
-Evidence: [popup, light](evidence/mausbot/welcome-light.png),
-[popup, dark](evidence/mausbot/welcome-dark.png),
-[customise panel](evidence/mausbot/welcome-customize-light.png),
-[uploaded picture](evidence/mausbot/welcome-upload-light.png),
-[the fly-in](evidence/mausbot/fly-in.gif), [slowed](evidence/mausbot/fly-in-slow.gif),
-[compact, icon rail and reduced motion](evidence/mausbot/fly-in-compact-rail-reduced.png),
-[intro and setup](evidence/mausbot/added-light.png),
-[menu](evidence/mausbot/menu-light.png),
-[Settings, switched off](evidence/mausbot/settings-off.png),
-[chrome picture, light](evidence/mausbot/chrome-picture-daylight.png),
-[chrome picture, dark](evidence/mausbot/chrome-picture-midnight.png).
+Evidence: [popup, light](evidence/eacbot/welcome-light.png),
+[popup, dark](evidence/eacbot/welcome-dark.png),
+[customise panel](evidence/eacbot/welcome-customize-light.png),
+[uploaded picture](evidence/eacbot/welcome-upload-light.png),
+[the fly-in](evidence/eacbot/fly-in.gif), [slowed](evidence/eacbot/fly-in-slow.gif),
+[compact, icon rail and reduced motion](evidence/eacbot/fly-in-compact-rail-reduced.png),
+[intro and setup](evidence/eacbot/added-light.png),
+[menu](evidence/eacbot/menu-light.png),
+[Settings, switched off](evidence/eacbot/settings-off.png),
+[chrome picture, light](evidence/eacbot/chrome-picture-daylight.png),
+[chrome picture, dark](evidence/eacbot/chrome-picture-midnight.png).

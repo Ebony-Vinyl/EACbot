@@ -110,7 +110,7 @@ workspace access 的变化：普通自建没有 EAC_ADMIN_* 时 createWorkspaceA
 trial credit：
 
 - 只有 Cloud home 且 EAC_CLOUD_AI_URL/TOKEN 成对有效时才创建 CloudCreditProvider（server/index.ts:1546-1557）。token 必须是 omb_ai_ 加 43 个字符，URL 必须是 https 或 loopback（server/included-services.ts:45-56）。
-- 它注册一个 id 为 trial-credit 的 openai-compat 实例，base URL 是 relay，token 放在该实例自己的 OPENMAUSBOT_TRIAL_CREDIT_KEY 环境里（server/cloud-credit-provider.ts:14-24、43-51）。
+- 它注册一个 id 为 trial-credit 的 openai-compat 实例，base URL 是 relay，token 放在该实例自己的 EACBOT_TRIAL_CREDIT_KEY 环境里（server/cloud-credit-provider.ts:14-24、43-51）。
 - 扣减发生在 relay 端，本地没有 token 计数器；本地只保存 allowed models 和 refused 状态（server/cloud-credit-provider.ts:205-240）。
 - 402 且 code 为 trial_credit_used_up 返回 used_up；402 且 trial_credit_ended 或 401 且 invalid_api_key 返回 ended；400 且 trial_credit_too_low 返回 too_low；429 返回 paused（server/trial-credit.ts:10-21）。
 - used_up 和 ended 会写入 refused，之后 sendTurn 和 generateText 都抛 TRIAL_CREDIT_REFUSED，阻断该实例的后续回合和后台调用（server/cloud-credit-provider.ts:137-145、162-203）。paused 和 too_low 只把错误翻译成可读文案，不会永久阻断下一次尝试。

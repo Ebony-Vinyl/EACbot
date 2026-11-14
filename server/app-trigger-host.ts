@@ -144,7 +144,7 @@ export function createAppTriggerHost(deps: AppTriggerHostDeps) {
         const patch: AppTriggerPatch = {
           ...(typeof body.name === "string" ? { name: body.name } : {}),
           ...(typeof body.prompt === "string" ? { prompt: body.prompt } : {}),
-          ...(body.runOn === "maus" || body.runOn === "cloud" ? { runOn: body.runOn } : {}),
+          ...(body.runOn === "eacbot" || body.runOn === "cloud" ? { runOn: body.runOn } : {}),
           ...(body.filter === null || (body.filter && typeof body.filter === "object") ? { filter: body.filter as never } : {}),
           ...(body.config && typeof body.config === "object" ? { config: body.config as Record<string, unknown> } : {}),
           ...(typeof body.enabled === "boolean" ? { enabled: body.enabled } : {}),

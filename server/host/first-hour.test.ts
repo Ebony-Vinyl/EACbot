@@ -265,9 +265,9 @@ describe("a new Cloud's first hour", () => {
     other.begin();
     t.ledger.add("drafted", 1);
     t.world.runs.push(
-      { id: "r1", routineId: "news", routineName: "News", target: "bot", botId: t.chief.id, runOn: "maus", scheduledFor: 0, status: "completed", manual: false, createdAt: 0, finishedAt: t.now() + HOUR, report: { state: "posted", threadId: "x", messageId: "y" } },
-      { id: "r2", routineId: "watch", routineName: "Keep an eye on my day", target: "bot", botId: t.chief.id, runOn: "maus", scheduledFor: 0, status: "completed", manual: false, createdAt: 0, finishedAt: t.now() + HOUR, deliver: "brief", report: { state: "posted", threadId: "x", messageId: "y" } },
-      { id: "r3", routineId: "news", routineName: "News", target: "bot", botId: t.chief.id, runOn: "maus", scheduledFor: 0, status: "completed", manual: false, createdAt: 0, finishedAt: t.now() + HOUR, report: { state: "quiet" } },
+      { id: "r1", routineId: "news", routineName: "News", target: "bot", botId: t.chief.id, runOn: "eacbot", scheduledFor: 0, status: "completed", manual: false, createdAt: 0, finishedAt: t.now() + HOUR, report: { state: "posted", threadId: "x", messageId: "y" } },
+      { id: "r2", routineId: "watch", routineName: "Keep an eye on my day", target: "bot", botId: t.chief.id, runOn: "eacbot", scheduledFor: 0, status: "completed", manual: false, createdAt: 0, finishedAt: t.now() + HOUR, deliver: "brief", report: { state: "posted", threadId: "x", messageId: "y" } },
+      { id: "r3", routineId: "news", routineName: "News", target: "bot", botId: t.chief.id, runOn: "eacbot", scheduledFor: 0, status: "completed", manual: false, createdAt: 0, finishedAt: t.now() + HOUR, report: { state: "quiet" } },
     );
     t.set("2026-10-28T09:00:00Z");
     other.tick();

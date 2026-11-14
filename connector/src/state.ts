@@ -69,7 +69,7 @@ export interface SelfUpdateRecord {
   /** The id of the container that started the update; the new one removes it once it has connected. */
   previousContainer: string;
   candidateContainer: string;
-  /** The new connector's MAUSBOT_INSTANCE: how each side knows which one it is. */
+  /** The new connector's EACBOT_INSTANCE: how each side knows which one it is. */
   candidateInstance: string;
   deadline: number;
 }

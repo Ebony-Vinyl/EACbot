@@ -431,7 +431,7 @@ GitHub offers the queue only to repositories an organization owns ("Pull
 request merge queues are available in any public repository owned by an
 organization", GitHub's docs, October 2026). `milind-soni/EACbot` is
 owned by a user account, so the rule below appears only after the repository
-moves to an organization (such as `SupaMaus`). The move changes the URL the
+moves to an organization (such as `Supamaus`). The move changes the URL the
 desktop updater reads (see Updater migration invariant in `releasing.md`), so
 it is the owner's decision. Then:
 

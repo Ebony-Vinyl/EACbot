@@ -58,7 +58,7 @@ describe("the server's facts and checks", () => {
     const dir = mkdtempSync(join(tmpdir(), "omb-connector-probe-"));
     dirs.push(dir);
     const docker = new FakeDocker(dir);
-    const image = `ghcr.io/milind-soni/mausbot-connector@sha256:${"1".repeat(64)}`;
+    const image = `ghcr.io/milind-soni/eacbot-connector@sha256:${"1".repeat(64)}`;
     docker.publish(image, null);
     await docker.pull(image);
     expect(await probeBox(docker, image, "{}")).toEqual({ ok: true });
@@ -66,7 +66,7 @@ describe("the server's facts and checks", () => {
     docker.probe = { code: 1, output: "bwrap: Failed to make / slave: Permission denied\n" };
     expect(await probeBox(docker, image, "{}")).toEqual({ ok: false, fix: "Our bots' safety box can't start on this server yet: its AppArmor profile is not loaded. Run the install command again to repair it." });
     expect([...docker.containers.keys()]).toEqual([]);
-    const created = docker.calls.filter((call) => call.startsWith("create mausbot-probe-"));
+    const created = docker.calls.filter((call) => call.startsWith("create eacbot-probe-"));
     expect(created).toHaveLength(2);
     expect(boxProbeFix("bwrap: No permissions to create new namespace, likely because the kernel does not allow non-privileged user namespaces.")).toContain("its seccomp profile was not applied");
     expect(boxProbeFix("bwrap: Can't mount proc on /newroot/proc: Operation not permitted")).toContain("Docker here is too old");

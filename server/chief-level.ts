@@ -32,6 +32,6 @@ export function holdsEACbotTools<T extends NonNullable<RoleBot>>(bot: T | null |
 }
 
 /** The role switches a bot's agents tools are listed under: the Chief-only tools, and EACbot's notification pair. */
-export function roleToolEnv(bot: RoleBot): { EAC_CHIEF_OF_STAFF: "1" | "0"; EAC_MAUSBOT: "1" | "0" } {
-  return { EAC_CHIEF_OF_STAFF: chiefLevel(bot) ? "1" : "0", EAC_MAUSBOT: holdsEACbotTools(bot) ? "1" : "0" };
+export function roleToolEnv(bot: RoleBot): { EAC_CHIEF_OF_STAFF: "1" | "0"; EAC_BOT_TOOLS: "1" | "0" } {
+  return { EAC_CHIEF_OF_STAFF: chiefLevel(bot) ? "1" : "0", EAC_BOT_TOOLS: holdsEACbotTools(bot) ? "1" : "0" };
 }

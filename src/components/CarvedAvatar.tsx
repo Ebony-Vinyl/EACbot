@@ -8,7 +8,7 @@ import {
   useState,
   type PointerEvent as ReactPointerEvent,
 } from "react";
-import { MAUS_COLORS, type MausColor, type MausMotion, type MausState } from "@/lib/mascot";
+import { MASCOT_COLORS, type BotColor, type MascotMotion, type MascotState } from "@/lib/mascot";
 import { HALLOWEEN_BODIES, type HalloweenBody, type HalloweenBodyId } from "../../shared/halloween-bodies";
 import type { CursorAvatarHandle } from "./CursorAvatar";
 import { mascotClock, usePrefersReducedMotion } from "./mascot-clock";
@@ -85,7 +85,7 @@ export function carvedGeometry(body: HalloweenBody, p: CarvedPose): CarvedGeomet
 }
 
 
-function moodFor(state: MausState): Partial<CarvedPose> & { glance?: number } {
+function moodFor(state: MascotState): Partial<CarvedPose> & { glance?: number } {
   switch (state) {
     case "surprised": case "alerting": case "scared": case "excited": case "celebrate": case "spawning": case "waking":
       return { wide: 1 };
@@ -108,7 +108,7 @@ function moodFor(state: MausState): Partial<CarvedPose> & { glance?: number } {
   }
 }
 
-const STARTLE: ReadonlySet<MausMotion> = new Set(["arrive", "switch", "customize", "alert", "launch", "success", "celebrate", "surprise"]);
+const STARTLE: ReadonlySet<MascotMotion> = new Set(["arrive", "switch", "customize", "alert", "launch", "success", "celebrate", "surprise"]);
 const GLANCES: ReadonlyArray<[number, number]> = [[0, 0], [0, 0], [-1, 0.25], [1, 0.25], [-0.8, 0.55], [0.8, 0.55], [-0.7, -0.4], [0.7, -0.4], [0, 0.5]];
 
 function mix(hex: string, toward: string, t: number): string {
@@ -135,20 +135,20 @@ export function vivid(hex: string): string {
   return `#${[ch(h + 1 / 3), ch(h), ch(h - 1 / 3)].map((v) => Math.round(v * 255).toString(16).padStart(2, "0")).join("")}`;
 }
 
-export function carvedFills(body: HalloweenBody, color: MausColor): { body: string; accent: string } {
-  const accent = vivid(MAUS_COLORS[color] ?? MAUS_COLORS.green);
+export function carvedFills(body: HalloweenBody, color: BotColor): { body: string; accent: string } {
+  const accent = vivid(MASCOT_COLORS[color] ?? MASCOT_COLORS.green);
   if (body.paint === "bone") return { body: body.bone ?? "#f1ede6", accent };
-  if (body.paint === "pale") return { body: mix(MAUS_COLORS[color] ?? MAUS_COLORS.green, "#ffffff", 0.86), accent };
+  if (body.paint === "pale") return { body: mix(MASCOT_COLORS[color] ?? MASCOT_COLORS.green, "#ffffff", 0.86), accent };
   return { body: accent, accent };
 }
 
 export type CarvedAvatarProps = {
   body: HalloweenBodyId;
-  color: MausColor;
+  color: BotColor;
   faceColor?: MascotFaceColor | null;
   size?: number;
-  state?: MausState;
-  motion?: MausMotion;
+  state?: MascotState;
+  motion?: MascotMotion;
   motionKey?: number;
   gaze?: { x?: number; y?: number };
   trackPointer?: boolean;
@@ -305,7 +305,7 @@ function CarvedAvatarComponent(
   );
 }
 
-function moodPose(state: MausState): CarvedPose {
+function moodPose(state: MascotState): CarvedPose {
   const m = moodFor(state);
   return { gx: m.gx ?? 0, gy: m.gy ?? 0, wide: m.wide ?? 0, shut: m.shut ?? 0, smile: m.smile ?? 1 };
 }

@@ -144,7 +144,7 @@ is present. Three ways to make the server reachable from elsewhere:
 - **Your own domain, still one command:**
 
   ```sh
-  npx eacbot serve --domain maus.example.com
+  npx eacbot serve --domain eacbot.example.com
   ```
 
   Point the domain's A record at this machine and open ports 80 and 443.
@@ -154,7 +154,7 @@ is present. Three ways to make the server reachable from elsewhere:
   and 443 as a normal user needs one privilege grant; when Caddy reports the
   refusal, `serve` prints the exact `setcap` command to run once.
 - **Behind your own proxy or domain:** `npx eacbot serve --public-url
-  https://maus.example.com`, with the proxy rules from "Putting a proxy in
+  https://eacbot.example.com`, with the proxy rules from "Putting a proxy in
   front".
 
 Later: `npx eacbot pair --label "Kitchen iPad"` for another device
@@ -316,7 +316,7 @@ EAC_DATA_DIR="$HOME/.eacbot" EAC_PORT=8799 \
 For something durable, let the CLI write the service for you:
 
 ```sh
-npx eacbot service install --domain maus.example.com   # or --tunnel, --tailscale, or nothing
+npx eacbot service install --domain eacbot.example.com   # or --tunnel, --tailscale, or nothing
 ```
 
 It renders a systemd unit (Linux) or a launchd agent (macOS) that runs the
@@ -455,7 +455,7 @@ docker compose exec omb node dist-server/eacbot.js pair   # Docker
 
 It prints a 12-character code (single use, five minutes) and, when the
 server knows its public address (`EAC_PUBLIC_URL`, set by the Docker stack),
-a link like `https://maus.example.com/pair#code=XXXX-XXXX-XXXX`. Open the
+a link like `https://eacbot.example.com/pair#code=XXXX-XXXX-XXXX`. Open the
 link, or open `/pair` on the address you use and type the code. The browser
 gets a session cookie (30 days, renewed on use up to 180 days from pairing, revocable) and the app loads. Sessions are
 listed and revoked at `GET`/`DELETE /api/auth/sessions` for now; a Settings
@@ -651,7 +651,7 @@ With `service` on a self-hosted server:
   in with their email (`eacbot access add you@example.com`, which edits
   the sign-in list on disk).
 - A browser on an SSH tunnel gets the sign-in page instead of the app.
-- The MCP server script works with `OPENMAUSBOT_TOKEN` set to a paired session.
+- The MCP server script works with `EACBOT_TOKEN` set to a paired session.
 
 **What `service` does not close yet.** Any bot's shell can still do
 everything the Slack worker does, and on a shared workspace that is a real
@@ -950,9 +950,9 @@ Owners can read the same over the API:
 
 ```sh
 curl -H "Authorization: Bearer $TOKEN" \
-  "https://maus.example.com/api/usage?from=2026-09-01&to=2026-09-30&groupBy=user"
+  "https://eacbot.example.com/api/usage?from=2026-09-01&to=2026-09-30&groupBy=user"
 curl -H "Authorization: Bearer $TOKEN" -o usage.csv \
-  "https://maus.example.com/api/usage.csv?from=2026-09-01&to=2026-09-30"
+  "https://eacbot.example.com/api/usage.csv?from=2026-09-01&to=2026-09-30"
 ```
 
 Dates are inclusive, UTC, at most a year apart; without them you get the
@@ -1065,9 +1065,9 @@ than the window. An older server's `decisions.ndjson` and `.1` are still read
 and age out the same way. Admins can read it back:
 
 ```sh
-curl -H "Authorization: Bearer $TOKEN" "https://maus.example.com/api/decisions?limit=200"
+curl -H "Authorization: Bearer $TOKEN" "https://eacbot.example.com/api/decisions?limit=200"
 curl -H "Authorization: Bearer $TOKEN" -o decisions.csv \
-  "https://maus.example.com/api/decisions.csv?from=2026-09-01&to=2026-09-30"
+  "https://eacbot.example.com/api/decisions.csv?from=2026-09-01&to=2026-09-30"
 ```
 
 The CSV has one line per decision (time, decision, source, bot, tool,
@@ -1161,9 +1161,9 @@ them as CSV. The same over the API:
 
 ```sh
 curl -H "Authorization: Bearer $TOKEN" \
-  "https://maus.example.com/api/admin-activity?from=2026-09-01&to=2026-09-30&what=visibility"
+  "https://eacbot.example.com/api/admin-activity?from=2026-09-01&to=2026-09-30&what=visibility"
 curl -H "Authorization: Bearer $TOKEN" -o activity.csv \
-  "https://maus.example.com/api/admin-activity.csv?who=ada@company.com"
+  "https://eacbot.example.com/api/admin-activity.csv?who=ada@company.com"
 ```
 
 `what` is `all` (admin changes and answered cards, the default), `approvals`,

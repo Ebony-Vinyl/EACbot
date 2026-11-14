@@ -17,7 +17,7 @@ let dir: string;
 function cli(args: string[], env: NodeJS.ProcessEnv = {}): Promise<Ran> {
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, ["--experimental-strip-types", ENTRY, ...args], {
-      env: { ...process.env, OPENMAUSBOT_TOKEN: "", EAC_PORT: "", OPENMAUSBOT_URL: session.info.url, ...env },
+      env: { ...process.env, EACBOT_TOKEN: "", EAC_PORT: "", EACBOT_URL: session.info.url, ...env },
       stdio: ["ignore", "pipe", "pipe"],
     });
     let stdout = "";

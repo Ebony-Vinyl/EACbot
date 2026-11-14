@@ -50,7 +50,7 @@ function entry(packageId: string, rel: { document: any; bytes: string; sha256: s
 }
 
 function catalog(packages: unknown[], extra: Record<string, unknown> = {}) {
-  return { format: "openmaus.org-library", version: 1, libraryVersion: 3, organization: { id: ORG, name: "Customer Co" }, packages, ...extra };
+  return { format: "eacbot.org-library", version: 1, libraryVersion: 3, organization: { id: ORG, name: "Customer Co" }, packages, ...extra };
 }
 
 function relay(body: unknown, overrides: Record<string, unknown> = {}) {

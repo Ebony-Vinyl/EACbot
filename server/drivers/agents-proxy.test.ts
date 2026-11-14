@@ -1546,7 +1546,7 @@ describe("agents-proxy MCP surface", () => {
       name: "Morning brief",
       instructions: "Summarize today's priorities.",
       schedule: { type: "weekly", time: "09:00", weekdays: ["monday", "friday"] },
-      run_on: "maus",
+      run_on: "eacbot",
       duration_minutes: 45,
       timeout_minutes: 15,
       continuity: true,
@@ -1561,7 +1561,7 @@ describe("agents-proxy MCP surface", () => {
         name: "Morning brief",
         instructions: "Summarize today's priorities.",
         schedule: { type: "weekly", time: "09:00", weekdays: ["monday", "friday"] },
-        runOn: "maus",
+        runOn: "eacbot",
         timeoutMinutes: 15,
         continuity: true,
         runOnStartup: true,
@@ -1576,12 +1576,12 @@ describe("agents-proxy MCP surface", () => {
   it("creates a webhook trigger with only the fields a webhook has, and refuses schedule fields on it", async () => {
     lastRoutineRequestBody = null;
     const res = await callTool("create_trigger", {
-      when: "webhook", name: "Interested replies", instructions: "Draft a follow-up for the lead.", run_on: "maus", webhook_event_types: ["reply.labelled"],
+      when: "webhook", name: "Interested replies", instructions: "Draft a follow-up for the lead.", run_on: "eacbot", webhook_event_types: ["reply.labelled"],
     });
     expect(res.result.isError).toBeFalsy();
     expect(lastRoutineRequestBody).toEqual({
       fromBotId: "bot-asker", fromThreadId: "thread-asker-routine", action: "create", kind: "webhook",
-      webhook: { name: "Interested replies", instructions: "Draft a follow-up for the lead.", runOn: "maus", eventTypes: ["reply.labelled"] },
+      webhook: { name: "Interested replies", instructions: "Draft a follow-up for the lead.", runOn: "eacbot", eventTypes: ["reply.labelled"] },
     });
     lastRoutineRequestBody = null;
     const refused = await callTool("create_trigger", { when: "webhook", name: "Bad", instructions: "x", schedule: { type: "daily", time: "09:00" } });
@@ -1645,7 +1645,7 @@ describe("agents-proxy MCP surface", () => {
   it("advertises VPS-compatible default execution separately from the Boat runner", async () => {
     const list = await rpc("tools/list");
     const routine = list.result.tools.find((entry: { name: string }) => entry.name === "trigger");
-    expect(routine.inputSchema.properties.run_on.enum).toEqual(["maus", "box"]);
+    expect(routine.inputSchema.properties.run_on.enum).toEqual(["eacbot", "box"]);
     expect(routine.inputSchema.properties.run_on.description).toContain("INCLUDING a self-hosted VPS");
   });
 
@@ -1667,7 +1667,7 @@ describe("agents-proxy MCP surface", () => {
 
   it.each([
     { run_on: 7 },
-    { run_on: "maus", runOn: "cloud" },
+    { run_on: "eacbot", runOn: "cloud" },
     { timeout_minutes: "20" },
     { timeout_minutes: 10, timeoutMinutes: 20 },
     { clear_timeout: true, timeoutMinutes: 10 },

@@ -2229,9 +2229,9 @@ describe("managed endpoint provider capacity", () => {
 const ENDPOINT_PATH = "/v1/installations/self/endpoint";
 const SECOND_ACCOUNT_ID = "2b".repeat(16);
 const SECOND_ZONE_ID = "3c".repeat(16);
-const SECOND_SUFFIX = "mausbot.si";
-const SECOND_TOKEN_SECRET = "CLOUDFLARE_API_TOKEN_MAUSBOT_SI";
-const SECOND_TOKEN = "test-only-mausbot-si-api-token-with-no-real-access";
+const SECOND_SUFFIX = "eacbot.si";
+const SECOND_TOKEN_SECRET = "CLOUDFLARE_API_TOKEN_EACBOT_SI";
+const SECOND_TOKEN = "test-only-eacbot-si-api-token-with-no-real-access";
 
 interface AccountsFixture {
   env: Env;
@@ -2243,7 +2243,7 @@ interface AccountsFixture {
   worker: TestWorker;
 }
 
-/** The primary account plus mausbot.si in a second account, each with its
+/** The primary account plus eacbot.si in a second account, each with its
  * own fake API behind a router that checks every request's token. */
 function twoAccounts(entry: Record<string, unknown> = {}): AccountsFixture {
   const first = new FakeCloudflare();
@@ -2390,7 +2390,7 @@ async function orphanIn(
   return { hostname, installationId, tunnelName };
 }
 
-const ON_SECOND_ACCOUNT = /^c-[0-9a-f]{32}\.mausbot\.si$/;
+const ON_SECOND_ACCOUNT = /^c-[0-9a-f]{32}\.eacbot\.si$/;
 
 describe("managed endpoints in several Cloudflare accounts", () => {
   afterEach(() => {
@@ -2690,7 +2690,7 @@ describe("managed endpoints in several Cloudflare accounts", () => {
   it("moves a new endpoint in the same request when its zone refuses the DNS record, giving its tunnel back", async () => {
     const fixture = twoAccounts({ dnsRecordLimit: 200 });
     const owner = await signIn(fixture.worker, "accounts-dns-full@example.com");
-    // At the last scan mausbot.si had the most room; its zone has filled since.
+    // At the last scan eacbot.si had the most room; its zone has filled since.
     await setSnapshot(PRIMARY_ACCOUNT, { dns_record_count: 995, tunnel_count: 974 });
     await setSnapshot(SECOND_ACCOUNT_ID, { dns_record_count: 150, tunnel_count: 230 });
     fixture.second.providerErrors.set("create_dns", 81_045);
@@ -2737,7 +2737,7 @@ describe("managed endpoints in several Cloudflare accounts", () => {
   it("gives back the tunnel of a row stranded without a DNS record, then moves it or answers locally", async () => {
     const fixture = twoAccounts({ dnsRecordLimit: 200 });
     const owner = await signIn(fixture.worker, "accounts-stranded@example.com");
-    // What an interrupted request leaves in mausbot.si: a tunnel that never
+    // What an interrupted request leaves in eacbot.si: a tunnel that never
     // connected, no DNS record, and a row its app keeps retrying.
     const stranded = async (clientInstanceId: string, opaque: string) => {
       const installation = await createInstallation(fixture.worker, owner.token, clientInstanceId);
@@ -2810,7 +2810,7 @@ describe("managed endpoints in several Cloudflare accounts", () => {
         (installation_id, provider_account, hostname, tunnel_name, status, last_error_code, created_at, updated_at)
        VALUES (?, ?, ?, ?, 'error', 'cf_api_81045', ?, ?)`,
     ).bind(waiting.installation.id, SECOND_ACCOUNT_ID, `c-${opaque}.${SECOND_SUFFIX}`, `omb-c-${opaque}`, now, now).run();
-    // mausbot.si refused it a record eleven minutes ago: that refusal no
+    // eacbot.si refused it a record eleven minutes ago: that refusal no
     // longer closes the account, but its zone is still full.
     await setSnapshot(PRIMARY_ACCOUNT, { dns_record_count: 995, tunnel_count: 974 });
     await setSnapshot(SECOND_ACCOUNT_ID, {
@@ -2970,7 +2970,7 @@ describe("managed endpoints in several Cloudflare accounts", () => {
     vi.spyOn(console, "log").mockImplementation(() => undefined);
     vi.spyOn(console, "error").mockImplementation(() => undefined);
 
-    // Registered by a release that cannot pair a desktop with mausbot.si: it
+    // Registered by a release that cannot pair a desktop with eacbot.si: it
     // stays with the full account.
     const old = await provisionIn(fixture, owner.token, "accounts-version", { appVersion: "0.1.102" });
     expect(old.response.status).toBe(503);
@@ -3090,7 +3090,7 @@ describe("managed endpoints in several Cloudflare accounts", () => {
     const fixture = twoAccounts({ dnsRecordLimit: 200, minAppVersion: "0.1.104" });
     const owner = await signIn(fixture.worker, "accounts-free-room@example.com");
     // The scans of 2026-10-20: the primary had 26 tunnels free and 1,878
-    // dormant endpoints; mausbot.si had 770 tunnels free, 207 dormant
+    // dormant endpoints; eacbot.si had 770 tunnels free, 207 dormant
     // endpoints, and every record of its Free zone used.
     const scans = async (primaryTunnels: number) => {
       await setSnapshot(PRIMARY_ACCOUNT, { dns_record_count: 995, dormant_endpoints: 1878, tunnel_count: primaryTunnels });

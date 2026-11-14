@@ -129,8 +129,8 @@ describe("message gallery", () => {
   });
 
   it("sends a Windows path with its backslash before punctuation intact", () => {
-    expect(collectMessageFiles("[report](C:\\Users\\Maus\\.eacbot\\workspaces\\bot\\report.md)")).toEqual([
-      { path: "C:\\Users\\Maus\\.eacbot\\workspaces\\bot\\report.md", name: "report.md", linked: true },
+    expect(collectMessageFiles("[report](C:\\Users\\Mascot\\.eacbot\\workspaces\\bot\\report.md)")).toEqual([
+      { path: "C:\\Users\\Mascot\\.eacbot\\workspaces\\bot\\report.md", name: "report.md", linked: true },
     ]);
   });
 

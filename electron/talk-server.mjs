@@ -111,7 +111,7 @@ export function createTalkServer({ request, prefs, serverKey, starting = () => f
     const bots = listing?.ok ? (await listing.json().catch(() => null))?.bots : null;
     if (!Array.isArray(bots)) throw down();
     const bot = findEACbot(bots);
-    if (!bot) throw new TalkServerError("no-mausbot");
+    if (!bot) throw new TalkServerError("no-eacbot");
     const server = serverKey();
     const saved = prefs.quickAsksChat(server);
     if (saved?.botId === bot.id && bot.tasks?.some(task => task.threadId === saved.threadId)) return saved;

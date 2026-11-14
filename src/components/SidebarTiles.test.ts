@@ -15,7 +15,7 @@ import { botRowProps } from "./Sidebar";
 import { SidebarBotTile, SidebarTileGrid } from "./SidebarTiles";
 
 const bot = (extra: Partial<Bot> = {}): Bot => ({
-  id: "mausbot", threadId: "t", name: "EACbot", title: "", description: "", notifications: true, color: "chrome",
+  id: "eacbot", threadId: "t", name: "EACbot", title: "", description: "", notifications: true, color: "chrome",
   unread: false, modelSelection: { instanceId: "fake", model: "m" }, messages: [], ...extra,
 });
 const dispatch = vi.fn();
@@ -79,9 +79,9 @@ describe("the sidebar tiles", () => {
       key: name, shiftKey: false, preventDefault: vi.fn(), currentTarget: { getBoundingClientRect: () => ({ left: 10, top: 20, width: 94, height: 92 }) },
     } as unknown as KeyboardEvent);
     key("Enter");
-    expect(dispatch).toHaveBeenCalledWith({ type: "select", id: "mausbot" });
+    expect(dispatch).toHaveBeenCalledWith({ type: "select", id: "eacbot" });
     key("ContextMenu");
-    expect(onMenu).toHaveBeenCalledWith({ botId: "mausbot", x: 57, y: 66 });
+    expect(onMenu).toHaveBeenCalledWith({ botId: "eacbot", x: 57, y: 66 });
   });
 });
 
@@ -92,7 +92,7 @@ describe("a tile with a dot", () => {
     function Capture() { tree = tile({ ...props(withWork), primary: true }); return tree; }
     renderToStaticMarkup(createElement(Capture));
     (find(tree, "data-sidebar-tile")!.props.onKeyDown as (event: KeyboardEvent) => void)({ key: "Enter", preventDefault: vi.fn() } as unknown as KeyboardEvent);
-    expect(dispatch).toHaveBeenCalledWith({ type: "switchTask", botId: "mausbot", threadId: "work" });
+    expect(dispatch).toHaveBeenCalledWith({ type: "switchTask", botId: "eacbot", threadId: "work" });
   });
 });
 
@@ -112,7 +112,7 @@ describe("the tile grid", () => {
   it.each([0, 1, 2, 3, 5])("puts the main bot first, then %i pinned bots, as same-size tiles in one centred, wrapping grid", (count) => {
     const html = grid(main, pins(count));
     const drag = count > 1 ? ":drag" : "";
-    expect(tiles(html)).toEqual(["primary:mausbot", ...pins(count).map((pin) => `pinned:${pin.id}${drag}`)]);
+    expect(tiles(html)).toEqual(["primary:eacbot", ...pins(count).map((pin) => `pinned:${pin.id}${drag}`)]);
     expect(html).toMatch(/^<div data-sidebar-tiles="" class="flex max-h-\[40vh\] flex-wrap justify-center gap-1 overflow-y-auto /);
     expect(html.match(/\bh-\[92px\] w-\[78px\]/g)).toHaveLength(count + 1);
     expect(html.match(/width="56px" height="56px"/g)).toHaveLength(count + 1);
@@ -120,8 +120,8 @@ describe("the tile grid", () => {
   });
 
   it("follows the saved pinned order after the main bot, which never moves", () => {
-    setPinnedCircleOrder(["pin2", "pin0", "mausbot"]);
-    expect(tiles(grid(main, pins(3)))).toEqual(["primary:mausbot", "pinned:pin2:drag", "pinned:pin0:drag", "pinned:pin1:drag"]);
+    setPinnedCircleOrder(["pin2", "pin0", "eacbot"]);
+    expect(tiles(grid(main, pins(3)))).toEqual(["primary:eacbot", "pinned:pin2:drag", "pinned:pin0:drag", "pinned:pin1:drag"]);
   });
 
   it("shows the pinned tiles alone when there is no main bot, and nothing when there is neither", () => {

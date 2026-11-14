@@ -76,7 +76,7 @@ if (!teamFixture) console.info("skipping the team own-chat e2e: the cloud fixtur
 
   it("an Admin on a second device reopens their own chat: the server names the conversations they opened", async () => {
     const opened = (await team.as(tokens.ben!, "GET", "/api/auth/session")).body.openedThreads as string[];
-    // His own EACbot's main chat is his as well (server/host/mausbot-own-chat.ts); besides it, he opened one with Scout.
+    // His own EACbot's main chat is his as well (server/host/eacbot-own-chat.ts); besides it, he opened one with Scout.
     const bots = (await team.as(tokens.ben!, "GET", "/api/bots")).body.bots as Array<{ threadId: string; defaultBot?: { person?: string } }>;
     const hisEACbot = bots.find((bot) => bot.defaultBot?.person === "ben@acme.test")!.threadId;
     expect([...opened].sort(), "his EACbot's main chat and the one he opened with Scout").toEqual([hisEACbot, ownChatOf(await scoutAs("ben"), await chatsOf("ben"))].sort());

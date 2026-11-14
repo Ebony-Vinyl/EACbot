@@ -109,7 +109,7 @@ export function createTeamBackup(store: Store, routines: Routine[], name: string
     return valid;
   });
   const document = parseTeamBackup({
-    format: "openmaus.backup", version: 1, name, exportedAt: Date.now(),
+    format: "eacbot.backup", version: 1, name, exportedAt: Date.now(),
     warnings,
     bots: exported.map((bot) => ({
       key: bot.id, name: bot.name, title: bot.title, description: bot.description, soul: bot.soul,

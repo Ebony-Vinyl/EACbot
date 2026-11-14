@@ -16,7 +16,7 @@ export interface OrgLibraryEntry {
   scanFindings: number;
 }
 export interface OrgLibraryCatalog {
-  format: "openmaus.org-library"; version: 1; libraryVersion: number;
+  format: "eacbot.org-library"; version: 1; libraryVersion: number;
   organization: { id: string; name: string };
   truncated?: true;
   packages: OrgLibraryEntry[];

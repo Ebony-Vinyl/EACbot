@@ -146,7 +146,7 @@ await build({
   logLevel: "silent",
 });
 // The SDK resolves its native library through @ubjs at runtime; the bundled
-// resolver is patched so OPENMAUSBOT_CUA_SDK_LIBRARY (the staged DLL) wins over
+// resolver is patched so EACBOT_CUA_SDK_LIBRARY (the staged DLL) wins over
 // node_modules lookups that do not exist in the packaged app.
 const bundledSource = await readFile(bundle, "utf8");
 const resolverPattern = /function resolveLibPath\d*\(opts\) \{/g;
@@ -158,7 +158,7 @@ await writeFile(
   bundle,
   bundledSource.replace(
     resolverPattern,
-    `${resolvers[0]}\n      if (process.env.OPENMAUSBOT_CUA_SDK_LIBRARY) return resolveOverride(opts.crateName, process.env.OPENMAUSBOT_CUA_SDK_LIBRARY);`,
+    `${resolvers[0]}\n      if (process.env.EACBOT_CUA_SDK_LIBRARY) return resolveOverride(opts.crateName, process.env.EACBOT_CUA_SDK_LIBRARY);`,
   ),
 );
 

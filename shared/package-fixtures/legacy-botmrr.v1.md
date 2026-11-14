@@ -52,7 +52,7 @@ routines:
     name: Morning signals
     agent: scout
     prompt: Prepare the approved morning signal brief.
-    runOn: maus
+    runOn: eacbot
     schedule:
       type: daily
       time: 09:00

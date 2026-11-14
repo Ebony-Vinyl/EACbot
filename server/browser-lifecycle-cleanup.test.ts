@@ -27,7 +27,7 @@ vi.mock("./browser-processes.ts", async (original) => ({
 
 const folders: string[] = [];
 const journal = () => {
-  const folder = mkdtempSync(join(tmpdir(), "openmaus-browser-cleanup-"));
+  const folder = mkdtempSync(join(tmpdir(), "eacbot-browser-cleanup-"));
   folders.push(folder);
   return join(folder, "browser-cleanups.json");
 };
@@ -242,7 +242,7 @@ describe("durable browser lifecycle cleanup", () => {
 describe("closing this data dir's browsers nothing uses", () => {
   /** A HOME whose agent-browser run directory holds a pid file per daemon. */
   function home(daemons: string[]) {
-    const folder = mkdtempSync(join(tmpdir(), "openmaus-browser-sweep-"));
+    const folder = mkdtempSync(join(tmpdir(), "eacbot-browser-sweep-"));
     folders.push(folder);
     mkdirSync(join(folder, "agent-browser"));
     for (const session of daemons) writeFileSync(join(folder, "agent-browser", `${session}.pid`), "0");

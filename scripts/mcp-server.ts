@@ -3,6 +3,10 @@
 // for external agents (Hermes, Claude Desktop, Cursor, etc.).
 import readline from "node:readline";
 import { isRecord, projectMessage } from "./mcp-message-projection.ts";
+import { adoptEarlierEnvNames } from "../shared/env-names.ts";
+
+// A deployment configured under the earlier names keeps working.
+adoptEarlierEnvNames();
 
 export function validateBaseUrl(url: string): string {
   const trimmed = url.replace(/\/+$/, "");
@@ -16,7 +20,7 @@ export function validateBaseUrl(url: string): string {
     throw new Error("EACbot URL must use http:// or https://");
   }
   if (parsed.username || parsed.password) {
-    throw new Error("EACbot URL must not contain credentials; use OPENMAUSBOT_TOKEN instead");
+    throw new Error("EACbot URL must not contain credentials; use EACBOT_TOKEN instead");
   }
   if ((parsed.pathname !== "/" && parsed.pathname !== "") || parsed.search || parsed.hash) {
     throw new Error("EACbot URL must be an origin without a path, query, or fragment");
@@ -31,7 +35,7 @@ export function validateBaseUrl(url: string): string {
   return parsed.origin;
 }
 
-const configuredUrl = process.env.OPENMAUSBOT_URL ||
+const configuredUrl = process.env.EACBOT_URL ||
   (process.env.EAC_PORT ? `http://127.0.0.1:${process.env.EAC_PORT}` : undefined);
 
 export const EAC_BASE_URL = validateBaseUrl(configuredUrl || "http://127.0.0.1:8799");
@@ -47,12 +51,12 @@ export function log(msg: string) {
 export const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
 
 function requestTimeoutMs(): number {
-  const raw = Number(process.env.OPENMAUSBOT_MCP_TIMEOUT_MS);
+  const raw = Number(process.env.EACBOT_MCP_TIMEOUT_MS);
   return Number.isFinite(raw) && raw >= 1_000 && raw <= 120_000 ? Math.floor(raw) : DEFAULT_REQUEST_TIMEOUT_MS;
 }
 
 function requestHeaders(options: RequestInit): NonNullable<RequestInit["headers"]> {
-  const token = process.env.OPENMAUSBOT_TOKEN?.trim();
+  const token = process.env.EACBOT_TOKEN?.trim();
   const headers = new Headers(options.headers);
   if (!headers.has("Content-Type")) headers.set("Content-Type", "application/json");
   if (token && !headers.has("Authorization")) headers.set("Authorization", `Bearer ${token}`);
@@ -78,7 +82,7 @@ async function fetchJson(url: string, options: RequestInit = {}): Promise<any> {
     if (response.status === 403 && !new Headers(headers).has("Authorization")) {
       throw new EACbotApiError(403,
         "EACbot refused this write because the installed desktop app requires a paired session token. " +
-        "Set OPENMAUSBOT_TOKEN as described in docs/mcp-server.md.",
+        "Set EACBOT_TOKEN as described in docs/mcp-server.md.",
       );
     }
     throw new EACbotApiError(response.status, `EACbot API error (${response.status}): ${text || response.statusText}`);
@@ -112,8 +116,8 @@ export async function probeBaseUrls(candidates: string[]): Promise<string> {
 
 export async function resolveBaseUrl(): Promise<string> {
   if (discoveredBaseUrl) return discoveredBaseUrl;
-  if (process.env.OPENMAUSBOT_TOKEN?.trim() && !configuredUrl) {
-    throw new Error("Set OPENMAUSBOT_URL or EAC_PORT when using OPENMAUSBOT_TOKEN so credentials are never sent during port discovery");
+  if (process.env.EACBOT_TOKEN?.trim() && !configuredUrl) {
+    throw new Error("Set EACBOT_URL or EAC_PORT when using EACBOT_TOKEN so credentials are never sent during port discovery");
   }
   discoveredBaseUrl = await probeBaseUrls(DISCOVERY_URLS);
   return discoveredBaseUrl;

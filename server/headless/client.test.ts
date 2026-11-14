@@ -14,18 +14,18 @@ afterAll(() => removeTempDir(dir));
 
 describe("the server and the credential", () => {
   it("takes flags before the environment, and --url before --port", () => {
-    expect(namedServer({ url: "https://a.example", port: "1" }, { OPENMAUSBOT_URL: "https://b.example" })).toEqual({ url: "https://a.example" });
-    expect(namedServer({ port: "19990" }, { OPENMAUSBOT_URL: "https://b.example" })).toEqual({ port: "19990" });
-    expect(namedServer({}, { OPENMAUSBOT_URL: "https://b.example", EAC_PORT: "1" })).toEqual({ url: "https://b.example" });
+    expect(namedServer({ url: "https://a.example", port: "1" }, { EACBOT_URL: "https://b.example" })).toEqual({ url: "https://a.example" });
+    expect(namedServer({ port: "19990" }, { EACBOT_URL: "https://b.example" })).toEqual({ port: "19990" });
+    expect(namedServer({}, { EACBOT_URL: "https://b.example", EAC_PORT: "1" })).toEqual({ url: "https://b.example" });
     expect(namedServer({}, { EAC_PORT: "8123" })).toEqual({ port: "8123" });
     expect(namedServer({}, {})).toBeUndefined();
   });
 
-  it("reads the token from --token-file or OPENMAUSBOT_TOKEN, never from the command line", () => {
+  it("reads the token from --token-file or EACBOT_TOKEN, never from the command line", () => {
     const file = join(dir, "token");
     writeFileSync(file, "omb_sess_from_file\n");
-    expect(readToken({ "token-file": file }, { OPENMAUSBOT_TOKEN: "omb_sess_env" })).toBe("omb_sess_from_file");
-    expect(readToken({}, { OPENMAUSBOT_TOKEN: " omb_sess_env " })).toBe("omb_sess_env");
+    expect(readToken({ "token-file": file }, { EACBOT_TOKEN: "omb_sess_env" })).toBe("omb_sess_from_file");
+    expect(readToken({}, { EACBOT_TOKEN: " omb_sess_env " })).toBe("omb_sess_env");
     expect(readToken({}, {})).toBeUndefined();
     writeFileSync(join(dir, "empty"), "\n");
     expect(() => readToken({ "token-file": join(dir, "empty") }, {})).toThrow("is empty");
@@ -34,11 +34,11 @@ describe("the server and the credential", () => {
 
   it("sends the token with every call to a named server, and never while looking for one", async () => {
     const request = vi.fn(async () => ({ ok: true }));
-    const client = await openClient({ url: "http://127.0.0.1:19990" }, { env: { OPENMAUSBOT_TOKEN: "omb_sess_abc" }, request }, false);
+    const client = await openClient({ url: "http://127.0.0.1:19990" }, { env: { EACBOT_TOKEN: "omb_sess_abc" }, request }, false);
     await client.json("/api/bots?messages=0");
     expect(request).toHaveBeenCalledWith("/api/bots?messages=0", expect.objectContaining({ headers: expect.any(Headers) }), "http://127.0.0.1:19990");
     expect((request.mock.calls[0] as unknown as [string, RequestInit])[1].headers).toEqual(new Headers({ Authorization: "Bearer omb_sess_abc" }));
-    await expect(openClient({}, { env: { OPENMAUSBOT_TOKEN: "omb_sess_abc" } }, false)).rejects.toMatchObject({ exitCode: 2, message: expect.stringContaining("never sent while looking") });
+    await expect(openClient({}, { env: { EACBOT_TOKEN: "omb_sess_abc" } }, false)).rejects.toMatchObject({ exitCode: 2, message: expect.stringContaining("never sent while looking") });
     await expect(openClient({ url: "http://10.0.0.5:8799" }, { env: {} }, false)).rejects.toMatchObject({ exitCode: 2, message: expect.stringContaining("Insecure cleartext HTTP") });
     await expect(openClient({ port: "70000" }, { env: {} }, false)).rejects.toMatchObject({ exitCode: 2 });
   });

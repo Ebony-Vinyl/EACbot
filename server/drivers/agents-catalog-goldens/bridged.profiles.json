@@ -519,7 +519,7 @@
       "use_tool"
     ]
   },
-  "default+mausbot": {
+  "default+eacbot": {
     "bytes": 17525,
     "sha256": "05c21c88d316f16b946eca7e36715b4b018d4584b6f61a917afd720bab91f20c",
     "tools": [
@@ -541,7 +541,7 @@
       "use_tool"
     ]
   },
-  "skills+shared+voice+mausbot": {
+  "skills+shared+voice+eacbot": {
     "bytes": 18373,
     "sha256": "a9ae31060965c18e508370a57086b001ab2f9f782b57658f2cc8e599723e42fc",
     "tools": [

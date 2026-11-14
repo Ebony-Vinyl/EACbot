@@ -18,7 +18,7 @@ const MAX_PAGES = 3;
 const TEXT_LIMIT = 1_500;
 const QUOTE_LIMIT = 300;
 const MAX_BODY_BYTES = 2 * 1024 * 1024;
-/** Longer than the relay's own 30 s with treg (openmaus-cloud X_TIMEOUT_MS): the relay's answer, counted or given
+/** Longer than the relay's own 30 s with treg (eacbot-cloud X_TIMEOUT_MS): the relay's answer, counted or given
  * back, arrives before this side gives up and falls back to a second, also counted, call. */
 export const X_CLIENT_TIMEOUT_MS = 35_000;
 /** Characters an answer may take: under the agents server's 24,000-character
@@ -29,7 +29,7 @@ const RESULT_BUDGET = 22_000;
 
 /** treg catalog ids: the cheapest scraper for each job, then treg's routed
  * endpoint for the same job (identity fields only, one page). The relay serves
- * exactly these (openmaus-cloud X_ENDPOINTS). */
+ * exactly these (eacbot-cloud X_ENDPOINTS). */
 export const TREG_X_ENDPOINTS = {
   search: "anyapi.x.search.posts",
   searchRouted: "treg.x.search.posts",
@@ -169,7 +169,7 @@ function idOf(...values: unknown[]): string | undefined {
   return undefined;
 }
 
-/** "@maus", "maus" or an x.com profile link (https:// optional) → "maus";
+/** "@eacbot", "eacbot" or an x.com profile link (https:// optional) → "eacbot";
  * anything else, X's own pages included, → null. */
 export function normalizeHandle(raw: string): string | null {
   let value = raw.trim();
@@ -290,7 +290,7 @@ function newestOf(posts: XPost[]): string | undefined {
 
 /** An HTTP refusal from treg as one of the sentences in X_MESSAGES. */
 export function errorFor(status: number, body: unknown): XResearchError {
-  // The relay's own refusals (openmaus-cloud server/cloud-services.ts); a 5xx
+  // The relay's own refusals (eacbot-cloud server/cloud-services.ts); a 5xx
   // there is a scraper or our treg account, never the person's to fix.
   if (status === 401 || status === 403) return new XResearchError("bad_key", X_MESSAGES.badKey);
   if (status === 402) return new XResearchError("no_credit", X_MESSAGES.noPlan);

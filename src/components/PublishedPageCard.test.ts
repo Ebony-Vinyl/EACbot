@@ -17,7 +17,7 @@ import { StoreContext } from "@/state/store";
 import { usePanelPage, type PanelPage } from "@/lib/page-open";
 import { PublishedPageCard } from "./PublishedPageCard";
 
-const URL = "https://abcdefghijklmnopqrstuvwxyz.mausbot.page/";
+const URL = "https://abcdefghijklmnopqrstuvwxyz.eacbot.page/";
 const page = (card: Message["publishedPage"]): Message => ({ id: "m1", at: 1, role: "bot", kind: "text", text: "fallback", publishedPage: card });
 const live = page({ state: "live", title: "Bake sale", pageId: "abcdefghijklmnopqrstuvwxyz", url: URL, usage: { pages: 3, limit: 5 } });
 /** The app's state with Pepper's chat open; Pepper's browser is on and installed. */

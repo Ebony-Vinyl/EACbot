@@ -197,13 +197,13 @@ const endpointSnapshot = (options: ProxyOptions): CompanionEndpointSnapshot => {
 export function companionIdentityHeaders(authenticatedDeviceId?: string, mutationToken?: string): Record<string, string> {
   const out: Record<string, string> = {
     // Carries no authority; it only narrows behavior at the harness.
-    "x-openmausbot-companion": "1",
+    "x-eacbot-companion": "1",
   };
   // Never a caller-supplied header: this id comes only from the registry entry
   // that authenticated the bearer.
   if (authenticatedDeviceId && /^[\w-]{1,128}$/.test(authenticatedDeviceId)) {
-    out["x-openmausbot-companion-device"] = authenticatedDeviceId;
-    if (mutationToken) out["x-openmausbot-companion-auth"] = mutationToken;
+    out["x-eacbot-companion-device"] = authenticatedDeviceId;
+    if (mutationToken) out["x-eacbot-companion-auth"] = mutationToken;
   }
   return out;
 }
@@ -249,10 +249,10 @@ function harnessControlCheck(options: ProxyOptions) {
       accept: "application/json",
       "content-type": "application/json",
       "content-length": String(Buffer.byteLength(body)),
-      "x-openmausbot-companion": "1",
-      "x-openmausbot-companion-device": deviceId,
+      "x-eacbot-companion": "1",
+      "x-eacbot-companion-device": deviceId,
     };
-    if (mutationToken) headers["x-openmausbot-companion-auth"] = mutationToken;
+    if (mutationToken) headers["x-eacbot-companion-auth"] = mutationToken;
     const request = httpRequest({
       hostname: "127.0.0.1",
       port: options.harnessPort,

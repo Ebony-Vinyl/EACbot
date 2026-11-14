@@ -12,7 +12,7 @@ export type PagesAccess =
   | { kind: "desktop"; url: string; token: string }
   | { kind: "home"; url: string; machineId: string; secret: string };
 
-/** Must match openmaus-cloud server/cloud-pages.ts `pagesHomeSignature`. */
+/** Must match eacbot-cloud server/cloud-pages.ts `pagesHomeSignature`. */
 export function pagesHomeSignature(secret: string, machineId: string, timestamp: string, nonce: string, body: string): string {
   const bodyHash = createHash("sha256").update(body).digest("base64url");
   return createHmac("sha256", secret).update(`omb-pages-v1\n${machineId}\n${timestamp}\n${nonce}\n${bodyHash}`).digest("base64url");

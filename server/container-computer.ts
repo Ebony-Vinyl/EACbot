@@ -31,9 +31,9 @@ export const BASE_IMAGE = `${BASE_IMAGE_REPOSITORY}@${BASE_IMAGE_DIGEST}`;
 // Image and container labels, not this mutable tag, decide compatibility.
 export const IMAGE_REPOSITORY = "localhost/eacbot/cua-local-vm";
 export const IMAGE_LAYER_VERSION = "8";
-export const IMAGE_LAYER_LABEL = "com.openmausbot.image-layer";
+export const IMAGE_LAYER_LABEL = "com.eacbot.image-layer";
 export const IMAGE = `${IMAGE_REPOSITORY}:driver-${CUA_DRIVER_VERSION}-v${IMAGE_LAYER_VERSION}`;
-export const CONTAINER = "openmausbot-computer";
+export const CONTAINER = "eacbot-computer";
 export const MANAGED_LABEL = "com.eacbot.local-vm";
 export const DRIVER_LABEL = "com.eacbot.cua-driver";
 export const BASE_IMAGE_LABEL = "com.eacbot.cua-base";
