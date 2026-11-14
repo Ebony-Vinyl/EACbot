@@ -22,8 +22,8 @@ import { GroupView } from "@/components/GroupView";
 import { SIDEBAR_AND_PANEL_FIT, SIDEBAR_INLINE, TWO_SIDE_PANELS_FIT, useMediaQuery } from "@/lib/use-media-query";
 import { preloadConnectedApps } from "@/lib/connected-apps";
 import {
-  ActivityPanel, BotSettingsDialog, CloudAddDialog, ComputerPanel, FilesView, InspectorPanel, KeyboardShortcutsModal, LocalVmWorkspace,
-  PluginsPanel, preloadScreens, RemoteAgentSettingsPanel, RemoteDesktopPanel, RoomPanel, SettingsModal, TeamMapPage, TriggersPage,
+  ActivityPanel, BotSettingsDialog, CloudAddDialog, ComputerPanel, FilesView, HealthPage, HomePage, InspectorPanel, KeyboardShortcutsModal, LocalVmWorkspace,
+  PlatformCenter, PlatformDashboard, PluginsPanel, preloadScreens, RemoteAgentSettingsPanel, RemoteDesktopPanel, RoomPanel, SettingsModal, TeamMapPage, TriggersPage,
 } from "@/components/lazy-screens";
 import { useAdvancedMode } from "@/lib/interface-mode";
 import { useRoomPanelShown } from "@/lib/room-panel";
@@ -33,6 +33,12 @@ import { useNotificationFeed } from "@/lib/notification-preferences";
 import { UpdateBanner } from "@/components/UpdateBanner";
 import { AppNotices } from "@/components/AppNotices";
 import { BotLimitPopup } from "@/components/BotLimitPopup";
+import { AppBackground } from "@/components/background/AppBackground";
+import { PanelSlot } from "@/components/shell/PanelSlot";
+import { SidebarSwap } from "@/components/shell/SidebarSwap";
+import { TaskBoardCard } from "@/components/board/TaskBoardCard";
+import { useShellView } from "@/lib/shell-view";
+import "@/components/shell/shell.css";
 import { CloudAsleepStrip } from "@/components/CloudAsleepStrip";
 import { AnnouncementsStrip } from "@/components/AnnouncementsStrip";
 import { LiveConnectionStrip } from "@/components/LiveConnectionStrip";
@@ -138,6 +144,7 @@ function Shell({ viewer }: { viewer: WelcomeViewer | null }) {
   usePresence(state, dispatch);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [tasksOpen, setTasksOpen] = useState(false);
+  const shellView = useShellView();
   usePageLanguage(effectiveLanguage(useLanguageChoice(), state.config?.language), true);
   const [paletteOpen, setPaletteOpen] = useState(false);
   // Stays mounted once opened: a Cloud bought in it can arrive after the sheet is closed.
@@ -323,6 +330,7 @@ function Shell({ viewer }: { viewer: WelcomeViewer | null }) {
   </>;
   return (
     <div className={cn("flex h-full flex-col", framed && "bg-frame")}>
+      <AppBackground />
       <WindowFrameBar notifications={notificationTray} />
       <BotLimitPopup />
       {!framed && strips}
@@ -353,16 +361,31 @@ function Shell({ viewer }: { viewer: WelcomeViewer | null }) {
         className={framed ? "relative flex min-w-0 flex-1 flex-col overflow-hidden bg-app" : "contents"}>
       {framed && strips}
       <div className={framed ? "relative flex min-h-0 flex-1" : "contents"}>
-      {!calendarFocus && <Sidebar
-        onOpenTasks={() => { setTasksOpen(true); setDrawerOpen(false); }}
-        collapseToIcons={collapseSidebar}
-        open={drawerOpen}
-        onClose={() => {
-          setDrawerOpen(false);
-          menuButtonRef.current?.focus();
-        }}
-      />}
-      {tasksOpen ? <TaskCenter onClose={() => setTasksOpen(false)} /> : state.activeView === "team-map" ? (
+      {/* The list of bots and the board take the same place: one shows at a time, so a person swaps rather than
+          stacking. Both are the left-hand card. The swap is a cross-fade with a small slide, so the two surfaces read
+          as one card changing its contents instead of two panes cutting in and out. */}
+      {!calendarFocus && (
+        <SidebarSwap>
+          {shellView === "board" ? <TaskBoardCard /> : <Sidebar
+            onOpenTasks={() => { setTasksOpen(true); setDrawerOpen(false); }}
+            collapseToIcons={collapseSidebar}
+            open={drawerOpen}
+            onClose={() => {
+              setDrawerOpen(false);
+              menuButtonRef.current?.focus();
+            }}
+          />}
+        </SidebarSwap>
+      )}
+      {tasksOpen ? <TaskCenter onClose={() => setTasksOpen(false)} /> : state.activeView === "health" ? (
+        <HealthPage />
+      ) : state.activeView === "home" ? (
+        <HomePage />
+      ) : state.activeView === "platforms" ? (
+        <PlatformCenter onOpen={(platform) => dispatch({ type: "showPlatform", platform })} onConnect={() => dispatch({ type: "togglePlugins", open: true })} />
+      ) : state.activeView === "platform" && state.platformId ? (
+        <PlatformDashboard platform={state.platformId} onBack={() => dispatch({ type: "showPlatforms" })} />
+      ) : state.activeView === "team-map" ? (
         <TeamMapPage />
       ) : state.activeView === "files" ? (
         <FilesView />
@@ -392,7 +415,7 @@ function Shell({ viewer }: { viewer: WelcomeViewer | null }) {
       ) : noEngines ? (
         <NoEngines />
       ) : (
-        <main data-app-loading={loading.text} className="relative flex h-full min-w-0 flex-1 flex-col items-center justify-center gap-3 bg-app text-ink-secondary">
+        <main data-chat-pane data-app-loading={loading.text} className="relative flex h-full min-w-0 flex-1 flex-col items-center justify-center gap-3 bg-app text-ink-secondary">
           <WindowDragStrip />
           <div className="w-full max-w-md"><ChatNotice notice={state.notice} /></div>
           {loading.busy && <Loader2 size={20} className="animate-spin" />}
@@ -404,15 +427,17 @@ function Shell({ viewer }: { viewer: WelcomeViewer | null }) {
           )}
         </main>
       )}
-      {/* Sibling panels need distinct keys: two keyed `bot.id` collide in React's keyed reconciliation. */}
+      {/* Sibling panels need distinct keys: two keyed `bot.id` collide in React's keyed reconciliation.
+          Each panel is wrapped so it springs out on close instead of vanishing: the wrapper holds it mounted for the
+          length of the exit, which is what a plain `&&` cannot do. */}
       {!tasksOpen && <>
-      {state.settingsOpen && bot && (
-        remoteClient
+      <PanelSlot open={state.settingsOpen && Boolean(bot)} side="right">
+        {bot && (remoteClient
           ? <RemoteAgentSettingsPanel bot={bot} overlay={state.computerOpen && !twoSidePanelsFit} />
-          : <BotSettingsDialog key={`settings:${bot.id}`} bot={bot} overlay={(state.inspectorOpen || state.computerOpen || (notificationFeed && state.notificationsOpen)) && !twoSidePanelsFit} />
-      )}
-      {state.computerOpen && bot && (
-        remoteClient ? (
+          : <BotSettingsDialog key={`settings:${bot.id}`} bot={bot} overlay={(state.inspectorOpen || state.computerOpen || (notificationFeed && state.notificationsOpen)) && !twoSidePanelsFit} />)}
+      </PanelSlot>
+      <PanelSlot open={state.computerOpen && Boolean(bot)} side="right">
+        {bot && (remoteClient ? (
           <RemoteDesktopPanel key={`computer:${bot.id}`} bot={bot} />
         ) : (
           <ComputerPanel
@@ -420,15 +445,23 @@ function Shell({ viewer }: { viewer: WelcomeViewer | null }) {
             bot={bot}
             onOpenVmWorkspace={openLocalVmWorkspace}
           />
-        )
-      )}
-      {roomPanelOpen && group && (
-        <RoomPanel key={`room:${group.id}`} group={group} overlay={notificationFeed && state.notificationsOpen && !twoSidePanelsFit} />
-      )}
-      {!remoteClient && state.inspectorOpen && bot && <InspectorPanel key={bot.threadId} bot={bot} />}
-      {!remoteClient && state.activityOpen && bot && <ActivityPanel key={`activity:${bot.id}`} bot={bot} />}
-      {inboxShown && <InboxPanel />}
-      {notificationTray && state.notificationsOpen && <NotificationsPanel />}
+        ))}
+      </PanelSlot>
+      <PanelSlot open={roomPanelOpen && Boolean(group)} side="right">
+        {group && <RoomPanel key={`room:${group.id}`} group={group} overlay={notificationFeed && state.notificationsOpen && !twoSidePanelsFit} />}
+      </PanelSlot>
+      <PanelSlot open={!remoteClient && state.inspectorOpen && Boolean(bot)} side="right">
+        {bot && <InspectorPanel key={bot.threadId} bot={bot} />}
+      </PanelSlot>
+      <PanelSlot open={!remoteClient && state.activityOpen && Boolean(bot)} side="right">
+        {bot && <ActivityPanel key={`activity:${bot.id}`} bot={bot} />}
+      </PanelSlot>
+      <PanelSlot open={inboxShown} side="right">
+        <InboxPanel />
+      </PanelSlot>
+      <PanelSlot open={notificationTray && state.notificationsOpen} side="right">
+        <NotificationsPanel />
+      </PanelSlot>
       {notificationTray && !framed && <NotificationRail />}
       </>}
       </div>

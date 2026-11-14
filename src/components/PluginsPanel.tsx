@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Check, ChevronDown, ChevronRight, Loader2, Puzzle, RefreshCw, Search, Server, TriangleAlert, Users, X } from "lucide-react";
 import { ExtensionsCatalog } from "./ExtensionsCatalog";
 import { PlatformAccountsPanel } from "./PlatformAccountsPanel";
+import { DomesticPlatformsSection } from "./platforms/DomesticPlatformsSection";
 import { api, useStore, type Bot, type InstanceInfo } from "@/state/store";
 import { cn } from "@/lib/cn";
 import { glassPopupFrameStyle } from "@/lib/glass-popup";
@@ -637,6 +638,13 @@ export function PluginsPanel() {
               <ChevronRight size={16} aria-hidden="true" className="shrink-0 text-ink-secondary rtl:-scale-x-100" />
             </button>
           </div>
+          <DomesticPlatformsSection
+            onOpen={(platform) => {
+              dispatch({ type: "showPlatform", platform });
+              dispatch({ type: "togglePlugins", open: false });
+            }}
+            onManage={() => setPlatformsOpen(true)}
+          />
           {stale && (
             <div className="mb-3 flex items-start gap-2 rounded-xl bg-warning/10 px-3 py-2 text-[13px] text-warning">
               <TriangleAlert size={14} className="mt-px shrink-0" />

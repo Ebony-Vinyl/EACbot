@@ -1,19 +1,34 @@
 {
   "type": "object",
   "properties": {
-    "cookie": {
+    "accountId": {
       "type": "string",
-      "description": "可选：已登录 tieba.baidu.com 的 Cookie，仅供回帖",
-      "secret": true
+      "description": "平台账户连接 id（在「平台」页面创建账户后填入）"
     },
-    "tbs": {
+    "cdpUrl": {
       "type": "string",
-      "description": "可选：登录后页面源码中的 tbs 值，回帖必需"
+      "description": "DevTools 地址，例如 http://127.0.0.1:9222；需指向一个你已登录贴吧的 Chrome"
     },
-    "apiBase": {
+    "serverUrl": {
       "type": "string",
-      "description": "可选：基地址，默认 https://tieba.baidu.com（测试或代理用）"
+      "default": "http://127.0.0.1:8799",
+      "description": "本应用的服务地址：插件把消息投递到这里，并从这里的 outbox 取回复"
+    },
+    "serverToken": {
+      "type": "string",
+      "secret": true,
+      "description": "访问上面地址所需的令牌（本应用生成）"
+    },
+    "selfName": {
+      "type": "string",
+      "description": "账户在贴吧上的显示名，用于看板标识"
+    },
+    "pollMs": {
+      "type": "number",
+      "default": 20000,
+      "description": "轮询间隔（毫秒）"
     }
   },
+  "required": ["accountId"],
   "additionalProperties": false
 }

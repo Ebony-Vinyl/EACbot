@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
   "pluginId": "eac.xianyu",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "apiVersion": "^1.0.0",
   "name": "EAC 闲鱼助手",
-  "description": "闲鱼工具：自动回复知识库与规则（本地，稳定可用）；商品搜索需要配置已登录 Cookie（实验性）。发布、改价、交易等高影响操作未实现，不假装可用。",
+  "description": "闲鱼账户桥与运营台：两条传输线路（协议线路 / 网页线路）接收消息并回复，知识库自动回复，商品与订单同步，发布/改价/发货/退款按规则执行或交由你审批，全部动作留审计。遇到验证码与风控一律暂停上报，不做任何绕过。",
   "publisher": "EACbot Community",
   "license": "Apache-2.0",
   "source": {
@@ -12,7 +12,7 @@
     "revision": "813bba63fd7aa94c98ecf6d93d43648abe50f3a9"
   },
   "compatibility": {
-    "hostVersion": "^0.1.0",
+    "hostVersion": "^0.1.0 || >=0.2.0-preview.0 <0.3.0",
     "hosts": ["server", "desktop"],
     "platforms": ["win32-x64", "linux-x64", "darwin-arm64", "darwin-x64"]
   },
@@ -22,17 +22,33 @@
     { "id": "xy-read", "capability": "xianyu.kb.read", "effect": "read", "scope": {}, "reason": "读取知识库与自动回复规则。" },
     { "id": "xy-write", "capability": "xianyu.kb.write", "effect": "write", "scope": {}, "reason": "维护知识库条目与自动回复规则。" },
     { "id": "xy-delete", "capability": "xianyu.kb.delete", "effect": "delete", "scope": {}, "reason": "删除知识库条目与规则。" },
-    { "id": "xy-search", "capability": "xianyu.items.read", "effect": "read", "scope": {}, "reason": "用已配置 Cookie 搜索闲鱼商品（实验性）。" }
+    { "id": "xy-search", "capability": "xianyu.items.read", "effect": "read", "scope": {}, "reason": "用已配置 Cookie 搜索闲鱼商品（实验性）。" },
+    { "id": "xy-message", "capability": "xianyu.messages.send", "effect": "send", "scope": {}, "reason": "把 Bot 的回复发送到闲鱼会话；不含发布、改价、发货或退款。" },
+    { "id": "xy-act", "capability": "xianyu.trade.write", "effect": "write", "scope": {}, "reason": "发布商品、改价、发货、同意退款；默认逐项交由主人确认。" }
   ],
   "contributes": {
+    "platform": {
+      "id": "xianyu",
+      "label": "闲鱼",
+      "transports": ["protocol", "web"],
+      "accountCapabilities": [
+        "接收私聊消息并交给 Bot",
+        "知识库与规则范围内的自动回复",
+        "商品与订单同步",
+        "发布、改价、发货、退款（按规则或逐项审批）"
+      ]
+    },
     "tools": [
       { "id": "xy-kb-add", "entry": "entry.mjs", "effect": "write", "permission": "xy-write", "description": "添加知识库条目（question 关键词, answer 回复文本, tags?）。" },
-      { "id": "xy-kb-list", "entry": "entry.mjs", "effect": "read", "permission": "xy-read", "description": "列出知识库条目，可按关键词过滤。" },
+      { "id": "xy-kb-list", "entry": "entry.mjs", "effect": "read", "permission": "xy-read", "description": "列出知识库条目与当前规则，可按关键词过滤。" },
       { "id": "xy-kb-delete", "entry": "entry.mjs", "effect": "delete", "permission": "xy-delete", "description": "按 id 删除知识库条目。" },
-      { "id": "xy-rules", "entry": "entry.mjs", "effect": "write", "permission": "xy-write", "description": "设置范围内自动回复规则（enable, onlyTrusted?, maxRepliesPerDay?）；发布/改价不在其中。" },
-      { "id": "xy-item-search", "entry": "entry.mjs", "effect": "read", "permission": "xy-search", "description": "按关键词搜索闲鱼商品（需要 config.json 配置已登录 Cookie；实验性，接口无官方合同）。" }
+      { "id": "xy-rules", "entry": "entry.mjs", "effect": "write", "permission": "xy-write", "description": "设置自动回复规则（enabled, onlyTrusted?, maxRepliesPerDay?, actions?）。actions 逐项设 auto 或 manual。" },
+      { "id": "xy-item-search", "entry": "entry.mjs", "effect": "read", "permission": "xy-search", "description": "按关键词搜索闲鱼商品（需要已登录 Cookie；实验性，接口无官方合同）。" },
+      { "id": "xy-bridge-status", "entry": "entry.mjs", "effect": "read", "permission": "xy-read", "description": "报告两条传输线路、入站出站计数与今日自动回复用量。" },
+      { "id": "xy-transport-configure", "entry": "entry.mjs", "effect": "write", "permission": "xy-write", "description": "设置传输方式（protocol/web/auto）、Cookie、cdpUrl 与服务器地址。" },
+      { "id": "xy-action", "entry": "entry.mjs", "effect": "write", "permission": "xy-act", "description": "执行发布/改价/发货/退款；规则为 manual 时进入待审批队列而不直接执行。" }
     ]
   },
   "configSchema": "config.schema.json",
-  "stateVersion": 1
+  "stateVersion": 2
 }

@@ -19,8 +19,10 @@ export const BOAT_OFFER: BoatOffer = {
   until: null,
 };
 
-export function boatOfferRuns(now: number, offer: BoatOffer = BOAT_OFFER): boolean {
-  return offer.until === null || now < offer.until;
+/** Whether the offer shows anywhere. This build does not promote Boat, so it never does; the copy and the claim link
+ * stay here for a fork that wants them, and every caller reads this one answer instead of deciding for itself. */
+export function boatOfferRuns(_now: number, _offer: BoatOffer = BOAT_OFFER): boolean {
+  return false;
 }
 
 /** RFC 6068: everything after the address is percent-encoded (never "+" for a space) and a line break is %0D%0A. */

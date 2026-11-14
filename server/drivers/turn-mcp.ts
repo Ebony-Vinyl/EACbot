@@ -35,6 +35,8 @@ export function turnStdioMcpServers(turn: SendTurnInput, options: { schemaProfil
   add("data", turn.integrations?.data);
   add("email", turn.integrations?.email);
   add("device", turn.integrations?.device);
+  add("health", turn.integrations?.health);
+  add("home", turn.integrations?.home);
   // Cua connections expose Cua Driver's own MCP server; a cloud turn runs on its boat, so none is mounted.
   add("computer", turn.integrations?.localComputer);
   // User servers after the built-ins: a residual name collision keeps the built-in.
@@ -84,7 +86,7 @@ type NameValue = Array<{ name: string; value: string }>;
 export type AcpMcpServer = { name: string; command: string; args: string[]; env: NameValue }
   | { type: "http"; name: string; url: string; headers: NameValue };
 
-const HARNESS_KINDS = ["browser", "computer", "data", "email", "device"] as const;
+const HARNESS_KINDS = ["browser", "computer", "data", "email", "device", "health", "home"] as const;
 
 /** EACbot's own server behind a stdio proxy, as its HTTP endpoint on this server; null for any other server (the
  * person's, or one wrapped in a tool-selection gate). */

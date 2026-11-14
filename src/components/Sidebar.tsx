@@ -42,6 +42,7 @@ import { draggedFolder, FOLDER_DRAG_TYPE, moveFolder, placeFolder } from "@/lib/
 import { folderUnreadThreadIds, markFolderRead } from "@/lib/folder-read";
 import { HelperThreadGroup, orderedThreadList, partitionHelperThreads, SidebarThreadRow, stampClock, threadRecency, threadRowActions, useRelativeNow, useRevealedThreadRow, useSnoozeExpiry, visibleSidebarThreads } from "./SidebarThreadRow";
 import { setSidebarDensity, useSidebarDensity, usePinnedCircles, useUniversalPins, type SidebarDensity } from "@/lib/sidebar-preferences";
+import { ShellViewSwitch } from "./shell/ShellViewSwitch";
 import {
   ATTENTION_SECTION_ID,
   BOT_CHATS_SECTION_ID,
@@ -1247,7 +1248,12 @@ export function Sidebar({ open, onClose, onOpenTasks, collapseToIcons = false }:
       }}
       style={{ "--sidebar-width": `${sizing.width}px` } as CSSProperties}
       className={cn(
-        "relative flex h-full shrink-0 flex-col border-r-[0.5px] border-edge bg-panel max-md:[--scroll-fade-surface:var(--color-app)]",
+        "relative flex h-full shrink-0 flex-col max-md:[--scroll-fade-surface:var(--color-app)]",
+        // From `md` up the sidebar meets the window's top, bottom and left edges; its only rounded corners are the two
+        // on the side facing the conversation. The gap between the two panes is what makes them two surfaces, and a gap
+        // at the window's own edges would make them read as chips floating in a picture instead of as the window.
+        // No `backdrop-filter`: the ground is already blurred, and a second blur here would hide the picture entirely.
+        "md:rounded-r-[16px] md:bg-[color-mix(in_srgb,var(--color-panel)_46%,transparent)]",
         sizing.resizing && !sizing.snapping ? "transition-none" : "transition-[width] duration-200 motion-reduce:transition-none",
         density === "icons" ? rail ? "w-[92px]" : "w-[80px]" : advanced ? "w-[320px] md:w-[var(--sidebar-width)]" : "w-[280px] md:w-[var(--sidebar-width)]",
         sidePanelOpen ? advanced ? "md:max-w-[320px]" : "md:max-w-[280px]" : "md:max-w-[calc(100vw-320px)]",
@@ -1260,6 +1266,11 @@ export function Sidebar({ open, onClose, onOpenTasks, collapseToIcons = false }:
     >
       <GlassScrollFrame className="flex-1" fade><PlaceTint />
       <GlassBar edge="top">
+      {/* The switch between the list of bots and the board sits at the top of this card, above everything else in it:
+          the two surfaces are the same pane, so the control that swaps them belongs to the pane. */}
+      <div data-sidebar-view-switch className="flex justify-center px-3 pt-2" style={windowNoDragStyle}>
+        <ShellViewSwitch />
+      </div>
       <div
         data-sidebar-top-row={corner ? "corner" : true}
         className={cn(

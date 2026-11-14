@@ -103,6 +103,10 @@ import { chartRenderer, compileChart, dataEngine, validateVegaLite } from "./dat
 import { BUILT_IN_DATA_SYSTEM_PROMPT } from "./data/instructions.ts";
 import { DATA_INTERNAL_MCP_PATH, dataRpc } from "./data/rpc.ts";
 import { removeRetiredAppFiles } from "./retired-apps.ts"; import { createEmailRoutes } from "./routes/email.ts"; import { createEmailHost, EMAIL_INTERNAL_MCP_PATH } from "./email/host.ts"; import { createEmailService } from "./email/service.ts"; import { createPostizRoutes } from "./routes/postiz.ts"; import { createPostiz } from "./postiz/service.ts";
+import { createHealthHost, HEALTH_INTERNAL_MCP_PATH } from "./health/host.ts";
+import type { HealthOwner } from "./health/audience.ts";
+import { createHomeHost, HOME_INTERNAL_MCP_PATH } from "./home/host.ts";
+import type { HomePolicy } from "./home/policy.ts";
 import { createPhones } from "./host/phones.ts";
 import { NOT_THE_OWNER } from "./phones/owner.ts";
 import { PHONE_INTERNAL_MCP_PATH } from "./phones/rpc.ts";
@@ -498,6 +502,7 @@ import {
   skillsLibraryEnabled, readSkillLibraryIndex, type BundledSkill,
 } from "./skill-library.ts";
 import { runSkillsLibraryBootSweep } from "./skills-library-migration.ts";
+import { applyPoolAvatarsOnce } from "./avatar-sweep.ts";
 import { installedPlaybookInstructions } from "./installed-playbooks.ts";
 import { picture as sharedPicture, type TeamExportSkip } from "./package-export.ts";
 import type { PackageImportDeps } from "./package-import.ts";
@@ -886,6 +891,18 @@ function threadPersonKey(threadId: string): string | undefined {
     ? thread.find((message) => message.id === owner.messageId)
     : thread.findLast((message) => message.role === "user");
   return linePersonKey(request) ?? threadStarters.get(threadId);
+}
+
+/** One bot's home policy: what it may do, which zones, and whether a sensitive command can be answered here.
+ * A turn that the person is present for can confirm; a routine's or a peer's cannot. */
+function homePolicyForBot(bot: Pick<WireBot, "homeAccess" | "homeZones"> | null | undefined, fallback: HomePolicy["access"]): HomePolicy {
+  const access = bot?.homeAccess ?? fallback;
+  return {
+    access,
+    ...(bot?.homeZones?.length ? { zones: bot.homeZones } : {}),
+    // Only `full` lets a bot ask; the confirmation itself still comes from the person on the other side of the turn.
+    canConfirmSensitive: access === "full",
+  };
 }
 
 /** From the harness's own records, never from model text. */
@@ -1604,7 +1621,7 @@ type InternalCapability = {
   threadId: string;
   generation: string;
   depth: number;
-  kind: "agents" | "connectors" | "computer" | "browser" | "hooks" | "phone" | "data" | "email" | "device" | "lent" | "plugins";
+  kind: "agents" | "connectors" | "computer" | "browser" | "hooks" | "phone" | "data" | "email" | "device" | "health" | "home" | "lent" | "plugins";
   skillAuthoring: boolean;
   createdBots: number;
   createdRooms?: number;
@@ -2860,6 +2877,43 @@ const phones = createPhones({
   mint: (botId, turn) => mintInternalCapability({ botId, ...turn, kind: "device", depth: 0, skillAuthoring: false, createdBots: 0, openedThreads: 0 }),
   active: (turn) => internalCapabilityIsActive(turn as InternalCapability),
 });
+
+// Health is one person's: on a shared workspace nobody's health is this server's to hold.
+const healthOwner: HealthOwner | null = HOSTED_WORKSPACE || CLOUD_TEAM ? null : CLOUD_OWNER_KEY ? `member:${CLOUD_OWNER_KEY}` : "owner";
+const healthHost = createHealthHost({
+  dataDir: DATA_DIR,
+  owner: () => healthOwner,
+  audienceOf: (threadId) => teamHost.audienceOf(threadId),
+  personOf: (threadId) => threadPersonKey(threadId) ?? null,
+  botAllows: (botId) => store.bot(botId)?.healthTools !== false,
+  active: (turn) => internalCapabilityIsActive(turn as InternalCapability),
+  ownerOrAdmin,
+  mint: (turn) => mintInternalCapability({ ...turn, kind: "health", depth: 0, skillAuthoring: false, createdBots: 0, openedThreads: 0 }),
+  harnessUrl: `http://127.0.0.1:${PORT}`,
+  // A cloud source's app comes from config.json, so a save or a hand edit takes effect on the next sign-in.
+  cloudApp: (sourceId) => {
+    const source = cfg.health?.sources?.find((entry) => entry.sourceId === sourceId);
+    return source?.provider && source.app
+      ? {
+          provider: source.provider,
+          clientId: source.app.clientId,
+          ...(source.app.clientSecret ? { clientSecret: source.app.clientSecret } : {}),
+          ...(source.app.endpoints ? { endpoints: source.app.endpoints } : {}),
+        }
+      : null;
+  },
+  now: () => new Date().toISOString(),
+});
+const homeHost = createHomeHost({
+  dataDir: DATA_DIR,
+  config: () => cfg.home,
+  botPolicy: (botId) => homePolicyForBot(store.bot(botId), cfg.home?.botAccess ?? "read"),
+  active: (turn) => internalCapabilityIsActive(turn as InternalCapability),
+  ownerOrAdmin,
+  mint: (turn) => mintInternalCapability({ ...turn, kind: "home", depth: 0, skillAuthoring: false, createdBots: 0, openedThreads: 0 }),
+  harnessUrl: `http://127.0.0.1:${PORT}`,
+  now: () => new Date().toISOString(),
+});
 const cloudPlanTier = createCloudPlanTier({ dataDir: DATA_DIR, cloudHome: Boolean(CLOUD_HOME), changed: () => broadcast({ kind: "config", ...configStatus() }) }); const botLimit = createBotLimit({ starter: () => cloudPlanTier.starter(), bots: () => store.bots }); let cloudPower: CloudPower | null = null; // The sleep handshake of a plan that sleeps (server/cloud-power.ts), made just before the server listens.
 const { cloudHealth, cloudSigned } = createCloudSignedHost({ cloudHome: CLOUD_HOME, sessions, power: () => cloudPower, box: () => botBox.report(), teamAdmin: teamAdminHost(), policyChanged: nudgeCloudTeamPolicy, plan: (cancelled) => routineHolds?.plan(cancelled), planTier: (tier) => cloudPlanTier.set(tier), memberLeft: (email) => leaveTeam ? leaveTeam(email).then((result) => { botApi.manager.revokeMintedBy(personKey({ id: "", email })); teamOwners.left(email); teamMessages.inbox.forget(personKey({ id: "", email })); forgetSetupPresser(store, personKey({ id: "", email })); devsReports.forget(personKey({ id: "", email })); return result; }) : Promise.reject(new Error("not a team")), health: { store, bus, dataDir: DATA_DIR, eventsDir: EVENTS_DIR, version: serverVersion(), image: process.env.EAC_CLOUD_IMAGE,
   engines: () => registry.instances().map((instance) => ({ instanceId: instance.instanceId, driverKind: instance.driverKind, snapshot: registry.knownSnapshot(instance.instanceId) })),
@@ -2903,6 +2957,13 @@ if (skillsLibraryEnabled(cfg)) {
   } catch (error) {
     console.error(`[skills-library] boot sweep failed: ${error instanceof Error ? error.message : String(error)}`);
   }
+}
+try {
+  const avatars = applyPoolAvatarsOnce(store, DATA_DIR);
+  if (avatars?.changed) console.log(`[avatars] ${avatars.changed} bot(s) took a face from the app's pool`);
+  if (avatars?.failed) console.warn(`[avatars] ${avatars.failed} bot(s) kept their face: the pool had no picture to give`);
+} catch (error) {
+  console.error(`[avatars] pool sweep failed: ${error instanceof Error ? error.message : String(error)}`);
 }
 // Reconcile stale bot references before Electron can ACK the journal, so id reuse never attaches a bot to someone else's new account.
 let browserCleanupReferencesReconciled = true;
@@ -8380,6 +8441,14 @@ async function beginTurn(
       if (liveBot && instance.adapter.capabilities.emailMcp === true) { const mail = emailIntegration(liveBot, { threadId, generation: dispatchClaimId }); if (mail) integrations.email = mail; }
       const phone = liveBot && instance.adapter.capabilities.deviceMcp === true ? phones.integration(liveBot, { threadId, generation: dispatchClaimId }) : null;
       if (phone) integrations.device = phone;
+      if (liveBot && instance.adapter.capabilities.healthMcp === true) {
+        const health = healthHost.integration({ botId: liveBot.id, threadId, generation: dispatchClaimId }, liveBot.id);
+        if (health) integrations.health = health;
+      }
+      if (liveBot && instance.adapter.capabilities.homeMcp === true) {
+        const home = homeHost.integration({ botId: liveBot.id, threadId, generation: dispatchClaimId });
+        if (home) integrations.home = home;
+      }
       const mountedComputer = surfaceOfComputerKind(computerKind);
       if (
         liveBot &&
@@ -8409,6 +8478,8 @@ async function beginTurn(
         const used = pinsAtClaim ? null : mountedComputer ?? (integrations.browser ? "browser" : null);
         if (used) store.patchTask(bot.id, threadId, { surface: used, surfaceSource: "auto" });
       }
+      // Read once, before the prompt is assembled: an adapter round trip must not happen inside a template literal.
+      const homeNowText = await homeHost.nowFor({ botId: bot.id, threadId, generation: dispatchClaimId });
       const computerSelection = computerSelectionTurns.get(threadId);
       if (computerSelection) computerSelection.mounted = mountedComputer ?? (integrations.browser ? "browser" : undefined);
       recordTurnPlace(bot.id, threadId, plan.computer === undefined && mountedComputer === "local" && integrations.browser ? "browser" : mountedComputer ?? (integrations.browser ? "browser" : null));
@@ -8451,6 +8522,8 @@ async function beginTurn(
           mounted: Boolean(integrations.device), offered: instance.adapter.capabilities.deviceMcp === true, turn: { botId: bot.id, threadId, generation: dispatchClaimId },
           place: phones.place(threadId, !(commsDepth > 0 || opts?.automationSource !== undefined || opts?.unattended || opts?.peerAsk || opts?.coordination)),
         }),
+        ...healthHost.parts({ botId: bot.id, threadId, generation: dispatchClaimId }, bot.id),
+        ...homeHost.parts({ botId: bot.id, threadId, generation: dispatchClaimId }, bot.id),
         { id: "coordination", label: "Team and who is speaking", text: PROVENANCE_PROMPT + (coordinationPrompt && !apiFenced ? ` ${coordinationPrompt}` : "") },
         { id: "assignment", label: "Teammate task", text: coordinationNode?.parentId ? `\n${coordinationSystemInstructions()}` : "" },
         { id: "outstanding", label: "Outstanding teammate work", text: teammatePrompts.outstanding(threadId) },
@@ -8464,6 +8537,10 @@ async function beginTurn(
           title: (id) => store.taskByThread(bot.id, id)?.title ?? store.groupByThread(id)?.name,
         }) : "" },
         { id: "routine-execution", label: "Routine execution", text: opts?.automationSource === "schedule" || opts?.automationSource === "manual" || opts?.automationSource === "startup" ? (confined ? READ_ONLY_ROUTINE_EXECUTION_PROMPT : ROUTINE_EXECUTION_PROMPT) : "" },
+        // A scheduled check that watches a measurement or a device gets the current state, so it judges the
+        // present rather than guessing it. Both parts are empty unless this bot mounts that domain.
+        { id: "health-now", label: "Health now", text: healthHost.nowFor({ botId: bot.id, threadId, generation: dispatchClaimId }) },
+        { id: "home-now", label: "Home now", text: homeNowText },
         { id: "profile", label: "Profile changes", text: profilePrompt },
         { id: "learn", label: "Skill authoring", text: learnPrompt },
         { id: "section-context", label: "Section context", text: sectionContextSystemPrompt(bot.section) },
@@ -10069,6 +10146,14 @@ async function runClaimedGroupMemberTurn(
   if (instance.adapter.capabilities.emailMcp === true) { const mail = emailIntegration(readyBot, { threadId, generation: internalGeneration }); if (mail) integrations.email = mail; }
   const phone = instance.adapter.capabilities.deviceMcp === true ? phones.integration(readyBot, { threadId, generation: internalGeneration }) : null;
   if (phone) integrations.device = phone;
+  if (instance.adapter.capabilities.healthMcp === true) {
+    const health = healthHost.integration({ botId: readyBot.id, threadId, generation: internalGeneration }, readyBot.id);
+    if (health) integrations.health = health;
+  }
+  if (instance.adapter.capabilities.homeMcp === true) {
+    const home = homeHost.integration({ botId: readyBot.id, threadId, generation: internalGeneration });
+    if (home) integrations.home = home;
+  }
   if (roomPlan.browser && !(roomPlan.computer === undefined && roomTeamComputer)) {
     const selectedProfile = readyBot.browserProfile;
     const browser = await browserIntegration(readyBot.id, selectedProfile, { threadId, generation: internalGeneration });
@@ -10280,6 +10365,8 @@ async function runClaimedGroupMemberTurn(
       mounted: Boolean(integrations.device), offered: instance.adapter.capabilities.deviceMcp === true,
       turn: { botId: readyBot.id, threadId, generation: internalGeneration }, place: "computer",
     }),
+    ...healthHost.parts({ botId: readyBot.id, threadId, generation: internalGeneration }, readyBot.id),
+    ...homeHost.parts({ botId: readyBot.id, threadId, generation: internalGeneration }, readyBot.id),
     { id: "recall", label: "Recall", text: integrations.agents && bot.memoryEnabled !== false ? SESSION_SEARCH_SYSTEM_PROMPT : "" }, { id: "just-do-it", label: "Just do it", text: preparedApprovalMode === "full" && !isUnattended(bot.id, threadId) ? JUST_DO_IT_PROMPT : "" },
     teamAvailabilityPart(outsideRoom),
     { id: "recent", label: "Recent work", text: recentWorkPrompt(recentLines) },
@@ -12258,6 +12345,7 @@ ROUTES.push(createBotLifecycleRoutes({
 ROUTES.push(createBotSkillsRoutes({ store, cfg, listBotSkills, readBotSkillFile, stagedSkillListing }));
 ROUTES.push(createEmailRoutes({ service: emailService }));
 ROUTES.push(phones.routes);
+ROUTES.push(healthHost.routes, homeHost.routes);
 ROUTES.push(createSkillShareRoutes({ enabled: () => skillsHost.mode() !== "off", botExists: (id) => Boolean(store.bot(id)),
   cardRefusal: (auth, threadId, requestId) => cardAnswerRefusal(auth, threadId, requestId, "allow"), shareFromReceipt: skillsHost.shareFromReceipt, shareFromBot: skillsHost.shareFromBot }));
 ROUTES.push(createTeamContextRoutes({ store, teamMemory }));
@@ -13000,7 +13088,7 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
       const parsed = z.object({
         botId: z.string().regex(/^[\w-]{1,128}$/),
         threadId: z.string().regex(/^[\w-]{1,128}$/),
-        kind: z.enum(["agents", "connectors", "computer", "data", "email", "device"]).default("agents"),
+        kind: z.enum(["agents", "connectors", "computer", "data", "email", "device", "health", "home"]).default("agents"),
         depth: z.number().int().min(0).max(MAX_COMMS_DEPTH).default(0),
         skillAuthoring: z.boolean().default(false),
         deliversSavedFiles: z.boolean().default(false),
@@ -13056,7 +13144,10 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
         ? "data"
         : path === EMAIL_INTERNAL_MCP_PATH ? "email"
         : path === PHONE_INTERNAL_MCP_PATH
-        ? "device" : path === PLUGINS_INTERNAL_MCP_PATH ? "plugins" : isLentMcpPath(path) ? "lent"
+        ? "device"
+        : path === HEALTH_INTERNAL_MCP_PATH ? "health"
+        : path === HOME_INTERNAL_MCP_PATH ? "home"
+        : path === PLUGINS_INTERNAL_MCP_PATH ? "plugins" : isLentMcpPath(path) ? "lent"
         : path === "/api/internal/phone/claim"
         ? "phone"
         : path.startsWith("/api/internal/connectors/")
@@ -13312,6 +13403,13 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
       }
       if (method === "POST" && path === PHONE_INTERNAL_MCP_PATH) {
         return json(res, 200, { result: await phones.handle(await readInternalBody(), internalCapability, requireActiveInternalCapability) });
+      }
+      // The readings and the home's adapters stay here; the agent process holds only the turn's capability.
+      if (method === "POST" && path === HEALTH_INTERNAL_MCP_PATH) {
+        return json(res, 200, { result: await healthHost.handle(await readInternalBody(), internalCapability, requireActiveInternalCapability) });
+      }
+      if (method === "POST" && path === HOME_INTERNAL_MCP_PATH) {
+        return json(res, 200, { result: await homeHost.handle(await readInternalBody(), internalCapability, requireActiveInternalCapability) });
       }
       if (method === "POST" && path === "/api/internal/phone/claim") {
         requireActiveInternalCapability();

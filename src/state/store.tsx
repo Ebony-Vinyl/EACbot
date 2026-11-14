@@ -18,6 +18,7 @@ import { withOneChief } from "../../shared/bot-owner";
 import { DATA_ROUTES, type DataSheet, type DataTable } from "../../shared/data-surface";
 import type { NotificationLogEntry } from "../../shared/notification";
 import type { Announcement } from "../../shared/announcement";
+import type { PlatformId } from "../../shared/plugins/accounts";
 import { isNotificationFeedAction, reduceNotificationFeed, type NotificationFeedAction } from "./notification-feed";
 import { bumpThreadUpdatedAt, mergeTaskStamps, rewindThreadUpdatedAt } from "./thread-stamps";
 import { botOpensTo, closeTrayUnlessShown, closeUnpinnedTray, openBot, openThread, visibleNotificationThread, withRememberedTrayPin } from "./thread-navigation";
@@ -568,7 +569,9 @@ export interface AppState {
   liveCallVersion: number;
   liveCallLookupSeq: number;
   selectedId: string;
-  activeView: "chat" | "team-map" | "routines" | "files" | "web-panel";
+  activeView: "chat" | "team-map" | "routines" | "files" | "web-panel" | "health" | "home" | "platforms" | "platform";
+  /** Which platform board is open when `activeView` is "platform". */
+  platformId?: PlatformId;
   /** Folders a finished move left on this computer, for Files to offer sharing. */
   filesSuggest: string[] | null; webPanelId?: string;
   routines: Routine[];
@@ -653,6 +656,8 @@ export type Action =
   | { type: "showRoutines"; section?: "schedule" | "logs"; view?: "calendar" | "list"; botId?: string; routineId?: string; runStatus?: RoutineRunStatusFilter }
   | { type: "showTeamMap" } | { type: "showWebPanel"; id: string }
   | { type: "showFiles"; suggest?: string[] }
+  | { type: "showHealth" } | { type: "showHome" }
+  | { type: "showPlatforms" } | { type: "showPlatform"; platform: PlatformId }
   | { type: "showChat" }
   | { type: "routinesHydrated"; routines: Routine[]; runs: RoutineRun[]; since?: number }
   | { type: "routinesLoadFailed" } | { type: "routineRunsLoaded"; runs: RoutineRun[]; from?: number; to?: number }
@@ -997,6 +1002,22 @@ export function reducer(state: AppState, action: Action): AppState {
     case "showChat":
       return state.activeView === "chat" ? state : { ...state, activeView: "chat" };
     case "showTeamMap":
+    case "showHealth":
+    case "showHome":
+      return {
+        ...state,
+        activeView: action.type === "showHealth" ? "health" : action.type === "showHome" ? "home" : "team-map",
+        filesSuggest: null,
+        settingsOpen: false, computerOpen: false, inspectorOpen: false, activityOpen: false, appSettingsOpen: false, pluginsOpen: false,
+      };
+    case "showPlatforms":
+    case "showPlatform":
+      return {
+        ...state,
+        activeView: action.type === "showPlatform" ? "platform" : "platforms",
+        platformId: action.type === "showPlatform" ? action.platform : state.platformId,
+        settingsOpen: false, computerOpen: false, inspectorOpen: false, activityOpen: false, appSettingsOpen: false, pluginsOpen: false,
+      };
     case "showFiles": case "showWebPanel":
       return {
         ...state,
@@ -2261,7 +2282,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     };
 
     const wrapped: React.Dispatch<Action> = (action) => {
-      if (["select", "newTask", "switchTask", "newGroupTask", "switchGroupTask", "showChat", "showRoutines", "showTeamMap", "showFiles", "showWebPanel"].includes(action.type)) selectionRevision.current++;
+      if (["select", "newTask", "switchTask", "newGroupTask", "switchGroupTask", "showChat", "showRoutines", "showTeamMap", "showFiles", "showWebPanel", "showHealth", "showHome", "showPlatforms", "showPlatform"].includes(action.type)) selectionRevision.current++;
       // Pin before any await or optimistic state change.
       action = pinBotThreadAction(action, stateRef.current.bots);
       if (action.type === "taskSwitched") action = { ...action, bot: withTaskWrites(action.bot) as Bot };

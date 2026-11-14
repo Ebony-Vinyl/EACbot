@@ -195,6 +195,10 @@ export interface SendTurnInput {
     email?: { command: string; args: string[]; env: Record<string, string> };
     /** The paired phone's app tools' MCP proxy: the harness holds the jobs and the per-bot verdict. */
     device?: { command: string; args: string[]; env: Record<string, string> };
+    /** The health tools' MCP proxy: the harness holds the readings and whose they are. */
+    health?: { command: string; args: string[]; env: Record<string, string> };
+    /** The home tools' MCP proxy: the harness holds the adapters, the policy and the audit trail. */
+    home?: { command: string; args: string[]; env: Record<string, string> };
     /** dweb daemon tools; `url` is the dweb HTTP base. */
     dweb?: { url: string };
     /** The user's MCP servers, mounted without any pre-allow; a driver skips a kind it cannot speak. */
@@ -264,6 +268,10 @@ export interface ProviderAdapter {
     emailMcp?: boolean;
     /** The driver can mount the phone apps MCP. */
     deviceMcp?: boolean;
+    /** The driver can mount the health MCP. */
+    healthMcp?: boolean;
+    /** The driver can mount the home MCP. */
+    homeMcp?: boolean;
     /** The engine accepts images in the prompt (gates composer paste). */
     images?: boolean;
     /** sendTurn consumes `images` as structured input, so dispatch strips the attachment path from `text`. */

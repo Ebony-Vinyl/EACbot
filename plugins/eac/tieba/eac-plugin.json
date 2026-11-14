@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
   "pluginId": "eac.tieba",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "apiVersion": "^1.0.0",
   "name": "EAC 贴吧助手",
-  "description": "贴吧工具：读取吧内热帖与帖子摘要（HTML 页面解析，实验性），维护回复草稿。回帖需要单独授权并配置 Cookie，遇验证码/风控即停，不绕过。",
+  "description": "贴吧运营台：通过已登录的网页接收回复通知并交给 Bot，读取吧内帖子与楼层，维护回帖草稿，按规则或逐项审批发表回帖。遇验证码与风控一律暂停上报，不做任何绕过。",
   "publisher": "EACbot Community",
   "license": "Apache-2.0",
   "source": {
@@ -12,25 +12,122 @@
     "revision": "813bba63fd7aa94c98ecf6d93d43648abe50f3a9"
   },
   "compatibility": {
-    "hostVersion": "^0.1.0",
-    "hosts": ["server", "desktop"],
-    "platforms": ["win32-x64", "linux-x64", "darwin-arm64", "darwin-x64"]
+    "hostVersion": "^0.1.0 || >=0.2.0-preview.0 <0.3.0",
+    "hosts": [
+      "server",
+      "desktop"
+    ],
+    "platforms": [
+      "win32-x64",
+      "linux-x64",
+      "darwin-arm64",
+      "darwin-x64"
+    ]
   },
-  "runtime": { "mode": "process", "entry": "entry.mjs", "isolation": "none" },
-  "activation": ["manual"],
+  "runtime": {
+    "mode": "process",
+    "entry": "entry.mjs",
+    "isolation": "none"
+  },
+  "activation": [
+    "manual"
+  ],
   "permissions": [
-    { "id": "tieba-read", "capability": "tieba.content.read", "effect": "read", "scope": {}, "reason": "读取吧内帖子与摘要。" },
-    { "id": "tieba-draft", "capability": "tieba.draft.write", "effect": "write", "scope": {}, "reason": "维护回帖草稿。" },
-    { "id": "tieba-reply", "capability": "tieba.post.reply", "effect": "send", "scope": {}, "reason": "发表回帖，需主人单独授权并配置 Cookie。" }
+    {
+      "id": "tieba-read",
+      "capability": "tieba.content.read",
+      "effect": "read",
+      "scope": {},
+      "reason": "读取吧内帖子与摘要。"
+    },
+    {
+      "id": "tieba-draft",
+      "capability": "tieba.draft.write",
+      "effect": "write",
+      "scope": {},
+      "reason": "维护回帖草稿。"
+    },
+    {
+      "id": "tieba-reply",
+      "capability": "tieba.post.reply",
+      "effect": "send",
+      "scope": {},
+      "reason": "发表回帖，需主人单独授权并配置 Cookie。"
+    },
+    {
+      "id": "tieba-message",
+      "capability": "tieba.messages.send",
+      "effect": "send",
+      "scope": {},
+      "reason": "把 Bot 的回复发送到贴吧会话。"
+    },
+    {
+      "id": "tieba-bridge",
+      "capability": "tieba.bridge.configure",
+      "effect": "write",
+      "scope": {},
+      "reason": "维护贴吧传输线路的配置（cdpUrl、服务器地址）。"
+    }
   ],
   "contributes": {
+    "platform": {
+      "id": "tieba",
+      "label": "贴吧",
+      "transports": [
+        "web"
+      ],
+      "accountCapabilities": [
+        "接收回复通知并交给 Bot",
+        "读取吧内帖子与楼层",
+        "维护回帖草稿",
+        "发表回帖（按规则或逐项审批）"
+      ]
+    },
     "tools": [
-      { "id": "tieba-forum-threads", "entry": "entry.mjs", "effect": "read", "permission": "tieba-read", "description": "读取一个吧的帖子列表（标题、作者、回复数、链接；HTML 解析，实验性）。" },
-      { "id": "tieba-thread-detail", "entry": "entry.mjs", "effect": "read", "permission": "tieba-read", "description": "读取一个帖子的前若干楼内容摘要（HTML 解析，实验性）。" },
-      { "id": "tieba-reply-draft", "entry": "entry.mjs", "effect": "write", "permission": "tieba-draft", "description": "为某个帖子保存/列出/删除回帖草稿（action=save|list|delete）。" },
-      { "id": "tieba-reply-post", "entry": "entry.mjs", "effect": "send", "permission": "tieba-reply", "description": "发表回帖（需要 config.json 配置 Cookie 与 TBS；遇验证即停）。" }
+      {
+        "id": "tieba-forum-threads",
+        "entry": "entry.mjs",
+        "effect": "read",
+        "permission": "tieba-read",
+        "description": "读取一个吧的帖子列表（标题、作者、回复数、链接；HTML 解析，实验性）。"
+      },
+      {
+        "id": "tieba-thread-detail",
+        "entry": "entry.mjs",
+        "effect": "read",
+        "permission": "tieba-read",
+        "description": "读取一个帖子的前若干楼内容摘要（HTML 解析，实验性）。"
+      },
+      {
+        "id": "tieba-reply-draft",
+        "entry": "entry.mjs",
+        "effect": "write",
+        "permission": "tieba-draft",
+        "description": "为某个帖子保存/列出/删除回帖草稿（action=save|list|delete）。"
+      },
+      {
+        "id": "tieba-reply-post",
+        "entry": "entry.mjs",
+        "effect": "send",
+        "permission": "tieba-reply",
+        "description": "发表回帖（需要 config.json 配置 Cookie 与 TBS；遇验证即停）。"
+      },
+      {
+        "id": "tieba-rules",
+        "entry": "entry.mjs",
+        "effect": "write",
+        "permission": "tieba-draft",
+        "description": "设置自动回复与回帖规则（enabled, maxRepliesPerDay?, actions?）。actions.reply 设 auto 或 manual。"
+      },
+      {
+        "id": "tieba-bridge-status",
+        "entry": "entry.mjs",
+        "effect": "read",
+        "permission": "tieba-read",
+        "description": "报告网页线路连接状态、入站出站计数与今日回复用量。"
+      }
     ]
   },
   "configSchema": "config.schema.json",
-  "stateVersion": 1
+  "stateVersion": 2
 }

@@ -33,6 +33,7 @@ import { LoginsSettings } from "./LoginsSettings";
 import { RemoteComputerSection } from "./RemoteComputerSection";
 import { ConnectedWorkspacesSettings } from "./ConnectedWorkspacesSettings";
 import { PlaceLookCard } from "./PlaceLookCard";
+import { BackgroundRows } from "./background/BackgroundRows";
 import { ChromeRailRow } from "./ChromeRailToggle";
 import { WindowFrameRow } from "./WindowFrameRow";
 import { OrganizationSettings } from "./OrganizationSettings";
@@ -382,6 +383,9 @@ export function SettingsModal() {
             <ThemeRow />
             <Card title={t("settings.skin.title")} subtitle={t("settings.skin.subtitle")}>
               <SkinPicker />
+            </Card>
+            <Card title={t("background.title")} subtitle={t("background.subtitle")}>
+              <BackgroundRows />
             </Card>
             <PlaceLookCard />
             {remoteActive && <AdvancedModeRow />}

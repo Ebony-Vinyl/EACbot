@@ -338,6 +338,8 @@ M1/M3 contracts, `/api/plugins`, signed channel install/update/rollback and the 
 - [Plugin platform, platform bots, memory and UI](plugin-platform.md)
 - [Business plugins and cross-module integration](plugin-integrations.md)
 - [Plugin supply chain, releases and recovery](plugin-release.md)
+- [Health readings and the home's devices](health-and-home.md)
+- [Platform boards and the domestic platforms](platform-boards.md)
 
 The [implementation roadmap](../superpowers/plans/2026-11-07-eac-plugin-platform/README.md)
 tracks the prerequisites. Do not treat mock coverage as real-account verification.
