@@ -1088,7 +1088,32 @@ describe("setupCommands", () => {
     expect(command).toContain("-p 127.0.0.1:6080:6901");
     expect(command).not.toContain(" -p 6080:6901");
     expect(command).not.toContain("5900");
-    expect(command).toContain("VNC_PW=CHANGE_ME");
+    expect(command).toContain('VNC_PW="<your-password>"');
+    expect(command).not.toContain("CHANGE_ME");
+  });
+
+  it("shows a quoted placeholder instead of a fixed password for every manual runtime", () => {
+    for (const [runtime, platform] of [
+      ["docker", "linux"],
+      ["podman", "linux"],
+      ["container", "darwin"],
+    ] as const) {
+      const command = setupCommands(runtime, platform).run!;
+      expect(command).not.toContain("CHANGE_ME");
+      expect(command).toContain('VNC_PW="<your-password>"');
+    }
+  });
+
+  it("keeps the manual command identical to the real run arguments apart from its password", () => {
+    const command = setupCommands("docker", "linux").run!;
+    const actual = ["docker", ...containerRunArgs("docker", "chosen-password")].join(" ");
+    expect(actual).toContain("VNC_PW=chosen-password");
+    expect(command).toBe(actual.replace("VNC_PW=chosen-password", 'VNC_PW="<your-password>"'));
+  });
+
+  it("refuses a missing or fixed run password", () => {
+    expect(() => containerRunArgs("docker", "")).toThrow(/non-default VNC password/);
+    expect(() => containerRunArgs("docker", "CHANGE_ME")).toThrow(/non-default VNC password/);
   });
 
   it("offers a start command for a stopped compatible desktop", () => {
