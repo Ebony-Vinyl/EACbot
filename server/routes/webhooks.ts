@@ -1,7 +1,7 @@
 // The person's side of webhook automations. Deliveries land on a separate webhook-only loopback listener, so a relay never
 // exposes the rest of the control surface. Only the list is a client route; the rest, the address included, needs admin.
 import { webhookVisible } from "../bot-visibility.ts";
-import type { RequestAuth } from "../request-auth.ts";
+import { ownerOrAdmin, type RequestAuth } from "../request-auth.ts";
 import { webhookCredential } from "../webhook-ingress.ts";
 import type { WebhookManager } from "../webhooks.ts";
 import { PASS, type RouteContext, type RouteHandler } from "./table.ts";
@@ -10,9 +10,12 @@ export interface WebhookRouteDeps {
   webhooks: WebhookManager;
   ingress: () => { available: boolean; baseUrl: string; error?: string };
   visible: (auth: RequestAuth) => { everything: boolean; bot(id: string): boolean; group(id: string): boolean };
+  /** Whether this person may read the raw event body preview kept for an attempt. */
+  mayReadPayload?: (auth: RequestAuth, webhook: { botId: string }) => boolean;
 }
 
-export function createWebhookRoutes({ webhooks, ingress, visible }: WebhookRouteDeps): RouteHandler {
+export function createWebhookRoutes({ webhooks, ingress, visible, mayReadPayload }: WebhookRouteDeps): RouteHandler {
+  const showsPayload = mayReadPayload ?? ownerOrAdmin;
   const withCredential = (webhook: { endpointId: string }, secret: string) => {
     const status = ingress();
     return { ingress: status, credential: webhookCredential(status.baseUrl, webhook.endpointId, secret) };
@@ -22,7 +25,16 @@ export function createWebhookRoutes({ webhooks, ingress, visible }: WebhookRoute
       const seen = visible(auth);
       const shownHooks = webhooks.list().filter((webhook) => webhookVisible(webhook, seen));
       const shownIds = new Set(shownHooks.map((webhook) => webhook.id));
-      return json(res, 200, { webhooks: shownHooks, attempts: webhooks.listAttempts().filter((attempt) => seen.everything || shownIds.has(attempt.webhookId)), ingress: ingress() });
+      const byId = new Map(shownHooks.map((webhook) => [webhook.id, webhook]));
+      const attempts = webhooks.listAttempts()
+        .filter((attempt) => seen.everything || shownIds.has(attempt.webhookId))
+        .map((attempt) => {
+          const webhook = byId.get(attempt.webhookId);
+          if (!webhook || showsPayload(auth, webhook)) return attempt;
+          const { preview: _preview, ...metadata } = attempt;
+          return metadata;
+        });
+      return json(res, 200, { webhooks: shownHooks, attempts, ingress: ingress() });
     }
     if (path === "/api/webhooks" && method === "POST") {
       const created = webhooks.create(await readBody(req));

@@ -14,13 +14,13 @@ import { codedLine, fittedLine, type RoutineLine, type RoutineLineKey } from "./
 import { hostTimeZone } from "./turn-clock.ts";
 import { classifyContinuable } from "./turn-continuation.ts";
 
-export type RoutineOwnerCause = "signed_out" | "credits" | "usage_limit" | "setup";
+export type RoutineOwnerCause = "signed_out" | "credits" | "usage_limit" | "setup" | "spend_cap";
 
 /** What is known about a failure besides its words: a cause the server words itself, and the engine's own flags. */
 export interface RoutineFailureFacts {
   /** stalled: the turn watchdog stopped it; cap: a spend or turn cap (or the repeat guard) ended it; refused: the server
    * would not start it, or its start failed before the turn began (judged by its words, never retried as a crash). */
-  cause?: "stalled" | "busy" | "cap" | "refused";
+  cause?: "stalled" | "busy" | "cap" | "spend_cap" | "refused";
   stopReason?: string | null;
   setup?: boolean;
   stalled?: boolean;
@@ -48,7 +48,9 @@ export interface RoutineAlert { detail: string }
 
 export interface RoutineOwnerNotice { botId: string; cause: RoutineOwnerCause; at: number }
 
-export type RoutineRecovery = { queued: true; alert?: RoutineAlert } | { queued: false; error: string; alert?: RoutineAlert | null };
+export type RoutineRecovery =
+  | { queued: true; alert?: RoutineAlert }
+  | { queued: false; status?: "missed"; error: string; alert?: RoutineAlert | null };
 
 const RETRY_MS = 15_000;
 const RATE_LIMIT_RETRY_MS = 60_000;
@@ -66,12 +68,13 @@ const BUSY_CODES = new Set(["thread_busy", "thread_limit", "workspace_busy", "se
 const NOT_RETRIED_STOPS = new Set(["cancelled", "interrupted", "refusal", "tool_error"]);
 /** What the provider answered for a reason a second start would meet again. */
 const REFUSED_KINDS = new Set(["refused", "tool_schema", "tool_count"]);
-const OWNER_CAUSES = new Set<RoutineOwnerCause>(["signed_out", "credits", "usage_limit", "setup"]);
+const OWNER_CAUSES = new Set<RoutineOwnerCause>(["signed_out", "credits", "usage_limit", "setup", "spend_cap"]);
 
 const OWNER_ACTION: Record<Exclude<RoutineOwnerCause, "setup">, string> = {
   signed_out: "This bot's AI is signed out. Sign in again in Settings → AI.",
   credits: "This bot's AI account is out of credit. Add credit with the provider, or choose another AI for this bot.",
   usage_limit: "This bot's AI reached its usage limit. Its routines work again once it resets, or choose another AI for this bot now.",
+  spend_cap: "This run was skipped because the workspace's monthly spend limit is reached. Raise it under Settings → Usage, then run this routine again.",
 };
 const TRIAL_ACTION = "The trial Claude credit can't run this. Sign in with your own Claude or ChatGPT account, or add an API key.";
 const RETRY_WHY: Record<Exclude<RoutineRetryCause, "usage_limit" | "restarted">, RoutineLineKey> = {
@@ -87,7 +90,7 @@ const FIRST_START: Record<RoutineRetryCause, string> = {
  * stop someone pressed or typed, a refusal, and a spent cap. Routine runs and teammate threads both judge by this. */
 export function classifyRoutineFailure(failure: string, facts: RoutineFailureFacts = {}): RoutineFailureClass {
   if (facts.cause === "busy") return { kind: "busy" };
-  if (facts.cause === "stalled" || facts.cause === "cap") return { kind: "final" };
+  if (facts.cause === "stalled" || facts.cause === "cap" || facts.cause === "spend_cap") return { kind: "final" };
   if (facts.stopReason && NOT_RETRIED_STOPS.has(facts.stopReason)) return { kind: "final" };
   if (classifyContinuable(facts.stopReason, failure) === "cap") return { kind: "final" };
   if (facts.stalled) return { kind: "retry", cause: "stalled" };
@@ -111,7 +114,7 @@ export function classifyRoutineFailure(failure: string, facts: RoutineFailureFac
 export function dispatchRefusal(error: unknown): RoutineFailureFacts {
   const { code, status } = (error ?? {}) as { code?: unknown; status?: unknown };
   if (typeof code === "string" && BUSY_CODES.has(code)) return { cause: "busy" };
-  if (code === "spend_cap") return { cause: "cap" };
+  if (code === "spend_cap") return { cause: "spend_cap" };
   return typeof code === "string" || (typeof status === "number" && status >= 400 && status < 500) ? { cause: "refused" } : {};
 }
 
@@ -176,6 +179,19 @@ export function recoverRun(run: RoutineRun, failure: string, facts: RoutineFailu
     Object.assign(run, line.codes);
     return { queued: false, error: line.text, ...(alert === undefined ? {} : { alert }) };
   };
+  // A spent workspace cap is not a broken run: it refuses every start until it resets or an admin raises it. Keep the
+  // one-shot retry policy, but record this occurrence as skipped, with the one action that helps.
+  if (facts.cause === "spend_cap") {
+    const first = firstNotice(notices, run.botId, "spend_cap", now);
+    delete run.errorCode;
+    delete run.errorParams;
+    return {
+      queued: false,
+      status: "missed",
+      error: `Skipped, not retried: ${failure}`,
+      alert: first ? { detail: OWNER_ACTION.spend_cap } : null,
+    };
+  }
   if (verdict.kind === "busy") {
     run.deferredAt ??= now;
     // A run of checked items waits as long as it takes: its bot is busy with the person, which is not a failure.

@@ -238,6 +238,16 @@ describe("remote (url) MCP servers", () => {
     });
   });
 
+  it("requires https for a remote host and still allows plain http on loopback", () => {
+    const remote = "Use https:// for a remote MCP server. Plain http:// is allowed only for localhost, 127.0.0.1, [::1], or an IPv4-mapped loopback address.";
+    expect(parseStoredMcpServer("docs", { url: "https://docs.example/mcp" })).toMatchObject({ ok: true });
+    expect(parseStoredMcpServer("docs", { url: "http://docs.example/mcp" })).toEqual({ ok: false, error: remote });
+    expect(parseMcpServerMutation("docs", { url: "http://192.168.1.20/mcp" })).toEqual({ ok: false, error: remote });
+    for (const url of ["http://localhost:8123/mcp", "http://127.0.0.1:8123/mcp", "http://[::1]:8123/mcp", "http://[::ffff:127.0.0.1]:8123/mcp"]) {
+      expect(parseStoredMcpServer("docs", { url }), url).toMatchObject({ ok: true, server: { url } });
+    }
+  });
+
   it("refuses bad addresses, header names and mixed shapes", () => {
     expect(parseStoredMcpServer("docs", { url: "docs.example/mcp" })).toEqual({ ok: false, error: "Use a full address, like https://example.com/mcp." });
     expect(parseStoredMcpServer("docs", { url: "ftp://docs.example/mcp" })).toEqual({ ok: false, error: "The address must start with http:// or https://." });
@@ -253,6 +263,17 @@ describe("remote (url) MCP servers", () => {
     expect(listings).toEqual([{ name: "docs", type: "http", url: "https://docs.example/mcp", headerKeys: ["Authorization", "X-Org"], enabled: true, apps: true }]);
     expect(JSON.stringify(listings)).not.toContain("real");
     expect(JSON.stringify(listings)).not.toContain("acme");
+  });
+
+  it("keeps an old plain-http remote entry listed, off, with the reason and no secret", () => {
+    const listings = listMcpServers({
+      legacy: { type: "http", url: "http://mcp.example.com/mcp", headers: { Authorization: "Bearer legacy-secret" }, enabled: true },
+    });
+    expect(listings).toEqual([{
+      name: "legacy", type: "http", url: "http://mcp.example.com/mcp", headerKeys: ["Authorization"], enabled: false, apps: true,
+      error: "Use https:// for a remote MCP server. Plain http:// is allowed only for localhost, 127.0.0.1, [::1], or an IPv4-mapped loopback address.",
+    }]);
+    expect(JSON.stringify(listings)).not.toContain("legacy-secret");
   });
 
   it("keeps saved header values behind write-only placeholders", () => {

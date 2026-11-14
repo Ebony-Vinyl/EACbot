@@ -2,7 +2,7 @@ import { userError, type UserError } from "../user-errors.ts";
 import { withMcpSignIn, type McpOAuthManager } from "../mcp-oauth.ts";
 import { brokeredServer, type BrokerPath } from "../bot-box/broker-probe.ts";
 import { probeMcpServer, sendsCredentials, type McpProbeOptions, type McpProbeResult } from "../mcp-probe.ts";
-import { MAX_MCP_SERVERS, isRemoteMcpServer, parseStoredMcpServer, type McpRunsOn, type StoredMcpServer, type StoredRemoteMcpServer } from "../mcp-registry.ts";
+import { isRemoteMcpServer, maxMcpServers, parseStoredMcpServer, type McpRunsOn, type StoredMcpServer, type StoredRemoteMcpServer } from "../mcp-registry.ts";
 import { postizKeyHeaders } from "../postiz/connection.ts";
 import type { AppConfig } from "../config.ts";
 import type { ChatAppsMcp } from "../chat-apps-mcp.ts";
@@ -66,8 +66,9 @@ export interface McpConfig {
   busy: BusyFlag;
 }
 
-/** Where turns are boxed, a URL server is tested the way bots reach it: through the broker. If that fails but the server
- * answers directly, the fault is ours, never the person's settings, and the test says so instead of "Connected". */
+/** Where turns are boxed, a URL server is tested the way bots reach it: through the broker. If that fails but a server
+ * without saved credentials answers directly, the fault is ours, never the person's settings, and the test says so
+ * instead of "Connected". A server with saved credentials is never retried from here: they only leave the broker. */
 async function probeAsBots(path: BrokerPath, name: string, target: StoredRemoteMcpServer, signal: AbortSignal, options: McpProbeOptions): Promise<McpProbeResult> {
   const brokered = brokeredServer(path, name, target);
   let result: McpProbeResult;
@@ -77,6 +78,17 @@ async function probeAsBots(path: BrokerPath, name: string, target: StoredRemoteM
     await brokered.done();
   }
   if (result.ok || result.auth === "required" || signal.aborted) return result;
+  // A server's saved headers stay inside the broker. Retrying from here would send them from the host, which is the
+  // isolation the broker exists to keep. A refusal of those headers is already the answer; any other failure is the
+  // broker's, and must not turn into a direct request.
+  if (sendsCredentials(target)) {
+    if (result.reason === "keys") return result;
+    return {
+      ok: false,
+      reason: "unreachable",
+      error: `Your bots can't reach this server through the broker: ${result.error.replace(/ Check [^.]*\.$/, "")} This server sends saved credentials, so the test didn't try it directly from here: tell us with @devs in any chat.`,
+    };
+  }
   const direct = await probeMcpServer(target, undefined, signal);
   return direct.ok
     ? { ok: false, reason: "unreachable", error: `Your bots can't reach this server: ${result.error.replace(/ Check [^.]*\.$/, "")} It answers when tested directly, so the fault is on our side, not in your settings: tell us with @devs in any chat.` }
@@ -140,8 +152,9 @@ export function createMcpConfig(deps: McpConfigDeps & { changed(): void }): McpC
     add: (name, server) => write(() => {
       const current = cfg.mcpServers ?? {};
       if (Object.hasOwn(current, name)) return { status: 409, error: "An MCP server with that name already exists." };
-      if (Object.keys(current).length >= MAX_MCP_SERVERS) {
-        return { status: 400, error: `You can add at most ${MAX_MCP_SERVERS} MCP servers.` };
+      const limit = maxMcpServers();
+      if (Object.keys(current).length >= limit) {
+        return { status: 400, error: `You can add at most ${limit} MCP servers.` };
       }
       const refusal = refused(name, server);
       if (refusal) return refusal;
@@ -161,8 +174,9 @@ export function createMcpConfig(deps: McpConfigDeps & { changed(): void }): McpC
       if (taken.length) {
         return { status: 409, error: `Already added: ${taken.join(", ")}. Remove or rename ${taken.length === 1 ? "it" : "them"} first.` };
       }
-      if (Object.keys(current).length + names.length > MAX_MCP_SERVERS) {
-        return { status: 400, error: `You can add at most ${MAX_MCP_SERVERS} MCP servers.` };
+      const limit = maxMcpServers();
+      if (Object.keys(current).length + names.length > limit) {
+        return { status: 400, error: `You can add at most ${limit} MCP servers.` };
       }
       const personalRefusal = names.map((name) => personalHeaderRefusal(name, servers[name]!)).find(Boolean);
       if (personalRefusal) return { status: 400, ...personalRefusal };

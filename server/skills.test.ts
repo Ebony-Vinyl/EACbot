@@ -675,7 +675,7 @@ describe("staged skill writes", () => {
     expect(listStagedSkillWrites(bot)).toEqual([]);
   });
 
-  it("requires an exact learned target and rejects imported, renamed, or no-op updates", () => {
+  it("requires an exact learned target while allowing updates to skills learned before reviewed revisions", () => {
     const imported = installSkill(bot, "github.com/example/review", [
       { path: "SKILL.md", content: SKILL("imported-skill", "Imported instructions.") },
     ]);
@@ -689,12 +689,18 @@ describe("staged skill writes", () => {
     const legacyLearned = installSkill(bot, "learn:legacy conversation", [
       { path: "SKILL.md", content: SKILL("legacy-learned", "Legacy learned instructions.") },
     ]);
-    expect(legacyLearned).toMatchObject({ editable: false });
-    expect(stageSkillWrite(bot, {
+    if ("error" in legacyLearned) throw new Error(legacyLearned.error);
+    expect(legacyLearned).toMatchObject({ editable: true });
+    const legacyUpdate = stageSkillWrite(bot, {
       action: "update",
       targetName: "legacy-learned",
       files: [{ path: "SKILL.md", content: SKILL("legacy-learned", "Replacement.") }],
-    })).toMatchObject({ error: expect.stringContaining("predates reviewed updates") });
+    });
+    if ("error" in legacyUpdate) throw new Error(legacyUpdate.error);
+    expect(legacyUpdate).toMatchObject({ baseSha256: legacyLearned.sha256 });
+    expect(legacyUpdate.baseAppliedStageId).toBeUndefined();
+    expect(applyStagedSkillWrite(bot, legacyUpdate.id)).toMatchObject({ name: "legacy-learned", editable: true });
+    expect(readSkillFile(bot, "legacy-learned")).toContain("Replacement.");
 
     const created = stageSkillWrite(bot, {
       action: "create",

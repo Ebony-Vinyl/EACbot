@@ -213,6 +213,8 @@ async function fetchBytes(url: string, fetcher: typeof fetch): Promise<Buffer> {
 export const MAX_SKILLS_PER_IMPORT = 30;
 const MAX_FOLDERS_WALKED = 24;
 const MAX_CHILDREN_PER_FOLDER = 60;
+export const SKILL_IMPORT_TRUNCATION_WARNING =
+  "The repository is too large to search completely — only the first part was imported. Paste a specific skill folder URL to import the rest.";
 
 const passThrough = (error: unknown) => error instanceof ImportLimitError || (error instanceof Error && error.name === "TimeoutError");
 
@@ -232,8 +234,14 @@ async function skillNameFrom(entries: ContentEntry[], fetcher: typeof fetch): Pr
   }
 }
 
+interface SkillDirDiscovery {
+  dirs: string[];
+  /** A broad import stopped before it could prove it saw every skill folder. */
+  truncated: boolean;
+}
+
 /** The skills.sh registry's discovery order: the path, skills/, .claude/skills/, .agents/skills/, then direct children. */
-async function discoverSkillDirs(target: Target, snapshot: Snapshot, fetcher: typeof fetch): Promise<string[]> {
+async function discoverSkillDirs(target: Target, snapshot: Snapshot, fetcher: typeof fetch): Promise<SkillDirDiscovery> {
   const root = await listDir(snapshot, target.path, fetcher);
   const wanted = target.skill ? toSkillSlug(target.skill) || undefined : undefined;
   const dirMatches = (dir: string) => !!wanted && toSkillSlug(dir.split("/").at(-1)!) === wanted;
@@ -244,7 +252,7 @@ async function discoverSkillDirs(target: Target, snapshot: Snapshot, fetcher: ty
     return !!name && toSkillSlug(name) === wanted;
   };
   if (root.some((entry) => entry.type === "file" && entry.name === "SKILL.md") && (await isWanted(target.path, root))) {
-    return [target.path];
+    return { dirs: [target.path], truncated: false };
   }
   const dirs = root.filter((entry) => entry.type === "dir");
   const found: string[] = [];
@@ -252,8 +260,13 @@ async function discoverSkillDirs(target: Target, snapshot: Snapshot, fetcher: ty
   const rank = (name: string) => (wanted && toSkillSlug(name) === wanted ? 0 : preferred.includes(name) ? 1 : 2);
   const ordered = [...dirs].sort((a, b) => rank(a.name) - rank(b.name));
   const enough = () => found.length >= (wanted ? 1 : MAX_SKILLS_PER_IMPORT);
-  for (const dir of ordered.slice(0, MAX_FOLDERS_WALKED)) {
-    if (enough()) break;
+  let truncated = !wanted && ordered.length > MAX_FOLDERS_WALKED;
+  for (let i = 0; i < ordered.length && i < MAX_FOLDERS_WALKED; i++) {
+    if (enough()) {
+      truncated = !wanted && i < ordered.length;
+      break;
+    }
+    const dir = ordered[i]!;
     const base = dir.name === ".claude" || dir.name === ".agents" ? `${dir.path}/skills` : dir.path;
     let children: ContentEntry[];
     try {
@@ -267,12 +280,17 @@ async function discoverSkillDirs(target: Target, snapshot: Snapshot, fetcher: ty
       continue;
     }
     const childDirs = children.filter((entry) => entry.type === "dir");
+    if (!wanted && childDirs.length > MAX_CHILDREN_PER_FOLDER) truncated = true;
     const exact = wanted ? childDirs.find((child) => dirMatches(child.path)) : undefined;
     const candidates = exact
       ? [exact, ...childDirs.filter((child) => child !== exact).slice(0, MAX_CHILDREN_PER_FOLDER - 1)]
       : childDirs.slice(0, MAX_CHILDREN_PER_FOLDER);
-    for (const child of candidates) {
-      if (enough()) break;
+    for (let j = 0; j < candidates.length; j++) {
+      if (enough()) {
+        truncated = !wanted && j < candidates.length;
+        break;
+      }
+      const child = candidates[j]!;
       try {
         const inner = await listDir(snapshot, child.path, fetcher);
         if (inner.some((entry) => entry.type === "file" && entry.name === "SKILL.md") && (await isWanted(child.path, inner))) found.push(child.path);
@@ -281,7 +299,7 @@ async function discoverSkillDirs(target: Target, snapshot: Snapshot, fetcher: ty
       }
     }
   }
-  return found;
+  return { dirs: found, truncated };
 }
 
 const TREE = z.object({
@@ -338,10 +356,11 @@ async function fetchSkillFolder(target: Target, snapshot: Snapshot, dir: string,
   };
 }
 
-async function fetchSkills(target: Target, fetcher: typeof fetch): Promise<FetchedSkill[]> {
+async function fetchSkills(target: Target, fetcher: typeof fetch): Promise<{ skills: FetchedSkill[]; truncated: boolean }> {
   const commit = await resolveCommit(target.owner, target.repo, target.ref ?? "HEAD", fetcher);
   const snapshot: Snapshot = { owner: target.owner, repo: target.repo, commit, trees: new Map() };
-  const dirs = await discoverSkillDirs(target, snapshot, fetcher);
+  const discovered = await discoverSkillDirs(target, snapshot, fetcher);
+  const dirs = discovered.dirs;
   if (!dirs.length) {
     throw new Error(target.skill
       ? `no skill named "${target.skill}" found there — check the exact name on the skills.sh page`
@@ -349,23 +368,23 @@ async function fetchSkills(target: Target, fetcher: typeof fetch): Promise<Fetch
   }
   const skills: FetchedSkill[] = [];
   for (const dir of dirs) skills.push(await fetchSkillFolder(target, snapshot, dir, fetcher));
-  return skills;
+  return { skills, truncated: discovered.truncated };
 }
 
 export async function fetchSkillFromSource(
   input: string,
   fetcher: typeof fetch = fetch,
-): Promise<{ skills: FetchedSkill[] } | { error: string }> {
+): Promise<{ skills: FetchedSkill[]; truncated: boolean } | { error: string }> {
   const parsed = parseSkillSource(input);
   if ("error" in parsed) return parsed;
   fetcher = boundedImportFetch(fetcher);
   try {
-    return { skills: await fetchSkills(parsed, fetcher) };
+    return await fetchSkills(parsed, fetcher);
   } catch (error) {
     if (parsed.rawUrl && error instanceof GitHubApiError) {
       try {
         const content = await fetchBytes(parsed.rawUrl, fetcher);
-        return { skills: [{ source: parsed.rawUrl, files: [{ path: "SKILL.md", content, executable: false }], skipped: [{ path: "", reason: "unlisted" }] }] };
+        return { skills: [{ source: parsed.rawUrl, files: [{ path: "SKILL.md", content, executable: false }], skipped: [{ path: "", reason: "unlisted" }] }], truncated: false };
       } catch {}
     }
     return { error: error instanceof Error ? error.message : String(error) };

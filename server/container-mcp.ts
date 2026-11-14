@@ -22,5 +22,7 @@ runMcpBridge({
   args: cuaExecArgs(["mcp", "--socket", socket], { container, interactive: true }),
   label: "Cua Driver",
   // No liveness watchdog: the runtime CLI talks to a local daemon and fails fast on its own.
-  ...(controlUrl && controlToken ? { gate: { url: controlUrl, token: controlToken } } : {}),
+  // Required: a Local VM is shared by the person's screen and every turn, so a launch without the pair refuses computer
+  // calls instead of letting both drive it. Every server mount supplies the pair; its absence means a wrong launch.
+  gate: { url: controlUrl, token: controlToken, required: true },
 });

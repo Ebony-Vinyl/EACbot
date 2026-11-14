@@ -8,6 +8,7 @@ import { z } from "zod";
 import {
   ensureManagedComposioCredentials,
   managedComposioAccess,
+  managedComposioRegistrationEnabled,
   type ManagedComposioAccess,
   type ManagedComposioCredentials,
 } from "../electron/managed-composio.mjs";
@@ -43,11 +44,15 @@ export interface CloudConnectedAppsOptions {
   random?: () => number;
   setTimer?: (run: () => void, ms: number) => Timer;
   clearTimer?: (timer: Timer) => void;
+  /** false: read a stored installation, but send nothing until activate(). A Cloud home prepares one this way. */
+  autoStart?: boolean;
 }
 
 export interface CloudConnectedApps {
   /** The attempt in flight or last finished; it never rejects. */
   settled(): Promise<void>;
+  /** The first use of Connected Apps: the first attempt starts here. Later calls reuse it, so one installation serves. */
+  activate(): void;
   stop(): void;
 }
 
@@ -88,6 +93,7 @@ export function startCloudConnectedApps(options: CloudConnectedAppsOptions): Clo
   let failures = 0;
   let timer: Timer | null = null;
   let stopped = false;
+  let activated = options.autoStart !== false;
   let applied: string | null | undefined;
   let current: Promise<void> = Promise.resolve();
   const grant = options.cloudGrant?.trim() || undefined;
@@ -176,9 +182,14 @@ export function startCloudConnectedApps(options: CloudConnectedAppsOptions): Clo
   // A token already on the volume serves at once; the check that follows replaces it only if the service refused it.
   const stored = readStored(file, options.brokerUrl);
   apply(stored.kind === "held" ? managedComposioAccess(options.brokerUrl, stored.credentials) : null);
-  current = attempt();
+  if (activated) current = attempt();
   return {
     settled: () => current,
+    activate: () => {
+      if (stopped || activated) return;
+      activated = true;
+      current = attempt();
+    },
     stop: () => {
       stopped = true;
       if (timer) clearTimer(timer);
@@ -192,16 +203,28 @@ let cloudHome: CloudConnectedApps | null = null;
  * from source (development, tests) only an explicit EAC_COMPOSIO_BROKER_URL. "" for none. */
 export const cloudConnectedAppsBrokerUrl = (): string => managedComposioBrokerUrl(process.env.EAC_COMPOSIO_BROKER_URL, !import.meta.url.endsWith(".ts"));
 
-/** A Cloud home's plan includes the connected-apps service, so it registers itself. */
+/** A Cloud home's plan includes the connected-apps service. This only prepares the installation: the first request for
+ *  the app catalog (ensureCloudHomeConnectedApps) starts registration, so a home nobody uses never registers. */
 export function startCloudHomeConnectedApps(input: { cloudHome: boolean; dataDir: string; apply: CloudConnectedAppsOptions["apply"]; cloudGrant?: string }): void {
   if (!input.cloudHome || cloudHome) return;
+  if (!managedComposioRegistrationEnabled()) {
+    console.log("cloud home: connected-apps registration is switched off (EAC_CONNECTED_APPS_REGISTER)");
+    return;
+  }
   const configured = process.env.EAC_COMPOSIO_BROKER_URL;
   const brokerUrl = cloudConnectedAppsBrokerUrl();
   if (!brokerUrl) {
     if (configured?.trim()) console.warn("cloud home: connected-apps service URL rejected: HTTPS or a loopback HTTP URL is required");
     return;
   }
-  cloudHome = startCloudConnectedApps({ dataDir: input.dataDir, brokerUrl, apply: input.apply, cloudGrant: input.cloudGrant, log: (line) => console.log(`cloud home: ${line}`) });
+  cloudHome = startCloudConnectedApps({ dataDir: input.dataDir, brokerUrl, apply: input.apply, cloudGrant: input.cloudGrant, autoStart: false, log: (line) => console.log(`cloud home: ${line}`) });
+}
+
+/** The first actual use of Connected Apps. Idempotent: an installation already registered is checked, never replaced. */
+export async function ensureCloudHomeConnectedApps(): Promise<void> {
+  if (!cloudHome) return;
+  cloudHome.activate();
+  await cloudHome.settled();
 }
 
 export function stopCloudHomeConnectedApps(): void {

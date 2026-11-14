@@ -8281,6 +8281,8 @@
   "sidebar.update.availableServer": "Version {version} available (release notes)",
   "sidebar.update.check": "Check for updates",
   "sidebar.update.checkFailed": "Couldn't check for updates. Try again.",
+  "sidebar.update.checkOff": "Update check is off",
+  "sidebar.update.checkOffOther": "Update check is off for {name}",
   "sidebar.update.checking": "Checking for updates…",
   "sidebar.update.downloading": "Downloading… {percent}%",
   "sidebar.update.failed": "The update didn't finish. Try again.",

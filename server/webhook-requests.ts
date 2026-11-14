@@ -109,6 +109,13 @@ const ACTION_TITLE: Record<WebhookRequestOperation["action"], string> = {
   delete: "Automation deleted",
 };
 
+/** A turn that a webhook or app event started may not change what future deliveries run. */
+export const OUTSIDE_WEBHOOK_CHANGE_REFUSAL =
+  "An event started this conversation, so it can't create, change, pause, resume or delete webhook triggers. Ask the person to do it from their own conversation.";
+const WEBHOOK_CHANGES: ReadonlySet<WebhookRequestOperation["action"]> = new Set([
+  "create", "update", "pause", "resume", "delete",
+]);
+
 interface WebhookRequestServiceOptions {
   store: WebhookRequestStore;
   webhooks: WebhookManager;
@@ -139,10 +146,15 @@ export class WebhookRequestService {
     operation: unknown;
     from?: { botId: string; name: string; color: string };
     canCommit?: () => boolean;
+    /** True when this conversation was driven by a webhook or app event, so its turn may not change triggers. */
+    outsideDriven?: () => boolean;
   }): WebhookRequestResult {
     const parsed = operationSchema.safeParse(args.operation);
     if (!parsed.success) throw new WebhookRequestError(parsed.error.issues[0]?.message ?? "Invalid webhook trigger request");
     const operation = parsed.data as WebhookRequestOperation;
+    if (args.outsideDriven?.() && WEBHOOK_CHANGES.has(operation.action)) {
+      throw new WebhookRequestError(OUTSIDE_WEBHOOK_CHANGE_REFUSAL, 403);
+    }
     const owner = operation.forBot?.botId ?? args.botId;
     const webhooks = this.options.webhooks;
     const before = operation.action === "create" ? undefined : this.owned(operation.webhookId, owner);

@@ -644,6 +644,7 @@ export class RoutineManager {
     const at = this.routines.findIndex((r) => r.id === id);
     if (at === -1) return false;
     const changedRuns: RoutineRun[] = [];
+    const stoppedRuns: RoutineRun[] = [];
     this.commitMutation(() => {
       this.routines.splice(at, 1);
       for (const run of this.runs) {
@@ -653,6 +654,16 @@ export class RoutineManager {
           run.attention = undefined;
           run.finishedAt = this.now();
           changedRuns.push(run);
+        } else if (["running", "waiting"].includes(run.status)) {
+          // Deleting the routine deletes its work too: a run left going would keep using tools and could still message
+          // someone after the routine is gone from the list.
+          run.status = "cancelled";
+          if (run.target === "room-goal") run.goalStatus = "stopped";
+          run.attention = undefined;
+          run.finishedAt = this.now();
+          run.error = "The routine was deleted while this run was still working";
+          changedRuns.push(run);
+          stoppedRuns.push(run);
         } else if (!run.seenAt && isRoutineProblemRun(run)) {
           run.seenAt = this.now();
           changedRuns.push(run);
@@ -661,6 +672,11 @@ export class RoutineManager {
       if (request) this.rememberRoutineRequest(request, id, this.now());
     });
     for (const run of changedRuns) this.emitRun(run);
+    for (const run of stoppedRuns) {
+      if (!run.threadId) continue;
+      if (run.target === "room-goal") void this.options.interruptGoal?.(run.groupId, run.threadId).catch(() => {});
+      else void this.options.interruptTurn?.(run.botId, run.threadId).catch(() => {});
+    }
     this.options.emit?.({ kind: "routine.deleted", routineId: id });
     return true;
   }
@@ -914,6 +930,12 @@ export class RoutineManager {
     let held: AppliedHolds<Routine, RoutineRun> | undefined;
     this.commitMutation(() => { held = applyHolds(this.routines, this.runs, this.holds, after, this.now(), (schedule, now) => this.initialOccurrence(schedule, now)); this.holds = after; });
     for (const run of held!.cancelled) this.emitRun(run);
+    for (const run of held!.stopped) {
+      this.emitRun(run);
+      if (!run.threadId) continue;
+      if (run.target === "room-goal") void this.options.interruptGoal?.(run.groupId, run.threadId).catch(() => {});
+      else void this.options.interruptTurn?.(run.botId, run.threadId).catch(() => {});
+    }
     for (const routine of [...held!.paused, ...held!.resumed]) this.emitRoutine(routine);
     return held!.paused.length ? held!.began : [];
   }
@@ -1308,7 +1330,7 @@ export class RoutineManager {
     if (this.closing) return;
     const held = facts.limit !== undefined || facts.limitResetsAt !== undefined ? facts.limit ?? "engine" : facts.stopReason === "auth_required" ? "signed-out" : undefined, backupReady = held !== undefined && this.options.limitBackup?.(run.botId, held) === true;
     const recovery = recoverRun(run, failure, { ...facts, ...(backupReady ? { backupReady } : {}), nextScheduled: nextScheduledRun(run, this.routines) }, this.now(), this.ownerNotices);
-    if (!recovery.queued) this.failRun(Object.assign(run, { partial: (facts.partial && Boolean(run.output)) || undefined }), recovery.error, "failed", recovery.alert);
+    if (!recovery.queued) this.failRun(Object.assign(run, { partial: (facts.partial && Boolean(run.output)) || undefined }), recovery.error, recovery.status ?? "failed", recovery.alert);
     else {
       this.saveLater();
       this.emitRun(run);

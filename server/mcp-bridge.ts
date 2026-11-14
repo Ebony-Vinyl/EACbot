@@ -111,8 +111,10 @@ export interface BridgeOptions {
   label: string;
   /** docker's ssh connection helper takes no ConnectTimeout/ServerAlive options, so a dropped VPS wedges silently without this. */
   liveness?: BridgeLiveness;
-  /** `describe`: what a tools/call would open, passed to the gate so the person can be asked in plain words. */
-  gate?: { url: string; token: string; describe?: (frame: unknown) => Record<string, string> };
+  /** `describe`: what a tools/call would open, passed to the gate so the person can be asked in plain words.
+   * `required`: the computer this bridge fronts is mounted for turns, so a missing pair refuses every call instead of
+   * letting an AI act beside a person; the server always supplies the pair, and its absence means the launch is wrong. */
+  gate: { url: string; token: string; required?: boolean; describe?: (frame: unknown) => Record<string, string> };
   journal?: { url: string; token: string };
   rewriteResponse?: (line: string) => string;
   /** A tools/call the bridge carries out itself through the child, answering the agent with what this resolves to; null
@@ -330,9 +332,12 @@ export function runMcpBridge(options: BridgeOptions): void {
   child.stdin.on("error", () => {});
   child.stderr.pipe(process.stderr);
 
-  const client = options.gate
-    ? createControlClient({ url: options.gate.url, token: options.gate.token })
-    : null;
+  const client = createControlClient({ url: options.gate.url, token: options.gate.token, required: options.gate.required });
+  if (options.gate.required && !client.configured) {
+    process.stderr.write(
+      `${options.label}: no control gate configured for this computer; every computer call will be refused until it is\n`,
+    );
+  }
 
   const tap = options.journal
     ? createJournalTap({ post: postJournal(options.journal.url, options.journal.token) })
@@ -369,7 +374,7 @@ export function runMcpBridge(options: BridgeOptions): void {
   const intercept = createMcpBridgeInterceptor({
     answer,
     forward,
-    ...(client ? { gate: { check: (frame: unknown) => client.state(true, options.gate?.describe?.(frame)) } } : {}),
+    gate: { check: (frame: unknown) => client.state(true, options.gate.describe?.(frame)) },
   });
   let pendingInput = Promise.resolve();
   const inbound = createLineSplitter((line) => {

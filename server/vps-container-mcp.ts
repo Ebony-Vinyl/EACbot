@@ -27,5 +27,7 @@ runMcpBridge({
   label: "VPS Cua Driver",
   // Probe the transport, not the driver: a busy desktop mid-tool-call must never look dead.
   liveness: { command: "docker", args: vpsDockerArgs(sshAlias, ["version", "--format", "{{.Server.Version}}"]) },
-  ...(controlUrl && controlToken ? { gate: { url: controlUrl, token: controlToken } } : {}),
+  // Required: a VPS desktop is remote and shared, so a launch without the pair refuses computer calls instead of letting
+  // an AI act beside a person. Every server mount supplies the pair; its absence means a wrong launch.
+  gate: { url: controlUrl, token: controlToken, required: true },
 });

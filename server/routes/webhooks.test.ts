@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { json, readBody } from "../harness/http.ts";
-import { requiredScope } from "../request-auth.ts";
+import { requiredScope, type RequestAuth } from "../request-auth.ts";
 import { WebhookManager } from "../webhooks.ts";
 import { dispatchRoutes } from "./table.ts";
 import { createWebhookRoutes } from "./webhooks.ts";
@@ -26,12 +26,17 @@ function folder(): string {
 const manager = (file: string) => new WebhookManager({ file, botState: () => "ready", enqueue: () => ({ id: "run-1" }), roomMember: () => ({ ok: true }),
   roomPost: async (trigger) => ({ posted: true, attachments: 0, threadId: `${trigger.groupId}-thread` }) });
 
-async function serve(seen: (botId: string) => boolean = () => true, file = join(folder(), "webhooks.json"), seesRoom: (groupId: string) => boolean = () => true) {
+async function serve(
+  seen: (botId: string) => boolean = () => true,
+  file = join(folder(), "webhooks.json"),
+  seesRoom: (groupId: string) => boolean = () => true,
+  auth: RequestAuth = { kind: "loopback", scopes: ["admin", "client"] },
+) {
   const webhooks = manager(file);
   const routes = [createWebhookRoutes({ webhooks, ingress: () => ({ available: true, baseUrl: "http://127.0.0.1:8800" }), visible: () => ({ everything: false, bot: seen, group: seesRoom }) })];
   const server = createServer(async (req, res) => {
     const url = new URL(req.url ?? "/", "http://localhost");
-    const handled = await dispatchRoutes(routes, { req, res, url, path: url.pathname, method: req.method ?? "GET", auth: { kind: "loopback", scopes: ["admin", "client"] }, json, readBody });
+    const handled = await dispatchRoutes(routes, { req, res, url, path: url.pathname, method: req.method ?? "GET", auth, json, readBody });
     if (!handled) json(res, 404, { from: "inline routes" });
   });
   servers.push(server);
@@ -86,5 +91,30 @@ describe("a webhook's address for the person", () => {
     expect(listed.webhooks.map((hook: { name: string }) => hook.name)).toEqual(["Open room"]);
     expect(listed.attempts).toEqual([]);
     expect(await member.call("GET", `/api/webhooks/${closed.webhook.id}/address`)).toEqual({ status: 404, body: { error: "no such webhook" } });
+  });
+
+  it("shows a delivery's payload preview only to its owner or an admin", async () => {
+    const payload = { token: "tok_live_123", email: "buyer@example.com", order: "A-42" };
+    const memberAuth: RequestAuth = {
+      kind: "session", via: "bearer", scopes: ["client"],
+      session: {
+        id: "session-member", tokenHash: "a".repeat(64), label: "Member browser", scopes: ["client"],
+        createdAt: 1, lastSeenAt: 1, expiresAt: Date.now() + 60_000, email: "member@example.com",
+      },
+    };
+    const member = await serve(undefined, undefined, undefined, memberAuth);
+    const memberHook = member.webhooks.create({ name: "Shop events", prompt: "Summarize the order", botId: "bot-a" });
+    await member.webhooks.receive(memberHook.webhook.endpointId, memberHook.secret, { payload });
+    const memberList = (await member.call("GET", "/api/webhooks")).body;
+    expect(memberList.attempts).toHaveLength(1);
+    expect(memberList.attempts[0]).toMatchObject({ outcome: "accepted", statusCode: 202 });
+    expect(memberList.attempts[0]).not.toHaveProperty("preview");
+    expect(JSON.stringify(memberList)).not.toContain("tok_live_123");
+
+    const admin = await serve();
+    const adminHook = admin.webhooks.create({ name: "Shop events", prompt: "Summarize the order", botId: "bot-a" });
+    await admin.webhooks.receive(adminHook.webhook.endpointId, adminHook.secret, { payload });
+    const adminList = (await admin.call("GET", "/api/webhooks")).body;
+    expect(adminList.attempts[0].preview).toContain("tok_live_123");
   });
 });

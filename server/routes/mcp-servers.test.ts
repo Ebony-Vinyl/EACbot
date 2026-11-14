@@ -86,6 +86,34 @@ it("says when a server is added, imported or removed on purpose, so a Cloud home
   expect(changes).toEqual(["added", "added", "removed"]);
 });
 
+it("adds https and loopback http servers but refuses plain http to a remote host", async () => {
+  const { cfg, post } = await serve();
+  expect((await post("/api/mcp/servers", { name: "secure", url: "https://mcp.example.com/mcp" })).status).toBe(201);
+  expect((await post("/api/mcp/servers", { name: "local", url: "http://127.0.0.1:8123/mcp" })).status).toBe(201);
+  const refused = await post("/api/mcp/servers", { name: "legacy", url: "http://mcp.example.com/mcp", headers: { Authorization: "Bearer new-secret" } });
+  expect(refused.status).toBe(400);
+  const body = await refused.json() as { error: string };
+  expect(body.error).toMatch(/https:\/\//u);
+  expect(JSON.stringify(body)).not.toContain("new-secret");
+  expect(Object.keys(cfg.mcpServers ?? {}).sort()).toEqual(["local", "secure"]);
+});
+
+it("refuses to turn on a saved remote server that still uses plain http off loopback", async () => {
+  const { cfg, base } = await serve();
+  cfg.mcpServers = { legacy: { type: "http", url: "http://mcp.example.com/mcp", headers: { Authorization: "Bearer legacy-secret" }, enabled: false } };
+  const listed = await (await fetch(`${base}/api/mcp/servers`)).json() as { servers: Array<{ name: string; enabled: boolean; error?: string }> };
+  expect(listed.servers).toMatchObject([{ name: "legacy", enabled: false, error: expect.stringMatching(/https:\/\//u) }]);
+  expect(JSON.stringify(listed)).not.toContain("legacy-secret");
+  const response = await fetch(`${base}/api/mcp/servers/legacy`, {
+    method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ enabled: true }),
+  });
+  expect(response.status).toBe(400);
+  const body = await response.json() as { error: string };
+  expect(body.error).toMatch(/https:\/\//u);
+  expect(JSON.stringify(body)).not.toContain("legacy-secret");
+  expect(cfg.mcpServers.legacy).toMatchObject({ enabled: false });
+});
+
 it("adds a command server sent with type stdio, as other MCP clients write it, and keeps the old shape working", async () => {
   const { cfg, post } = await serve();
   const typed = await post("/api/mcp/servers", { name: "notes", type: "stdio", command: "npx", args: ["-y", "notes-mcp"] });
@@ -233,9 +261,9 @@ describe.skipIf(process.platform === "win32")("Test, where bots reach URL server
     broker = await openCredentialBroker({ socketPath: join(dir, "b.sock"), request });
     return { broker: { port: 18080, mintForThread: broker.mintForThread, revokeThread: broker.revokeThread }, socketPath: broker.socketPath };
   }
-  async function tested(path: BrokerPath, url: string) {
+  async function tested(path: BrokerPath, url: string, headers: Record<string, string> = HEADERS) {
     const route = await serve({ botsPath: () => path });
-    expect((await route.post("/api/mcp/servers", { name: "orders", type: "http", url, headers: HEADERS })).status).toBe(201);
+    expect((await route.post("/api/mcp/servers", { name: "orders", type: "http", url, headers })).status).toBe(201);
     return await (await route.post("/api/mcp/servers/orders/test", {})).json() as Record<string, unknown>;
   }
 
@@ -264,9 +292,17 @@ describe.skipIf(process.platform === "win32")("Test, where bots reach URL server
   });
 
   it("never says Connected when bots can't reach a server that answers directly, and says the fault is ours", async () => {
+    mcp = await startFakeHttpMcp({ exactPath: true, tools: [{ name: "lookup_order" }] });
+    const result = await tested(await brokerPath(true), mcp.url, {});
+    expect(result).toEqual({ ok: false, reason: "unreachable", error: "Your bots can't reach this server: The server answered HTTP 404. It answers when tested directly, so the fault is on our side, not in your settings: tell us with @devs in any chat." });
+  });
+
+  it("doesn't retry a server with saved headers directly when the broker fails", async () => {
     mcp = await startFakeHttpMcp({ exactPath: true, tools: [{ name: "lookup_order" }], requireHeaders: HEADERS });
     const result = await tested(await brokerPath(true), mcp.url);
-    expect(result).toEqual({ ok: false, reason: "unreachable", error: "Your bots can't reach this server: The server answered HTTP 404. It answers when tested directly, so the fault is on our side, not in your settings: tell us with @devs in any chat." });
+    expect(result).toEqual({ ok: false, reason: "unreachable", error: "Your bots can't reach this server through the broker: The server answered HTTP 404. This server sends saved credentials, so the test didn't try it directly from here: tell us with @devs in any chat." });
+    expect(mcp.seenPaths.length).toBeGreaterThan(0);
+    expect(mcp.seenPaths.every((path) => path === "/mcp/"), "only the broker's request reached the server").toBe(true);
   });
 
   it("says a server that answers neither way can't be reached, as before", async () => {
@@ -274,7 +310,7 @@ describe.skipIf(process.platform === "win32")("Test, where bots reach URL server
     const url = mcp.url;
     await mcp.close();
     mcp = undefined;
-    expect(await tested(await brokerPath(), url)).toEqual({ ok: false, error: "Could not reach this address. Check the URL and your network.", reason: "unreachable" });
+    expect(await tested(await brokerPath(), url, {})).toEqual({ ok: false, error: "Could not reach this address. Check the URL and your network.", reason: "unreachable" });
   });
 });
 

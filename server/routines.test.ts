@@ -3963,6 +3963,38 @@ describe("turning a schedule back on, and a deleted bot's schedules", () => {
     expect(JSON.parse(readFileSync(h.options.file!, "utf8")).routines.map((routine: { id: string }) => routine.id)).toEqual([kept.id]);
   });
 
+  it("stops a deleted routine's running and waiting runs instead of letting them finish", async () => {
+    const h = harness(start);
+    const routine = h.manager.create({ name: "Long job", prompt: "Work through the queue", botId: "maus-1",
+      schedule: { type: "daily", time: "23:59", weekdays: [1] } });
+    const running = h.manager.runNow(routine.id)!;
+    const waiting = h.manager.runNow(routine.id)!;
+    await h.manager.tick();
+    const threadIds = h.manager.listRuns().map((run) => run.threadId);
+    expect(threadIds).toEqual(["thread-1", "thread-2"]);
+    h.manager.handleRuntimeEvent({
+      eventId: "waiting-question", provider: "fake", threadId: "thread-2", createdAt: new Date(0).toISOString(),
+      type: "request.opened", requestType: "question", tool: "ask", summary: "Which account should I use?",
+    });
+    expect(h.manager.listRuns().find((run) => run.id === waiting.id)).toMatchObject({ status: "waiting", threadId: "thread-2" });
+
+    expect(h.manager.remove(routine.id)).toBe(true);
+
+    expect(h.manager.listRuns().find((run) => run.id === running.id)).toMatchObject({
+      status: "cancelled", threadId: "thread-1", attention: undefined,
+      error: "The routine was deleted while this run was still working",
+    });
+    expect(h.manager.listRuns().find((run) => run.id === waiting.id)).toMatchObject({
+      status: "cancelled", threadId: "thread-2", attention: undefined,
+      error: "The routine was deleted while this run was still working",
+    });
+    expect(h.interruptedTurns).toEqual([
+      { botId: "maus-1", threadId: "thread-1" },
+      { botId: "maus-1", threadId: "thread-2" },
+    ]);
+    expect(h.manager.listRoutines()).toEqual([]);
+  });
+
   it("never starts a due schedule whose bot no longer exists", async () => {
     const h = harness(start);
     h.manager.create(once(start + 60_000));

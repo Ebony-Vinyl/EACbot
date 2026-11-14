@@ -828,13 +828,18 @@ describe("containerComputerStatus", () => {
 });
 
 describe("Cua integration", () => {
-  it("mounts the official Cua MCP server for Local VM turns", () => {
-    const connection = containerComputerMcp("podman");
+  it("mounts the official Cua MCP server for Local VM turns behind its control gate", () => {
+    const control = { url: "http://127.0.0.1:1/api/internal/computer-control?botId=b", token: "turn-token" };
+    const connection = containerComputerMcp("podman", control);
     expect(connection.command).toBe(process.execPath);
     expect(connection.args.at(-3)).toBe("podman");
     expect(connection.args.at(-2)).toBe(CONTAINER);
     expect(connection.args.at(-1)).toBe(CUA_SOCKET);
-    expect(connection.env).toEqual({ ELECTRON_RUN_AS_NODE: "1" });
+    expect(connection.env).toEqual({
+      ELECTRON_RUN_AS_NODE: "1",
+      EAC_CONTROL_URL: control.url,
+      EAC_CONTROL_TOKEN: control.token,
+    });
   });
 
   it("builds an exact, checksum-verified Cua Driver 0.37.0 image", () => {
@@ -1088,7 +1093,32 @@ describe("setupCommands", () => {
     expect(command).toContain("-p 127.0.0.1:6080:6901");
     expect(command).not.toContain(" -p 6080:6901");
     expect(command).not.toContain("5900");
-    expect(command).toContain("VNC_PW=CHANGE_ME");
+    expect(command).toContain('VNC_PW="<your-password>"');
+    expect(command).not.toContain("CHANGE_ME");
+  });
+
+  it("shows a quoted placeholder instead of a fixed password for every manual runtime", () => {
+    for (const [runtime, platform] of [
+      ["docker", "linux"],
+      ["podman", "linux"],
+      ["container", "darwin"],
+    ] as const) {
+      const command = setupCommands(runtime, platform).run!;
+      expect(command).not.toContain("CHANGE_ME");
+      expect(command).toContain('VNC_PW="<your-password>"');
+    }
+  });
+
+  it("keeps the manual command identical to the real run arguments apart from its password", () => {
+    const command = setupCommands("docker", "linux").run!;
+    const actual = ["docker", ...containerRunArgs("docker", "chosen-password")].join(" ");
+    expect(actual).toContain("VNC_PW=chosen-password");
+    expect(command).toBe(actual.replace("VNC_PW=chosen-password", 'VNC_PW="<your-password>"'));
+  });
+
+  it("refuses a missing or fixed run password", () => {
+    expect(() => containerRunArgs("docker", "")).toThrow(/non-default VNC password/);
+    expect(() => containerRunArgs("docker", "CHANGE_ME")).toThrow(/non-default VNC password/);
   });
 
   it("offers a start command for a stopped compatible desktop", () => {

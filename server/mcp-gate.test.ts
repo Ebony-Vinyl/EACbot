@@ -69,13 +69,31 @@ createInterface({ input: process.stdin }).on("line", (line) => {
 });
 `;
 
+/** Answers any request with the environment names its spec asks to see, to prove what reached the child. */
+const ENV_UPSTREAM = `
+const { createInterface } = require("node:readline");
+const names = (process.env.PEEK_ENV ?? "").split(",").filter(Boolean);
+createInterface({ input: process.stdin }).on("line", (line) => {
+  if (!line.trim()) return;
+  const msg = JSON.parse(line);
+  const seen = Object.fromEntries(names.map((name) => [name, process.env[name] ?? null]));
+  process.stdout.write(JSON.stringify({ jsonrpc: "2.0", id: msg.id, result: seen }) + "\\n");
+});
+`;
+
 describe("mcp-gate", () => {
   let scratch: string;
   let gate: ChildProcessWithoutNullStreams | undefined;
   let lines: string[];
   let waiting: Array<(line: string) => void>;
 
-  const start = (reply: unknown, env: Record<string, string> = {}, source = UPSTREAM, args: string[] = []) => {
+  const start = (
+    reply: unknown,
+    env: Record<string, string> = {},
+    source = UPSTREAM,
+    args: string[] = [],
+    upstreamEnv: Record<string, string> = {},
+  ) => {
     const script = join(scratch, "reply.json");
     writeFileSync(script, JSON.stringify(reply));
     const upstreamJs = join(scratch, "upstream.cjs");
@@ -89,7 +107,7 @@ describe("mcp-gate", () => {
         EAC_GATE_UPSTREAM: JSON.stringify({
           command: process.execPath,
           args: [upstreamJs],
-          env: { SCRIPT: script, UPSTREAM_ONLY: "yes" },
+          env: { SCRIPT: script, UPSTREAM_ONLY: "yes", ...upstreamEnv },
         }),
         ...env,
       },
@@ -449,6 +467,30 @@ createInterface({ input: process.stdin }).on("line", (line) => {
       const answer = await query({ result: "r1", query: "length(products)" }, 3);
       expect(answer.result.content[0].text).toBe("300");
     });
+  });
+
+  it("withholds the parent's credentials while keeping PATH and the server's own environment", async () => {
+    start({}, {
+      OPENAI_API_KEY: "sk-parent-openai",
+      ANTHROPIC_API_KEY: "anthropic-parent",
+      EAC_DEEPSEEK_API_KEY: "deepseek-parent",
+      EAC_CLOUD_AI_TOKEN: "cloud-parent",
+    }, ENV_UPSTREAM, [], {
+      PEEK_ENV: "OPENAI_API_KEY,ANTHROPIC_API_KEY,EAC_DEEPSEEK_API_KEY,EAC_CLOUD_AI_TOKEN,PATH,UPSTREAM_ONLY,SHOP_TOKEN",
+      ANTHROPIC_API_KEY: "anthropic-for-this-server",
+      SHOP_TOKEN: "shop-for-this-server",
+    });
+    send({ jsonrpc: "2.0", id: 1, method: "peek" });
+    const seen = JSON.parse(await nextLine()).result;
+    expect(seen).toMatchObject({
+      OPENAI_API_KEY: null,
+      EAC_DEEPSEEK_API_KEY: null,
+      EAC_CLOUD_AI_TOKEN: null,
+      ANTHROPIC_API_KEY: "anthropic-for-this-server",
+      SHOP_TOKEN: "shop-for-this-server",
+      UPSTREAM_ONLY: "yes",
+    });
+    expect(seen.PATH).toBe(process.env.PATH);
   });
 
   it("strips policy from the upstream environment without losing its own configuration", async () => {

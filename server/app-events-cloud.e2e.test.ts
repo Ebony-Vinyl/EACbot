@@ -1,5 +1,5 @@
-// App events on a Cloud home: the Cloud registers its own connected-apps installation, presents the Admin's grant so
-// the service gives it a paid Cloud's 2,000 events a day, and the same long-poll turns an event into an owner run.
+// App events on a Cloud home: opening Connected Apps registers the Cloud's own installation, presents the Admin's grant
+// so the service gives it a paid Cloud's 2,000 events a day, and the same long-poll turns an event into an owner run.
 import { randomBytes } from "node:crypto";
 import { spawn, type ChildProcess } from "node:child_process";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
@@ -78,6 +78,8 @@ beforeAll(async () => {
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
   token = await ownerToken();
+  // Opening Connected Apps is what registers the included service; a start by itself reaches no broker.
+  expect((await api("GET", "/api/connectors/catalog")).status).toBe(200);
 }, 60_000);
 
 afterAll(async () => {

@@ -485,13 +485,15 @@ function skillContentMatches(botId: string, name: string, entry: SkillManifestEn
 }
 
 function skillListing(botId: string, name: string, entry: SkillManifestEntry): SkillListing {
-  const { appliedStageId, storageRevision: _storageRevision, package: _package, ...visible } = entry;
+  const { appliedStageId: _appliedStageId, storageRevision: _storageRevision, package: _package, ...visible } = entry;
   const intact = skillContentMatches(botId, name, entry);
   return {
     name,
     ...visible,
     enabled: entry.enabled && intact,
-    editable: entry.source.startsWith(LEARN_SOURCE_PREFIX) && Boolean(appliedStageId),
+    // Learned skills from before reviewed updates have no appliedStageId; their reviewed
+    // SKILL.md hash is enough to let the person update them in place.
+    editable: entry.source.startsWith(LEARN_SOURCE_PREFIX) && intact,
     warnings: intact
       ? visible.warnings
       : [...visible.warnings, "stored skill files changed after review — enablement is blocked"],
@@ -546,7 +548,7 @@ export function installSkill(botId: string, source: string, files: readonly Skil
   return installPreparedSkill(botId, source, prepared, { enabled: false, github });
 }
 
-/** Arrives enabled (the Admin is the review); `source` comes from the caller, never from the package. */
+/** Arrives disabled and waits for the owner to switch it on; `source` comes from the caller, never from the package. */
 export function installOrgSkill(
   botId: string,
   source: string,
@@ -557,7 +559,7 @@ export function installOrgSkill(
   const prepared = preparedSkillFiles(skillMd);
   if ("error" in prepared) return prepared;
   if (prepared.parsed.name !== stamp.key) return { error: `the skill is named "${prepared.parsed.name}", not "${stamp.key}"` };
-  return installPreparedSkill(botId, source, prepared, { enabled: true, package: { ...stamp } });
+  return installPreparedSkill(botId, source, prepared, { enabled: false, package: { ...stamp } });
 }
 
 export function skillPackageStamps(botId: string): Array<{ name: string; enabled: boolean; stamp: SkillPackageStamp }> {
@@ -694,8 +696,8 @@ const stagedSkillWriteSchema = z.object({
   baseSha256: z.string().regex(/^[a-f0-9]{64}$/).optional(),
   baseAppliedStageId: z.string().optional(),
 }).superRefine((entry, ctx) => {
-  if (entry.action === "update" && (!entry.baseSha256 || !entry.baseAppliedStageId)) {
-    ctx.addIssue({ code: "custom", message: "updated skills require their reviewed base revision" });
+  if (entry.action === "update" && !entry.baseSha256) {
+    ctx.addIssue({ code: "custom", message: "updated skills require the reviewed base hash" });
   }
 });
 const stagedStoreSchema = z.object({ writes: z.record(z.string(), stagedSkillWriteSchema) });
@@ -907,7 +909,7 @@ function updatePreparedSkill(
   botId: string,
   source: string,
   prepared: PreparedSkillFiles,
-  options: { appliedStageId: string; baseSha256: string; baseAppliedStageId: string },
+  options: { appliedStageId: string; baseSha256: string; baseAppliedStageId?: string },
 ): SkillListing | { error: string } {
   const name = prepared.parsed.name;
   const manifest = readManifest(botId);
@@ -1036,9 +1038,6 @@ export function stageSkillWrite(
   if (input.action === "update" && existing && !existing.source.startsWith(LEARN_SOURCE_PREFIX)) {
     return { error: `skill "${parsed.name}" was imported — remove and re-import it instead of rewriting it` };
   }
-  if (input.action === "update" && existing && !existing.appliedStageId) {
-    return { error: `skill "${parsed.name}" predates reviewed updates — remove and learn it again first` };
-  }
   if (input.action === "update" && existing && !skillContentMatches(botId, parsed.name, existing)) {
     return { error: "stored SKILL.md changed after review — restore or remove it before proposing an update" };
   }
@@ -1090,7 +1089,7 @@ export function stageSkillWrite(
     skippedFiles: prepared.skippedFiles,
     createdAt: new Date().toISOString(),
     ...(input.action === "update"
-      ? { baseSha256: existing!.sha256, baseAppliedStageId: existing!.appliedStageId! }
+      ? { baseSha256: existing!.sha256, ...(existing!.appliedStageId ? { baseAppliedStageId: existing!.appliedStageId } : {}) }
       : {}),
   };
   store.writes[entry.id] = entry;
@@ -1183,7 +1182,7 @@ export function applyStagedSkillWrite(
     : updatePreparedSkill(botId, staged.source, prepared, {
         appliedStageId: id,
         baseSha256: staged.baseSha256!,
-        baseAppliedStageId: staged.baseAppliedStageId!,
+        ...(staged.baseAppliedStageId ? { baseAppliedStageId: staged.baseAppliedStageId } : {}),
       });
   if ("error" in installed) return installed;
   options.onApplied?.(installed);

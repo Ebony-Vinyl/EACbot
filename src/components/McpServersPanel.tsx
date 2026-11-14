@@ -624,6 +624,7 @@ export function McpServersPanel({ embedded = false, hostedCards, hideHosted = fa
                       {server.bot && <div data-mcp-own-bot className="mt-1 text-[12px] text-ink-secondary">{t("mcp.ownBot", { bot: botName(server.bot) })}</div>}
                       {server.offFor?.length ? <div data-mcp-off-for className="mt-1 text-[12px] text-ink-secondary">{t("mcp.offFor", { bots: server.offFor.map(botName).join(", ") })}</div> : null}
                       <div className="mt-1 truncate font-mono text-[12px] text-ink-secondary">{isRemoteMcpListing(server) ? server.url : [server.command, ...server.args].join(" ")}</div>
+                      {isRemoteMcpListing(server) && server.error && <div role="alert" className="mt-1 text-[12px] leading-relaxed text-danger">{server.error}</div>}
                       {isRemoteMcpListing(server)
                         ? server.headerKeys.length > 0 && <div className="mt-1 truncate text-[11px] text-ink-secondary">{t("mcp.headersSaved", { keys: server.headerKeys.join(", ") })}</div>
                         : server.envKeys.length > 0 && <div className="mt-1 truncate text-[11px] text-ink-secondary">{t("mcp.secretsSaved", { keys: server.envKeys.join(", ") })}</div>}

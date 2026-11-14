@@ -1,7 +1,7 @@
 // Unit level: the 45 s e2e wait is too slow for the suite, and what matters is the decision table, not the constant.
 import { describe, expect, it, vi } from "vitest";
 
-import { CONTROL_REFUSAL_PLAIN, CONTROL_UNCONFIRMED, CONTROL_WAITED, type ControlState } from "./control-client.ts";
+import { CONTROL_PLANE_MISSING, CONTROL_REFUSAL_PLAIN, CONTROL_UNCONFIRMED, CONTROL_WAITED, createControlClient, type ControlState } from "./control-client.ts";
 import {
   completeFor,
   createChildCalls,
@@ -429,6 +429,25 @@ describe("createMcpBridgeInterceptor", () => {
     expect(JSON.parse(answered[0]!)).toEqual({ jsonrpc: "2.0", id: 1, result: {} });
     expect(JSON.parse(answered[1]!).result.isError).toBe(true);
     expect(JSON.parse(answered[1]!).result.content[0].text).toBe(CONTROL_REFUSAL_PLAIN);
+  });
+
+  it("refuses computer calls when the gate it was asked to require has no pair", async () => {
+    const client = createControlClient({ url: "", token: "", required: true, fetchImpl: vi.fn<typeof fetch>() });
+    const forwarded: string[] = [];
+    const answered: string[] = [];
+    const intercept = createMcpBridgeInterceptor({
+      answer: (line) => answered.push(line),
+      forward: (line) => { forwarded.push(line); },
+      gate: { check: () => client.state(true) },
+    });
+    intercept(frame("tools/call", 9));
+    await drain();
+    expect(forwarded).toEqual([]);
+    expect(JSON.parse(answered[0]!)).toEqual({
+      jsonrpc: "2.0",
+      id: 9,
+      result: { content: [{ type: "text", text: CONTROL_PLANE_MISSING }], isError: true },
+    });
   });
 
   it("forwards other frames through the gate", async () => {
