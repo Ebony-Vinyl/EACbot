@@ -261,9 +261,9 @@ describe.skipIf(process.platform === "win32")("Test, where bots reach URL server
     broker = await openCredentialBroker({ socketPath: join(dir, "b.sock"), request });
     return { broker: { port: 18080, mintForThread: broker.mintForThread, revokeThread: broker.revokeThread }, socketPath: broker.socketPath };
   }
-  async function tested(path: BrokerPath, url: string) {
+  async function tested(path: BrokerPath, url: string, headers: Record<string, string> = HEADERS) {
     const route = await serve({ botsPath: () => path });
-    expect((await route.post("/api/mcp/servers", { name: "orders", type: "http", url, headers: HEADERS })).status).toBe(201);
+    expect((await route.post("/api/mcp/servers", { name: "orders", type: "http", url, headers })).status).toBe(201);
     return await (await route.post("/api/mcp/servers/orders/test", {})).json() as Record<string, unknown>;
   }
 
@@ -292,9 +292,17 @@ describe.skipIf(process.platform === "win32")("Test, where bots reach URL server
   });
 
   it("never says Connected when bots can't reach a server that answers directly, and says the fault is ours", async () => {
+    mcp = await startFakeHttpMcp({ exactPath: true, tools: [{ name: "lookup_order" }] });
+    const result = await tested(await brokerPath(true), mcp.url, {});
+    expect(result).toEqual({ ok: false, reason: "unreachable", error: "Your bots can't reach this server: The server answered HTTP 404. It answers when tested directly, so the fault is on our side, not in your settings: tell us with @devs in any chat." });
+  });
+
+  it("doesn't retry a server with saved headers directly when the broker fails", async () => {
     mcp = await startFakeHttpMcp({ exactPath: true, tools: [{ name: "lookup_order" }], requireHeaders: HEADERS });
     const result = await tested(await brokerPath(true), mcp.url);
-    expect(result).toEqual({ ok: false, reason: "unreachable", error: "Your bots can't reach this server: The server answered HTTP 404. It answers when tested directly, so the fault is on our side, not in your settings: tell us with @devs in any chat." });
+    expect(result).toEqual({ ok: false, reason: "unreachable", error: "Your bots can't reach this server through the broker: The server answered HTTP 404. This server sends saved credentials, so the test didn't try it directly from here: tell us with @devs in any chat." });
+    expect(mcp.seenPaths.length).toBeGreaterThan(0);
+    expect(mcp.seenPaths.every((path) => path === "/mcp/"), "only the broker's request reached the server").toBe(true);
   });
 
   it("says a server that answers neither way can't be reached, as before", async () => {
@@ -302,7 +310,7 @@ describe.skipIf(process.platform === "win32")("Test, where bots reach URL server
     const url = mcp.url;
     await mcp.close();
     mcp = undefined;
-    expect(await tested(await brokerPath(), url)).toEqual({ ok: false, error: "Could not reach this address. Check the URL and your network.", reason: "unreachable" });
+    expect(await tested(await brokerPath(), url, {})).toEqual({ ok: false, error: "Could not reach this address. Check the URL and your network.", reason: "unreachable" });
   });
 });
 

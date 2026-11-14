@@ -1,6 +1,7 @@
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 
+import type { BrokerPath } from "../bot-box/broker-probe.ts";
 import { DATA_DIR, type AppConfig } from "../config.ts";
 import * as probeModule from "../mcp-probe.ts";
 import { McpOAuthManager } from "../mcp-oauth.ts";
@@ -10,7 +11,16 @@ import type { TeamConnectionsHost } from "./team-connections-host.ts";
 
 const remote = (url = "https://data.example.com/mcp"): StoredMcpServer => ({ type: "http", url, headers: {}, enabled: false }) as StoredMcpServer;
 
-function fixture(options: { refuse?: (name: string) => string | undefined; personal?: string[] } = {}) {
+const fakeBrokerPath = (): BrokerPath => ({
+  broker: {
+    port: 18080,
+    mintForThread: () => ({ token: "probe-token" }),
+    revokeThread: vi.fn(),
+  } as unknown as BrokerPath["broker"],
+  socketPath: "probe.sock",
+});
+
+function fixture(options: { refuse?: (name: string) => string | undefined; personal?: string[]; botsPath?: () => BrokerPath | null } = {}) {
   const cfg: Pick<AppConfig, "mcpServers" | "postiz"> = { mcpServers: {} };
   const mcpOAuth = new McpOAuthManager({ file: join(DATA_DIR, "mcp-config-oauth.json") });
   const forget = vi.spyOn(mcpOAuth, "forget");
@@ -28,6 +38,7 @@ function fixture(options: { refuse?: (name: string) => string | undefined; perso
     mcpPolicyRefusal: (name) => options.refuse?.(name),
     persistMcpServers: (next) => { cfg.mcpServers = next; },
     savedCustomDomain: () => null,
+    ...(options.botsPath ? { botsPath: options.botsPath } : {}),
     changed,
   });
   return { cfg, config, changed, forget, setBusy: (value: boolean) => { busy = value; } };
@@ -119,6 +130,64 @@ describe("shared MCP config", () => {
     await config.test("notes", { signal: new AbortController().signal, asBot: { id: "bot-1", cwd: "/tmp/bot-1" } });
     expect(probe.mock.calls[0]?.[3]).toMatchObject({ asBot: { id: "bot-1", cwd: "/tmp/bot-1" } });
     probe.mockRestore();
+  });
+
+  it("doesn't send a server's saved headers directly when its broker test fails", async () => {
+    const { cfg, config } = fixture({ botsPath: fakeBrokerPath });
+    cfg.mcpServers = { orders: { ...remote(), headers: { Authorization: "Bearer fixture-secret" } } as never };
+    const probe = vi.spyOn(probeModule, "probeMcpServer").mockResolvedValue({ ok: false, error: "The server answered HTTP 404. Check the address and headers." });
+    try {
+      const result = await config.test("orders", { signal: new AbortController().signal });
+      expect(probe).toHaveBeenCalledTimes(1);
+      expect(probe.mock.calls[0]?.[3]?.via).toBeDefined();
+      expect(result).toEqual({
+        status: 200,
+        body: {
+          ok: false,
+          reason: "unreachable",
+          error: "Your bots can't reach this server through the broker: The server answered HTTP 404. This server sends saved credentials, so the test didn't try it directly from here: tell us with @devs in any chat.",
+        },
+      });
+      expect(JSON.stringify(result)).not.toContain("fixture-secret");
+    } finally {
+      probe.mockRestore();
+    }
+  });
+
+  it("still tries a server without saved headers directly when its broker test fails", async () => {
+    const { cfg, config } = fixture({ botsPath: fakeBrokerPath });
+    cfg.mcpServers = { notes: remote() as never };
+    const probe = vi.spyOn(probeModule, "probeMcpServer").mockImplementation(async (_server, _timeout, _signal, options) =>
+      options?.via ? { ok: false, error: "The server answered HTTP 404. Check the address and headers." } : { ok: true, tools: [] });
+    try {
+      const result = await config.test("notes", { signal: new AbortController().signal });
+      expect(probe).toHaveBeenCalledTimes(2);
+      expect(probe.mock.calls[0]?.[3]?.via).toBeDefined();
+      expect(probe.mock.calls[1]?.[3]?.via).toBeUndefined();
+      expect(result).toEqual({
+        status: 200,
+        body: {
+          ok: false,
+          reason: "unreachable",
+          error: "Your bots can't reach this server: The server answered HTTP 404. It answers when tested directly, so the fault is on our side, not in your settings: tell us with @devs in any chat.",
+        },
+      });
+    } finally {
+      probe.mockRestore();
+    }
+  });
+
+  it("tests a server with saved headers directly where bots don't use a broker", async () => {
+    const { cfg, config } = fixture();
+    cfg.mcpServers = { orders: { ...remote(), headers: { Authorization: "Bearer fixture-secret" } } as never };
+    const probe = vi.spyOn(probeModule, "probeMcpServer").mockResolvedValue({ ok: true, tools: [] });
+    try {
+      expect(await config.test("orders", { signal: new AbortController().signal })).toEqual({ status: 200, body: { ok: true, tools: [] } });
+      expect(probe).toHaveBeenCalledTimes(1);
+      expect(probe.mock.calls[0]?.[3]?.via).toBeUndefined();
+    } finally {
+      probe.mockRestore();
+    }
   });
 
   it("a write while busy returns 409 \"MCP servers are already being updated.\"", () => {
