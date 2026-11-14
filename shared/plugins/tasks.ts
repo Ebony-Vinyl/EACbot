@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const KANBAN_COLUMNS = ["backlog", "ready", "doing", "blocked", "review", "done"] as const;
+export const KANBAN_COLUMNS = ["backlog", "todo", "scheduled", "ready", "doing", "blocked", "review", "done"] as const;
 export type KanbanColumn = (typeof KANBAN_COLUMNS)[number];
 
 export const RUN_STATUSES = ["queued", "running", "waiting", "succeeded", "failed", "cancelled"] as const;
@@ -31,9 +31,11 @@ export const kanbanRunSchema = z.object({
   runId: z.string().uuid(),
   status: z.enum(RUN_STATUSES),
   executorId: z.string().min(1).max(120).optional(),
+  createdAt: instant.optional(),
   startedAt: instant.optional(),
   endedAt: instant.optional(),
   error: z.string().max(500).optional(),
+  threadId: z.string().max(120).optional(),
 }).strict();
 
 export type KanbanRun = z.infer<typeof kanbanRunSchema>;
@@ -49,6 +51,14 @@ export const kanbanTaskSchema = z.object({
   dependsOn: z.array(z.string().uuid()).max(50).optional(),
   lease: kanbanLeaseSchema.optional(),
   run: kanbanRunSchema.optional(),
+  priority: z.enum(["low", "normal", "high"]).optional(),
+  source: z.string().max(120).optional(),
+  accountId: z.string().uuid().optional(),
+  routineId: z.string().uuid().optional(),
+  archivedAt: instant.optional(),
+  comments: z.array(z.object({ id: z.string().uuid(), text: z.string().trim().min(1).max(4000), at: instant }).strict()).max(200).optional(),
+  artifacts: z.array(z.object({ runId: z.string().uuid().optional(), text: z.string().trim().min(1).max(32000), at: instant }).strict()).max(100).optional(),
+  runIds: z.array(z.string().uuid()).max(1000).optional(),
   createdAt: instant,
   updatedAt: instant,
 }).strict();
@@ -80,7 +90,9 @@ export function canChangeRunStatus(from: RunStatus | undefined, to: RunStatus, a
 
 /** A task may enter done only when no run exists or its run has succeeded. */
 export function canMoveToColumn(task: Pick<KanbanTask, "run">, column: KanbanColumn): TaskRefusal {
-  if (column !== "done") return { ok: true };
+  if (column === "doing") return { ok: false, code: "EXECUTOR_ONLY", error: "only the executor moves a task to running" };
+  if (task.run && (task.run.status === "running" || task.run.status === "waiting")) return { ok: false, code: "EXECUTOR_ONLY", error: "stop the unfinished run before moving this task" };
+  if (column !== "done" && column !== "review") return { ok: true };
   if (!task.run) return { ok: true };
   if (task.run.status === "succeeded") return { ok: true };
   return { ok: false, code: "DONE_NEEDS_SUCCESS", error: "a task with an unfinished run cannot be done" };

@@ -87,3 +87,15 @@ describe("kanban tasks", () => {
     expect(store.patchTask(board.boardId, task.taskId, finished.revision, { column: "done" }).column).toBe("done");
   });
 });
+
+it("ends a crashed executor's run when its expired lease is reclaimed", () => {
+  const { store, advance } = makeStore(1000);
+  const { board, task } = boardWithTask(store);
+  const claimed = store.claim(board.boardId, task.taskId, task.revision, "worker-a");
+  const running = store.startRun(board.boardId, task.taskId, claimed.lease!.leaseId, "worker-a");
+  advance(1001);
+  const recovered = store.claim(board.boardId, task.taskId, running.revision, "worker-b");
+  expect(recovered.run?.status).toBe("failed");
+  expect(() => store.finishRun(board.boardId, task.taskId, running.run!.runId, "worker-a", "succeeded")).toThrow(/not running/);
+  expect(store.startRun(board.boardId, task.taskId, recovered.lease!.leaseId, "worker-b").run?.status).toBe("running");
+});

@@ -1,7 +1,9 @@
+import { isDeepStrictEqual } from "node:util";
 import { randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { z } from "zod";
+import type { RoutineRun } from "../routines.ts";
 
 import { writeFileAtomic } from "../atomic.ts";
 import {
@@ -58,7 +60,8 @@ export class KanbanStore {
       createdAt: this.now(),
     });
     if (!parsed.success) throw new KanbanError("invalid", parsed.error.issues[0]?.message ?? "invalid board");
-    const state = this.load();
+    const state = structuredClone(this.load());
+    if (state.boards.length >= 100) throw new KanbanError("conflict", "the workspace already has 100 boards");
     if (state.boards.some((board) => board.boardId === parsed.data.boardId)) {
       throw new KanbanError("conflict", "a board with this id already exists");
     }
@@ -80,14 +83,22 @@ export class KanbanStore {
     return structuredClone(this.requireTask(boardId, taskId));
   }
 
+  allTasks(): KanbanTask[] {
+    return structuredClone(this.load().tasks);
+  }
+
   createTask(boardId: string, input: {
     title: string;
     description?: string;
     column?: KanbanColumn;
     assigneeBotId?: string;
     dependsOn?: string[];
+    priority?: KanbanTask["priority"];
+    source?: string;
+    accountId?: string;
   }): KanbanTask {
     this.requireBoard(boardId);
+    if (input.column === "doing" || input.column === "scheduled" || input.column === "review" || input.column === "done") throw new KanbanError("forbidden", "create a pending task before executing or reviewing it");
     const at = this.now();
     const parsed = kanbanTaskSchema.safeParse({
       taskId: randomUUID(),
@@ -96,13 +107,16 @@ export class KanbanStore {
       ...(input.description ? { description: input.description } : {}),
       column: input.column ?? "backlog",
       revision: 1,
+      priority: input.priority ?? "normal",
+      ...(input.source ? { source: input.source } : {}),
+      ...(input.accountId ? { accountId: input.accountId } : {}),
       ...(input.assigneeBotId ? { assigneeBotId: input.assigneeBotId } : {}),
       ...(input.dependsOn?.length ? { dependsOn: input.dependsOn } : {}),
       createdAt: at,
       updatedAt: at,
     });
     if (!parsed.success) throw new KanbanError("invalid", parsed.error.issues[0]?.message ?? "invalid task");
-    const state = this.load();
+    const state = structuredClone(this.load());
     for (const dependency of parsed.data.dependsOn ?? []) {
       if (!state.tasks.some((task) => task.boardId === boardId && task.taskId === dependency)) {
         throw new KanbanError("invalid", "a dependency does not exist on this board");
@@ -119,13 +133,19 @@ export class KanbanStore {
     column?: KanbanColumn;
     assigneeBotId?: string | null;
     dependsOn?: string[];
+    priority?: KanbanTask["priority"];
+    source?: string;
+    accountId?: string | null;
   }): KanbanTask {
     const task = this.requireTask(boardId, taskId);
     this.expectRevision(task, expectedRevision);
+    if (patch.column === "scheduled" && !task.routineId) throw new KanbanError("forbidden", "create an execution schedule first");
     if (patch.column && patch.column !== task.column) {
       const allowed = canMoveToColumn({ run: task.run }, patch.column);
       if (!allowed.ok) throw new KanbanError("forbidden", allowed.error);
     }
+    if (patch.column && ["review", "done"].includes(patch.column) && !(task.artifacts?.length || task.run?.status === "succeeded")) throw new KanbanError("forbidden", "add a real artifact before review or completion");
+    if (task.run && ["queued", "running", "waiting"].includes(task.run.status)) throw new KanbanError("conflict", "stop the run before editing the task");
     if (patch.dependsOn) {
       const state = this.load();
       for (const dependency of patch.dependsOn) {
@@ -134,6 +154,15 @@ export class KanbanStore {
         }
       }
     }
+    if (patch.dependsOn) {
+      const visits = (id: string, seen = new Set<string>()): boolean => {
+        if (id === taskId) return true;
+        if (seen.has(id)) return false;
+        seen.add(id);
+        return (this.requireTask(boardId, id).dependsOn ?? []).some((dependency) => visits(dependency, seen));
+      };
+      if (patch.dependsOn.some((id) => visits(id))) throw new KanbanError("invalid", "dependencies contain a cycle");
+    }
     const next: KanbanTask = {
       ...task,
       ...(patch.title !== undefined ? { title: patch.title } : {}),
@@ -141,6 +170,9 @@ export class KanbanStore {
       ...(patch.column !== undefined ? { column: patch.column } : {}),
       ...(patch.assigneeBotId !== undefined ? { assigneeBotId: patch.assigneeBotId ?? undefined } : {}),
       ...(patch.dependsOn !== undefined ? { dependsOn: patch.dependsOn } : {}),
+      ...(patch.priority !== undefined ? { priority: patch.priority } : {}),
+      ...(patch.source !== undefined ? { source: patch.source } : {}),
+      ...(patch.accountId !== undefined ? { accountId: patch.accountId ?? undefined } : {}),
       revision: task.revision + 1,
       updatedAt: this.now(),
     };
@@ -159,6 +191,7 @@ export class KanbanStore {
     }
     const next: KanbanTask = {
       ...task,
+      ...(task.run?.status === "running" && !leaseLive(task.lease, at) ? { run: { ...task.run, status: "failed" as const, endedAt: at, error: "executor lease expired" }, column: "blocked" as const } : {}),
       lease: {
         leaseId: randomUUID(),
         holderId,
@@ -199,6 +232,7 @@ export class KanbanStore {
     const at = this.now();
     const next: KanbanTask = {
       ...task,
+      column: "doing",
       run: {
         runId: randomUUID(),
         status: "running",
@@ -240,6 +274,58 @@ export class KanbanStore {
     return structuredClone(next);
   }
 
+  setRoutine(boardId: string, taskId: string, expectedRevision: number, routineId: string | undefined, column: KanbanColumn): KanbanTask {
+    const task = this.requireTask(boardId, taskId);
+    this.expectRevision(task, expectedRevision);
+    const next = { ...task, routineId, column, revision: task.revision + 1, updatedAt: this.now() };
+    this.replaceTask(next);
+    return structuredClone(next);
+  }
+
+  addNote(boardId: string, taskId: string, revision: number, text: string, kind: "comment" | "artifact"): KanbanTask {
+    const task = this.requireTask(boardId, taskId);
+    this.expectRevision(task, revision);
+    const at = this.now();
+    const next = { ...task, revision: task.revision + 1, updatedAt: at };
+    if (kind === "comment") next.comments = [...(task.comments ?? []), { id: randomUUID(), text, at }];
+    else next.artifacts = [...(task.artifacts ?? []), { text, at }];
+    this.replaceTask(next);
+    return this.task(boardId, taskId);
+  }
+
+  archive(boardId: string, taskId: string, revision: number, archived: boolean): KanbanTask {
+    const task = this.requireTask(boardId, taskId);
+    this.expectRevision(task, revision);
+    if (task.run && ["queued", "running", "waiting"].includes(task.run.status)) throw new KanbanError("conflict", "stop the run before archiving");
+    const next = { ...task, archivedAt: archived ? this.now() : undefined, revision: task.revision + 1, updatedAt: this.now() };
+    this.replaceTask(next);
+    return structuredClone(next);
+  }
+
+  syncRoutineRun(run: RoutineRun): void {
+    const task = this.load().tasks.find((entry) => entry.routineId === run.routineId);
+    if (!task) return;
+    const status = run.status === "completed" ? "succeeded" : run.status === "cancelled" ? "cancelled"
+      : ["queued", "running", "waiting"].includes(run.status) ? run.status as RunStatus : "failed";
+    const previousIds = task.runIds ?? [];
+    if (task.run && task.run.runId !== run.id && (previousIds.includes(run.id) || run.createdAt < Date.parse(task.run.createdAt ?? task.run.startedAt ?? ""))) return;
+    const output = run.output?.trim();
+    const artifacts = [...(task.artifacts ?? [])];
+    if (status === "succeeded" && output && !artifacts.some((item) => item.runId === run.id)) {
+      artifacts.push({ runId: run.id, text: output.slice(0, 32000), at: this.now() });
+    }
+    const mapped = { runId: run.id, createdAt: new Date(run.createdAt).toISOString(), status, ...(run.threadId ? { threadId: run.threadId } : {}), executorId: "routine-manager",
+      ...(run.startedAt ? { startedAt: new Date(run.startedAt).toISOString() } : {}),
+      ...(run.finishedAt ? { endedAt: new Date(run.finishedAt).toISOString() } : {}),
+      ...(run.error || run.attention ? { error: (run.error ?? run.attention)!.slice(0, 500) } : {}) };
+    if (isDeepStrictEqual(task.run, mapped) && artifacts.length === (task.artifacts?.length ?? 0)) return;
+    const column: KanbanColumn = status === "running" ? "doing" : status === "queued" ? "ready" : status === "succeeded" ? (artifacts.some((artifact) => artifact.runId === run.id) ? "review" : "blocked") : "blocked";
+    const next: KanbanTask = { ...task, column, run: mapped, artifacts: artifacts.slice(-100),
+      runIds: [...new Set([...previousIds, run.id])].slice(-1000), revision: task.revision + 1, updatedAt: this.now() };
+    delete next.lease;
+    this.replaceTask(next);
+  }
+
   private requireBoard(boardId: string): KanbanBoard {
     const board = this.load().boards.find((candidate) => candidate.boardId === boardId);
     if (!board) throw new KanbanError("not-found", "no such board");
@@ -264,10 +350,12 @@ export class KanbanStore {
   }
 
   private replaceTask(next: KanbanTask): void {
-    const state = this.load();
+    const state = structuredClone(this.load());
     const index = state.tasks.findIndex((task) => task.boardId === next.boardId && task.taskId === next.taskId);
     if (index < 0) throw new KanbanError("not-found", "no such task");
-    state.tasks[index] = next;
+    const parsed = kanbanTaskSchema.safeParse(next);
+    if (!parsed.success) throw new KanbanError("invalid", parsed.error.issues[0]!.message);
+    state.tasks[index] = parsed.data;
     this.persist(state);
   }
 
