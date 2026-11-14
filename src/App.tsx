@@ -1,3 +1,4 @@
+import { TaskCenter } from "@/features/tasks/TaskCenter";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PluginUiHost } from "@/components/PluginUiHost";
 import { Live2dOverlay } from "@/components/Live2dOverlay";
@@ -136,6 +137,7 @@ function Shell({ viewer }: { viewer: WelcomeViewer | null }) {
   useExternalChatLinks(state, dispatch); useDesktopNotificationOpens(state, dispatch);
   usePresence(state, dispatch);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [tasksOpen, setTasksOpen] = useState(false);
   usePageLanguage(effectiveLanguage(useLanguageChoice(), state.config?.language), true);
   const [paletteOpen, setPaletteOpen] = useState(false);
   // Stays mounted once opened: a Cloud bought in it can arrive after the sheet is closed.
@@ -152,7 +154,7 @@ function Shell({ viewer }: { viewer: WelcomeViewer | null }) {
   const notificationFeed = useNotificationFeed() && !remoteClient;
   const advanced = useAdvancedMode();
   const roomPanelOpen = useRoomPanelShown({ group, state, simple: !advanced && !remoteClient });
-  const sidePanelOpen = (Boolean(bot) && (state.settingsOpen || state.computerOpen || state.inspectorOpen || state.activityOpen)) || roomPanelOpen || (notificationFeed && state.notificationsOpen) || inboxShown;
+  const sidePanelOpen = !tasksOpen && ((Boolean(bot) && (state.settingsOpen || state.computerOpen || state.inspectorOpen || state.activityOpen)) || roomPanelOpen || (notificationFeed && state.notificationsOpen) || inboxShown);
   const collapseSidebar = sidePanelOpen && !sidebarAndPanelFit;
   const calendarFocus = state.activeView === "routines" && state.routinesFocus.view === "calendar";
   const notificationTray = notificationFeed && !calendarFocus;
@@ -267,7 +269,7 @@ function Shell({ viewer }: { viewer: WelcomeViewer | null }) {
     dispatch({ type: "select", id });
   }, [dispatch]);
 
-  const nativeViewOverlayOpen =
+  const nativeViewOverlayOpen = tasksOpen ||
     drawerOpen ||
     paletteOpen ||
     state.settingsOpen ||
@@ -352,6 +354,7 @@ function Shell({ viewer }: { viewer: WelcomeViewer | null }) {
       {framed && strips}
       <div className={framed ? "relative flex min-h-0 flex-1" : "contents"}>
       {!calendarFocus && <Sidebar
+        onOpenTasks={() => { setTasksOpen(true); setDrawerOpen(false); }}
         collapseToIcons={collapseSidebar}
         open={drawerOpen}
         onClose={() => {
@@ -359,7 +362,7 @@ function Shell({ viewer }: { viewer: WelcomeViewer | null }) {
           menuButtonRef.current?.focus();
         }}
       />}
-      {state.activeView === "team-map" ? (
+      {tasksOpen ? <TaskCenter onClose={() => setTasksOpen(false)} /> : state.activeView === "team-map" ? (
         <TeamMapPage />
       ) : state.activeView === "files" ? (
         <FilesView />
@@ -402,6 +405,7 @@ function Shell({ viewer }: { viewer: WelcomeViewer | null }) {
         </main>
       )}
       {/* Sibling panels need distinct keys: two keyed `bot.id` collide in React's keyed reconciliation. */}
+      {!tasksOpen && <>
       {state.settingsOpen && bot && (
         remoteClient
           ? <RemoteAgentSettingsPanel bot={bot} overlay={state.computerOpen && !twoSidePanelsFit} />
@@ -426,6 +430,7 @@ function Shell({ viewer }: { viewer: WelcomeViewer | null }) {
       {inboxShown && <InboxPanel />}
       {notificationTray && state.notificationsOpen && <NotificationsPanel />}
       {notificationTray && !framed && <NotificationRail />}
+      </>}
       </div>
       </div>
       {state.appSettingsOpen && <SettingsModal />}
