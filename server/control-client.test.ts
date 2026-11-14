@@ -2,7 +2,7 @@ import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-  CONTROL_REFUSAL_PLAIN, CONTROL_UNCONFIRMED, CONTROL_WAIT_MS, controlRefusal, createControlClient,
+  CONTROL_PLANE_MISSING, CONTROL_REFUSAL_PLAIN, CONTROL_UNCONFIRMED, CONTROL_WAIT_MS, controlRefusal, createControlClient,
 } from "./control-client.ts";
 
 const options = { url: "http://control.test/state", token: "fixture-token" };
@@ -136,6 +136,27 @@ describe("computer control client", () => {
       expect(fetchImpl).not.toHaveBeenCalled();
     },
   );
+
+  it.each([{ url: "", token: options.token }, { url: options.url, token: "" }])(
+    "refuses, rather than disengaging, when a required gate is incomplete %j",
+    async (configuration) => {
+      const fetchImpl = vi.fn<typeof fetch>();
+      const client = createControlClient({ ...configuration, required: true, fetchImpl });
+      expect(client.configured).toBe(false);
+      const state = await client.state(true);
+      expect(state).toEqual({ held: true, helpOpen: false, blockedReason: CONTROL_PLANE_MISSING });
+      expect(controlRefusal(state)).toBe(CONTROL_PLANE_MISSING);
+      expect(fetchImpl).not.toHaveBeenCalled();
+    },
+  );
+
+  it("asks a required gate that is configured as usual", async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(Response.json({ held: false, helpOpen: false }));
+    await expect(createControlClient({ ...options, required: true, fetchImpl }).state(true)).resolves.toEqual({
+      held: false, helpOpen: false,
+    });
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
 
   it("caches for 750 ms and refreshes immediately when requested", async () => {
     const now = vi.spyOn(Date, "now").mockReturnValue(10_000);

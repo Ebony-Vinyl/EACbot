@@ -1165,7 +1165,7 @@ type ContainerMcpLaunch = {
 
 export function containerComputerMcp(
   runtime: Runtime,
-  control?: { url: string; token: string },
+  control: { url: string; token: string },
   target: LocalVmTarget = SHARED_LOCAL_VM_TARGET,
 ): ContainerMcpLaunch {
   return {
@@ -1174,7 +1174,8 @@ export function containerComputerMcp(
     // The control pair rides in env, not argv, which `ps` shows for the bridge's whole life.
     env: {
       ELECTRON_RUN_AS_NODE: "1",
-      ...(control ? { EAC_CONTROL_URL: control.url, EAC_CONTROL_TOKEN: control.token } : {}),
+      EAC_CONTROL_URL: control.url,
+      EAC_CONTROL_TOKEN: control.token,
     },
   };
 }

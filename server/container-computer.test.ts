@@ -828,13 +828,18 @@ describe("containerComputerStatus", () => {
 });
 
 describe("Cua integration", () => {
-  it("mounts the official Cua MCP server for Local VM turns", () => {
-    const connection = containerComputerMcp("podman");
+  it("mounts the official Cua MCP server for Local VM turns behind its control gate", () => {
+    const control = { url: "http://127.0.0.1:1/api/internal/computer-control?botId=b", token: "turn-token" };
+    const connection = containerComputerMcp("podman", control);
     expect(connection.command).toBe(process.execPath);
     expect(connection.args.at(-3)).toBe("podman");
     expect(connection.args.at(-2)).toBe(CONTAINER);
     expect(connection.args.at(-1)).toBe(CUA_SOCKET);
-    expect(connection.env).toEqual({ ELECTRON_RUN_AS_NODE: "1" });
+    expect(connection.env).toEqual({
+      ELECTRON_RUN_AS_NODE: "1",
+      EAC_CONTROL_URL: control.url,
+      EAC_CONTROL_TOKEN: control.token,
+    });
   });
 
   it("builds an exact, checksum-verified Cua Driver 0.37.0 image", () => {

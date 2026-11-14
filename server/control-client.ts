@@ -1,5 +1,6 @@
 // Fails closed once configured: an unanswered check must never read as "the person released control", nor as "a person
-// took control", whose text is reserved for the harness saying a person holds the computer.
+// took control", whose text is reserved for the harness saying a person holds the computer. A bridge that fronts a
+// shared or remote computer asks for a required gate, so a missing pair refuses instead of silently disengaging.
 
 /** Under the 60 seconds an engine may give one tool call (Codex's default), with room for the action itself. */
 export const CONTROL_WAIT_MS = 45_000;
@@ -28,6 +29,12 @@ export const CONTROL_BUSY =
 export const CONTROL_UNCONFIRMED =
   "EACbot could not confirm that this computer is free, so this call was NOT performed and nothing happened on the screen. " +
   "Retry in a few seconds.";
+/** A gate nobody configured: unlike an unanswered check, retrying cannot fix it, and acting would race a person. */
+export const CONTROL_PLANE_MISSING =
+  "EACbot could not check who is using this computer because this computer has no control gate configured, so a person " +
+  "and an AI could act on the same screen at once. This call was NOT performed, so nothing happened on the screen. " +
+  "Do not retry it and do not reach the same computer through another tool. Tell the person in plain words that this " +
+  "computer is missing its control gate and that EACbot has to be restarted, or its configuration fixed, before it can use it.";
 
 export interface ControlState {
   held: boolean;
@@ -45,6 +52,7 @@ export interface ControlClient {
 
 const DISENGAGED: ControlState = { held: false, helpOpen: false };
 const UNCONFIRMED: ControlState = { held: true, helpOpen: false, blockedReason: CONTROL_UNCONFIRMED };
+const MISSING: ControlState = { held: true, helpOpen: false, blockedReason: CONTROL_PLANE_MISSING };
 
 export function controlRefusal(state: Pick<ControlState, "reason" | "blockedReason">): string {
   return state.blockedReason ?? (state.reason === "person" ? CONTROL_REFUSAL_PLAIN : CONTROL_UNCONFIRMED);
@@ -53,6 +61,9 @@ export function controlRefusal(state: Pick<ControlState, "reason" | "blockedReas
 export function createControlClient(options?: {
   url?: string;
   token?: string;
+  /** A local single-machine install has no control plane, and that is normal: leave this off and it disengages. Set it
+   * for a computer a server mounts for turns (the host's, a Local VM, a VPS), where acting without a gate is unsafe. */
+  required?: boolean;
   cacheMs?: number;
   timeoutMs?: number;
   fetchImpl?: typeof fetch;
@@ -63,6 +74,7 @@ export function createControlClient(options?: {
   const timeoutMs = options?.timeoutMs ?? READ_TIMEOUT_MS;
   const fetchImpl = options?.fetchImpl ?? fetch;
   const configured = Boolean(url && token);
+  const required = options?.required === true;
   const headers = { authorization: `Bearer ${token}`, "content-type": "application/json" };
 
   let cachedAt = 0;
@@ -94,7 +106,7 @@ export function createControlClient(options?: {
   return {
     configured,
     async state(fresh = false, call?: Record<string, string>): Promise<ControlState> {
-      if (!configured) return DISENGAGED;
+      if (!configured) return required ? MISSING : DISENGAGED;
       const now = Date.now();
       if (!fresh && !call && now - cachedAt < cacheMs) return cached;
       cached = await read(call);
