@@ -6309,6 +6309,8 @@
   "sidebar.update.availableServer": "{version} 版本可用——查看更新说明",
   "sidebar.update.check": "检查更新",
   "sidebar.update.checkFailed": "无法检查更新——请重试。",
+  "sidebar.update.checkOff": "未检查更新",
+  "sidebar.update.checkOffOther": "未检查 {name} 的更新",
   "sidebar.update.checking": "正在检查更新…",
   "sidebar.update.downloading": "正在下载… {percent}%",
   "sidebar.update.failed": "更新未完成。请重试。",

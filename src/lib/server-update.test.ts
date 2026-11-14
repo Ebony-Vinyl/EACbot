@@ -35,6 +35,26 @@ describe("self-hosted update row", () => {
     expect(serverUpdateRow("up-to-date", check({ latest: "0.1.92" }))).toEqual({ label: "You're up to date", subtitle: "v0.1.92" });
   });
 
+  it("says when nothing was checked instead of calling it up to date", () => {
+    const off = check({ checked: false });
+    expect(serverCheckPhase(off)).toBe("not-checked");
+    expect(serverUpdateRow("not-checked", off)).toEqual({ label: "Update check is off" });
+    expect(serverUpdateRow("not-checked", off, "0.1.92", "Office Mac").label).toBe("Update check is off for Office Mac");
+    // A server that does not send `checked` keeps the old answer.
+    expect(serverCheckPhase(check(), "0.1.92")).toBe("up-to-date");
+    // A reported release still wins if a server sends both fields.
+    expect(serverCheckPhase(check({ checked: false, available: true, latest: "0.1.93" }))).toBe("available");
+  });
+
+  it("says the check is off in Chinese too", () => {
+    setLocale("zh");
+    try {
+      expect(serverUpdateRow("not-checked", check({ checked: false }))).toEqual({ label: "未检查更新" });
+    } finally {
+      setLocale("en");
+    }
+  });
+
   it("asks a page older than its server to reload instead of calling it up to date", () => {
     // The server was updated while this page kept running the bundle About reports
     const stale = check({ current: "0.1.114" });

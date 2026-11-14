@@ -85,6 +85,8 @@ export function profileLabel(profile?: { name?: string; email?: string }): strin
 export type UpdatePhase =
   | UpdaterState["status"]
   | "up-to-date"
+  // the server had no release source to ask, so nothing was checked
+  | "not-checked"
   // only a self-hosted server's check reports a release it cannot install itself
   | "available"
   // or that it already runs a newer version than this page
@@ -146,7 +148,7 @@ export function updateHasButton(phase: UpdatePhase): boolean {
 }
 
 export function updateNoteworthy(phase: UpdatePhase, pending = false): boolean {
-  return pending || (phase !== "idle" && phase !== "up-to-date" && phase !== "checking");
+  return pending || (phase !== "idle" && phase !== "up-to-date" && phase !== "not-checked" && phase !== "checking");
 }
 
 interface UpdateEntry {
