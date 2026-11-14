@@ -2130,6 +2130,16 @@ describe("customMcpServers with url entries", () => {
       notes: { command: "npx", args: [], env: {} },
     });
   });
+
+  it("never mounts an old plain-http remote server, so no engine can send its headers", () => {
+    const cfg = {
+      mcpServers: {
+        legacy: { type: "http", url: "http://mcp.example.com/mcp", headers: { Authorization: "Bearer legacy-secret" }, enabled: true },
+        local: { type: "http", url: "http://127.0.0.1:8123/mcp", headers: {}, enabled: true },
+      },
+    } as Parameters<typeof customMcpServers>[0];
+    expect(customMcpServers(cfg)).toEqual({ local: { type: "http", url: "http://127.0.0.1:8123/mcp", headers: {} } });
+  });
 });
 
 describe("live settings", () => {

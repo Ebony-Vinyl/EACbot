@@ -86,6 +86,34 @@ it("says when a server is added, imported or removed on purpose, so a Cloud home
   expect(changes).toEqual(["added", "added", "removed"]);
 });
 
+it("adds https and loopback http servers but refuses plain http to a remote host", async () => {
+  const { cfg, post } = await serve();
+  expect((await post("/api/mcp/servers", { name: "secure", url: "https://mcp.example.com/mcp" })).status).toBe(201);
+  expect((await post("/api/mcp/servers", { name: "local", url: "http://127.0.0.1:8123/mcp" })).status).toBe(201);
+  const refused = await post("/api/mcp/servers", { name: "legacy", url: "http://mcp.example.com/mcp", headers: { Authorization: "Bearer new-secret" } });
+  expect(refused.status).toBe(400);
+  const body = await refused.json() as { error: string };
+  expect(body.error).toMatch(/https:\/\//u);
+  expect(JSON.stringify(body)).not.toContain("new-secret");
+  expect(Object.keys(cfg.mcpServers ?? {}).sort()).toEqual(["local", "secure"]);
+});
+
+it("refuses to turn on a saved remote server that still uses plain http off loopback", async () => {
+  const { cfg, base } = await serve();
+  cfg.mcpServers = { legacy: { type: "http", url: "http://mcp.example.com/mcp", headers: { Authorization: "Bearer legacy-secret" }, enabled: false } };
+  const listed = await (await fetch(`${base}/api/mcp/servers`)).json() as { servers: Array<{ name: string; enabled: boolean; error?: string }> };
+  expect(listed.servers).toMatchObject([{ name: "legacy", enabled: false, error: expect.stringMatching(/https:\/\//u) }]);
+  expect(JSON.stringify(listed)).not.toContain("legacy-secret");
+  const response = await fetch(`${base}/api/mcp/servers/legacy`, {
+    method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ enabled: true }),
+  });
+  expect(response.status).toBe(400);
+  const body = await response.json() as { error: string };
+  expect(body.error).toMatch(/https:\/\//u);
+  expect(JSON.stringify(body)).not.toContain("legacy-secret");
+  expect(cfg.mcpServers.legacy).toMatchObject({ enabled: false });
+});
+
 it("adds a command server sent with type stdio, as other MCP clients write it, and keeps the old shape working", async () => {
   const { cfg, post } = await serve();
   const typed = await post("/api/mcp/servers", { name: "notes", type: "stdio", command: "npx", args: ["-y", "notes-mcp"] });

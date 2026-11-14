@@ -87,6 +87,16 @@ describe("Your MCP servers inside the Apps pop-up", () => {
     expect(render(true)).toContain("Sign in");
   });
 
+  it("shows why an old plain-http remote server cannot run, and leaves it off", () => {
+    fixture.servers = [{
+      name: "legacy", type: "http", url: "http://mcp.example.com/mcp", headerKeys: ["Authorization"], enabled: false,
+      error: "Use https:// for a remote MCP server.",
+    }];
+    const html = render(true);
+    expect(html).toContain("Use https:// for a remote MCP server.");
+    expect(html).toMatch(/aria-label="Turn legacy on" type="button" role="switch" aria-checked="false"/);
+  });
+
   it("keeps its own scroll and wording when shown on its own", () => {
     const html = render(false);
     expect(html).toContain("overflow-y-auto");

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import { McpRpcError, RemoteMcpClient, bypassesProxy, plainHttpProxyFetch } from "./mcp-http.ts";
+import { McpHttpError, McpRpcError, RemoteMcpClient, bypassesProxy, plainHttpProxyFetch } from "./mcp-http.ts";
 import { startFakeHttpMcp, type FakeHttpMcp } from "./testing/fake-http-mcp-server.ts";
 
 let fake: FakeHttpMcp | undefined;
@@ -38,6 +38,36 @@ describe("a server's JSON-RPC error", () => {
     const failure = await client.request("tools/call", { name: "report", arguments: {} }, AbortSignal.timeout(5_000)).catch((error: unknown) => error);
     expect(failure).toBeInstanceOf(McpRpcError);
     expect(failure).toMatchObject({ kind: "protocol", code: -32602, detail: "Missing required parameter 'campaignId'" });
+  });
+});
+
+describe("plain http and remote MCP servers", () => {
+  it.each([
+    ["https://mcp.example.com/mcp", true],
+    ["http://mcp.example.com/mcp", false],
+    ["http://127.0.0.1:9/mcp", true],
+    ["http://localhost:9/mcp", true],
+    ["http://[::1]:9/mcp", true],
+    ["http://[::ffff:127.0.0.1]:9/mcp", true],
+  ] as const)("only sends credentials to %s if %s", async (url, allowed) => {
+    let sent: Headers | undefined;
+    const fetchImpl = (async (_input: string | URL | Request, init?: RequestInit) => {
+      sent = new Headers(init?.headers);
+      return new Response(JSON.stringify({ jsonrpc: "2.0", id: 1, result: {} }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }) as typeof fetch;
+    client = new RemoteMcpClient({ type: "http", url, headers: { Authorization: "Bearer fixture-secret" } }, { fetch: fetchImpl });
+    const failure = await client.request("ping", {}, AbortSignal.timeout(2_000)).catch((error: unknown) => error);
+    if (allowed) {
+      expect(failure).toEqual({});
+      expect(sent?.get("authorization"), url).toBe("Bearer fixture-secret");
+    } else {
+      expect(failure).toBeInstanceOf(McpHttpError);
+      expect((failure as Error).message).toMatch(/https:\/\//u);
+      expect(sent, url).toBeUndefined();
+    }
   });
 });
 

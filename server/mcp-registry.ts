@@ -3,6 +3,7 @@ import { z } from "zod";
 import { RESERVED_MCP_NAMES, slugMcpName } from "../shared/mcp-name.ts";
 import type { McpServerSpec, RemoteMcpSpec, StdioMcpSpec } from "./contracts.ts";
 import { positiveLimit, quotaLimits } from "./limits.ts";
+import { insecureRemoteMcpUrl, remoteMcpUrlError } from "./mcp-url.ts";
 
 export { importedMcpServerName } from "../shared/mcp-name.ts";
 
@@ -65,6 +66,8 @@ export interface RemoteMcpServerListing {
   apps: boolean;
   oauth?: { clientId: string; scopes: string[]; clientSecretConfigured: boolean };
   runsOn?: McpRunsOn;
+  /** The entry is kept but cannot run: today, a remote address still using plain http. */
+  error?: string;
 }
 export type McpServerListing = StdioMcpServerListing | RemoteMcpServerListing;
 
@@ -121,19 +124,6 @@ function environmentEntryError(name: string, value: string): string | null {
 function headerError(name: string, value: string): string | null {
   if (!HEADER_NAME.test(name)) return `Header “${name}” is not a valid header name.`;
   if (/[\r\n]/.test(value)) return `Header “${name}” must be a single line.`;
-  return null;
-}
-
-/** Credentials belong in a write-only header, not in the address the listing shows. */
-function urlError(value: string): string | null {
-  let parsed: URL;
-  try {
-    parsed = new URL(value);
-  } catch {
-    return "Use a full address, like https://example.com/mcp.";
-  }
-  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return "The address must start with http:// or https://.";
-  if (parsed.username || parsed.password) return "Put credentials in a header, not in the address.";
   return null;
 }
 
@@ -289,7 +279,7 @@ function parseRemote(raw: unknown, mutation: boolean, existing?: StoredMcpServer
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid MCP server." };
   }
-  const badUrl = urlError(parsed.data.url);
+  const badUrl = remoteMcpUrlError(parsed.data.url);
   if (badUrl) return { ok: false, error: badUrl };
   const incoming = parsed.data.headers ?? {};
   if (Object.keys(incoming).length > MAX_HEADERS) {
@@ -397,7 +387,10 @@ export function addDisabledMcpServer(current: Record<string, unknown>, body: unk
 export function listMcpServers(raw: Record<string, unknown> | undefined): McpServerListing[] {
   return Object.entries(raw ?? {}).flatMap(([name, value]): McpServerListing[] => {
     const parsed = parseStoredMcpServer(name, value);
-    if (!parsed.ok) return [];
+    if (!parsed.ok) {
+      const blocked = blockedRemoteMcpListing(name, value);
+      return blocked ? [blocked] : [];
+    }
     const { server } = parsed;
     if (isRemoteMcpServer(server)) {
       return [{
@@ -426,6 +419,28 @@ export function listMcpServers(raw: Record<string, unknown> | undefined): McpSer
       ...(server.bot ? { bot: server.bot } : {}),
     }];
   });
+}
+
+/** An old plain-http entry stays visible and off, with the reason, so settings can show what to fix instead of dropping it. */
+function blockedRemoteMcpListing(name: string, raw: unknown): RemoteMcpServerListing | null {
+  if (!looksRemote(raw)) return null;
+  const parsed = remoteEntrySchema.safeParse(raw);
+  if (!parsed.success || !insecureRemoteMcpUrl(parsed.data.url)) return null;
+  const entry = parsed.data;
+  return {
+    name,
+    type: entry.type ?? "http",
+    url: entry.url,
+    headerKeys: Object.keys(entry.headers ?? {}).sort(),
+    enabled: false,
+    apps: entry.apps !== false,
+    ...(entry.resultBudget !== undefined ? { resultBudget: entry.resultBudget } : {}),
+    ...(entry.oauth ? {
+      oauth: { clientId: entry.oauth.clientId, scopes: entry.oauth.scopes ?? [], clientSecretConfigured: Boolean(entry.oauth.clientSecret) },
+    } : {}),
+    ...(entry.runsOn ? { runsOn: entry.runsOn } : {}),
+    error: remoteMcpUrlError(entry.url)!,
+  };
 }
 
 function pickEntry(record: Record<string, unknown>, keys: readonly string[]): Record<string, unknown> {

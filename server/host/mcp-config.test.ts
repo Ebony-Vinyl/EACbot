@@ -54,6 +54,15 @@ describe("shared MCP config", () => {
     expect(cfg.mcpServers.blocked).toMatchObject({ enabled: false });
   });
 
+  it("refuses to enable a saved remote server that still uses plain http off loopback", () => {
+    const { cfg, config } = fixture();
+    cfg.mcpServers = { legacy: { type: "http", url: "http://mcp.example.com/mcp", headers: { Authorization: "Bearer legacy-secret" }, enabled: false } };
+    const refused = config.setEnabled("legacy", true);
+    expect(refused).toMatchObject({ status: 400, error: expect.stringMatching(/https:\/\//u) });
+    expect(JSON.stringify(refused)).not.toContain("legacy-secret");
+    expect(cfg.mcpServers.legacy).toMatchObject({ enabled: false });
+  });
+
   it("every successful add, replace, setEnabled and remove calls changed() once", async () => {
     const { config, changed } = fixture();
     const steps = [
