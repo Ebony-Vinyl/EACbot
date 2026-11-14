@@ -15,12 +15,12 @@ import type { BrowserRuntime } from "../browser-runtime.ts";
 import type { CacheKeepWarm } from "../cache-keepwarm.ts";
 import { cloudBackendChangeError, vpsBotAliasChangeError, vpsLeftBehindNotice, VPS_BOT_ALIAS_CHANGE_ERROR, VPS_BOT_ALIAS_LIFECYCLE_ERROR, VPS_BOT_ALIAS_RESOURCES_ERROR } from "../cloud-backend.ts";
 import * as composio from "../composio.ts";
-import { isValidSshAlias, type AppConfig } from "../config.ts";
+import { isValidSshAlias, maxBotsPerWorkspace, type AppConfig } from "../config.ts";
 import type { ModelSelection } from "../contracts.ts";
 import type { createApprovalModeSupport } from "../harness-capabilities.ts";
 import type { ProviderRegistry } from "../harness/registry.ts";
 import type { hostedModelPolicy } from "../hosted-models.ts";
-import { MAX_MCP_SERVERS, mcpServerNameError } from "../mcp-registry.ts";
+import { maxMcpServers, mcpServerNameError } from "../mcp-registry.ts";
 import type { MemoryUpkeep } from "../memory-upkeep.ts";
 import { phoneAppsFor } from "../phones/access.ts";
 import { profileSnapshot } from "../profile-revision.ts";
@@ -84,7 +84,7 @@ export interface BotPatchRouteDeps {
 export function createBotPatchRoutes(deps: BotPatchRouteDeps): RouteHandler {
   const {
     store, cfg, registry, sessions, browserRuntime, browserLive, memoryUpkeep, cacheKeepWarm, hostedModels, supportsApprovalMode, activeVpsThreads,
-    hostedWorkspace: HOSTED_WORKSPACE, hostedFullAccessRefusal: HOSTED_FULL_ACCESS_REFUSAL, desktopManaged: DESKTOP_MANAGED, maxWorkspaceBots: MAX_WORKSPACE_BOTS,
+    hostedWorkspace: HOSTED_WORKSPACE, hostedFullAccessRefusal: HOSTED_FULL_ACCESS_REFUSAL, desktopManaged: DESKTOP_MANAGED,
     broadcast, wireBot, publicGroupState, audienceChanged, storedAvatarExists, requestedTaskBot, threadBusy, activeGroupTurnForBot,
     checkedModelSelection, engineSwitchNeedsAsk, currentBrowserSession, interruptAllDirectThreads, cancelGroupTurnOperations,
     revokeInternalCapabilitiesForThread, runningTurnInstance, closeOpenApprovals, assertTeamComputerChangeIdle, forgetTemporaryBrowser,
@@ -327,8 +327,8 @@ export function createBotPatchRoutes(deps: BotPatchRouteDeps): RouteHandler {
           return json(res, 400, { error: "mcpServers must be a list of server names, or null" });
         } else {
           requestedMcpServers = [...new Set(body.mcpServers as string[])];
-          if (requestedMcpServers.length > MAX_MCP_SERVERS) {
-            return json(res, 400, { error: `Select at most ${MAX_MCP_SERVERS} MCP servers.` });
+          if (requestedMcpServers.length > maxMcpServers()) {
+            return json(res, 400, { error: `Select at most ${maxMcpServers()} MCP servers.` });
           }
         }
         patch.mcpServers = requestedMcpServers;
@@ -554,7 +554,7 @@ export function createBotPatchRoutes(deps: BotPatchRouteDeps): RouteHandler {
         ) {
           return json(res, 400, { error: "peers must be a list of bot ids, or null for every bot" });
         } else {
-          nextPeers = [...new Set<string>(body.peers)].slice(0, MAX_WORKSPACE_BOTS);
+          nextPeers = [...new Set<string>(body.peers)].slice(0, maxBotsPerWorkspace(cfg));
         }
         const currentPeers = existingBot?.peers;
         const widensReach =

@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { RESERVED_MCP_NAMES, slugMcpName } from "../shared/mcp-name.ts";
 import type { McpServerSpec, RemoteMcpSpec, StdioMcpSpec } from "./contracts.ts";
+import { positiveLimit, quotaLimits } from "./limits.ts";
 
 export { importedMcpServerName } from "../shared/mcp-name.ts";
 
@@ -76,7 +77,11 @@ export function mcpServerServes(server: object & { bot?: string }, botId: string
   return !server.bot || server.bot === botId;
 }
 
+/** MCP servers allowed when config.json says nothing; "limits.mcpServers" raises it. */
 export const MAX_MCP_SERVERS = 20;
+export function maxMcpServers(): number {
+  return positiveLimit(quotaLimits().mcpServers, MAX_MCP_SERVERS);
+}
 const MAX_ARGS = 64;
 const MAX_ENV = 64;
 const MAX_HEADERS = 32;
@@ -379,8 +384,9 @@ export function addDisabledMcpServer(current: Record<string, unknown>, body: unk
   if (name && Object.hasOwn(current, name)) {
     return { ok: false, status: 409, error: "An MCP server with that name already exists." };
   }
-  if (Object.keys(current).length >= MAX_MCP_SERVERS) {
-    return { ok: false, status: 400, error: `You can add at most ${MAX_MCP_SERVERS} MCP servers.` };
+  const limit = maxMcpServers();
+  if (Object.keys(current).length >= limit) {
+    return { ok: false, status: 400, error: `You can add at most ${limit} MCP servers.` };
   }
   const parsed = parseMcpServerMutation(name, pickMcpServerFields(record));
   if (!parsed.ok) return { ok: false, status: 400, error: parsed.error };
@@ -455,8 +461,9 @@ export function parseMcpServersImport(
   }
   const names = Object.keys(entries);
   if (names.length === 0) return { ok: false, error: "No servers found in that JSON." };
-  if (names.length > MAX_MCP_SERVERS) {
-    return { ok: false, error: `Import at most ${MAX_MCP_SERVERS} servers at once.` };
+  const limit = maxMcpServers();
+  if (names.length > limit) {
+    return { ok: false, error: `Import at most ${limit} servers at once.` };
   }
   const servers: Record<string, StoredMcpServer> = {};
   for (const rawName of names) {

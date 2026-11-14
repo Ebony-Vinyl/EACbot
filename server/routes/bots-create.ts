@@ -3,7 +3,7 @@ import type { BotLimit } from "../host/starter-bot-limit.ts";
 import { freshLook } from "../bot-look.ts";
 import { saveImage } from "../attachments.ts";
 import { pickPoolAvatar } from "../avatar-pool.ts";
-import { DATA_DIR } from "../config.ts";
+import { DATA_DIR, maxBotsPerWorkspace } from "../config.ts";
 import { botAvatarUrlFromStoredPath } from "../../shared/bot-avatar.ts";
 import { validateBotCwd } from "../bot-cwd.ts";
 import { parseBotProfilePatch } from "../bot-profile.ts";
@@ -12,7 +12,7 @@ import type { createCloudRoutineAuthors } from "../cloud-lending.ts";
 import type { AppConfig } from "../config.ts";
 import type { ModelSelection } from "../contracts.ts";
 import type { hostedModelPolicy } from "../hosted-models.ts";
-import { MAX_MCP_SERVERS, mcpServerNameError } from "../mcp-registry.ts";
+import { maxMcpServers, mcpServerNameError } from "../mcp-registry.ts";
 import { journalMemoryWrite } from "../memory-journal.ts";
 import { resolveBotCreationDefaults } from "../new-bot-defaults.ts";
 import { PRESET_UNAVAILABLE_MESSAGE, applyPresetToBot, presetOffered, type OrgInstallStatus, type PresetStore } from "../presets.ts";
@@ -81,7 +81,7 @@ export function createBotCreateRoutes(deps: BotCreateRouteDeps): RouteHandler {
   const {
     store, cfg, presetStore, orgInstallStatuses,
     hostedWorkspace: HOSTED_WORKSPACE, hostedFullAccessRefusal: HOSTED_FULL_ACCESS_REFUSAL, desktopManaged: DESKTOP_MANAGED,
-    maxWorkspaceBots: MAX_WORKSPACE_BOTS, cloudOwnerKey: CLOUD_OWNER_KEY,
+    cloudOwnerKey: CLOUD_OWNER_KEY,
     hostedModels, cloudRoutineAuthors,
     storedAvatarExists, defaultSelection, checkedModelSelection, cloudOwnerSession, wireBot,
   } = deps;
@@ -131,7 +131,7 @@ export function createBotCreateRoutes(deps: BotCreateRouteDeps): RouteHandler {
       if (settings.browserProfile && settings.browserProfile !== "guest" && !(cfg.browserProfiles ?? []).some(profile => profile.id === settings.browserProfile)) {
         return json(res, 400, { error: "browserProfile must name an existing browser profile" });
       }
-      if (settings.mcpServers?.some(name => mcpServerNameError(name) !== null) || (settings.mcpServers?.length ?? 0) > MAX_MCP_SERVERS) {
+      if (settings.mcpServers?.some(name => mcpServerNameError(name) !== null) || (settings.mcpServers?.length ?? 0) > maxMcpServers()) {
         return json(res, 400, { error: "Invalid MCP server selection" });
       }
       if (settings.managedSections?.length) {
@@ -185,8 +185,9 @@ export function createBotCreateRoutes(deps: BotCreateRouteDeps): RouteHandler {
       }
       if (hostedModels && !hostedModels.allows(selection)) return json(res, 400, { error: hostedModels.error() });
       // The capacity check sits beside the synchronous write, after every await.
-      if (store.bots.length >= MAX_WORKSPACE_BOTS) {
-        return json(res, 409, { error: `this workspace is limited to ${MAX_WORKSPACE_BOTS} bots` });
+      const workspaceBots = maxBotsPerWorkspace(cfg);
+      if (store.bots.length >= workspaceBots) {
+        return json(res, 409, { error: `this workspace is limited to ${workspaceBots} bots` });
       }
       // A bot with its own id is arriving from the person's other computer: a move never loses a bot to a plan's limit.
       const overPlan = kept.id ? null : deps.botLimit.refusal();
