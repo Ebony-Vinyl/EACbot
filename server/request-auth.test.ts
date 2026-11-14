@@ -15,6 +15,7 @@ import {
   ipcPeer,
   isAllowedOrigin,
   isLoopbackHost,
+  isLoopbackPeer,
   isProxied,
   isSameOrigin,
   provesSameOrigin,
@@ -30,9 +31,9 @@ import {
 } from "./request-auth.ts";
 import { SESSION_TTL_MS, SessionRegistry } from "./sessions.ts";
 
-function request(headers: Record<string, string>, method = "GET"): IncomingMessage {
-  // SAFETY: the resolver reads only headers and method; a bare object is the whole contract here
-  return { headers, method } as unknown as IncomingMessage;
+function request(headers: Record<string, string>, method = "GET", peer = "127.0.0.1"): IncomingMessage {
+  // SAFETY: the resolver reads only headers, method and the socket peer; a bare object is the whole contract here
+  return { headers, method, socket: { remoteAddress: peer, remoteFamily: peer.includes(":") ? "IPv6" : "IPv4" } } as unknown as IncomingMessage;
 }
 
 describe("loopback rules (moved from the server entry, behaviour unchanged)", () => {
@@ -42,6 +43,14 @@ describe("loopback rules (moved from the server entry, behaviour unchanged)", ()
     }
     for (const host of ["", "example.com", "127.0.0.1:x", "[::1]x", "100.64.0.1:8799", "localhost.evil.com", "[fe80::1]"]) {
       expect(isLoopbackHost(host), host).toBe(false);
+    }
+  });
+  it("accepts only loopback TCP peers, including Node's IPv4-mapped forms", () => {
+    for (const peer of ["127.0.0.1", "127.9.9.9", "::1", "0:0:0:0:0:0:0:1", "::ffff:127.0.0.1", "::ffff:7f00:1", "::ffff:7f01:2"]) {
+      expect(isLoopbackPeer(peer), peer).toBe(true);
+    }
+    for (const peer of [undefined, "", "203.0.113.9", "10.0.0.1", "::ffff:203.0.113.9", "::ffff:c0a8:101", "2001:db8::1", "localhost", "127.0.0.999"]) {
+      expect(isLoopbackPeer(peer), String(peer)).toBe(false);
     }
   });
   it("allows absent origins and loopback origins only", () => {
@@ -237,8 +246,8 @@ describe("resolveRequestAuth", () => {
   let dir: string;
   let sessions: SessionRegistry;
   const cookieName = "omb_session_8799_env";
-  const resolve = (headers: Record<string, string>, path = "/api/bots", method = "GET") =>
-    resolveRequestAuth(request(headers, method), { sessions, cookieName, streamPath: "/api/events", url: new URL(path, "http://x") });
+  const resolve = (headers: Record<string, string>, path = "/api/bots", method = "GET", peer = "127.0.0.1") =>
+    resolveRequestAuth(request(headers, method, peer), { sessions, cookieName, streamPath: "/api/events", url: new URL(path, "http://x") });
 
   beforeEach(() => {
     dir = mkdtempSync(join(tmpdir(), "omb-auth-"));
@@ -423,6 +432,44 @@ describe("resolveRequestAuth", () => {
     expect(resolve({ host: "localhost", "x-forwarded-for": "203.0.113.9", authorization: `Bearer ${token}` }).auth?.kind).toBe("session");
   });
 
+  it("treats each proxy header as present even when its value is empty", () => {
+    for (const name of ["x-forwarded-for", "x-forwarded-proto", "x-forwarded-host", "forwarded", "x-real-ip"]) {
+      const headers = { host: "127.0.0.1:8799", origin: "http://127.0.0.1:8799", [name]: "" };
+      expect(isProxied(request(headers)), name).toBe(true);
+      const denied = resolve(headers);
+      expect(denied.auth, name).toBeNull();
+      expect(denied.status, name).toBe(403);
+      expect(denied.error, name).toMatch(/came through a proxy/);
+    }
+  });
+
+  it("treats x-real-ip alone as a proxy", () => {
+    const headers = { host: "127.0.0.1:8799", origin: "http://127.0.0.1:8799", "x-real-ip": "203.0.113.9" };
+    expect(isProxied(request(headers))).toBe(true);
+    const denied = resolve(headers);
+    expect(denied.auth).toBeNull();
+    expect(denied.status).toBe(403);
+    expect(denied.error).toMatch(/came through a proxy/);
+  });
+
+  it("requires a loopback TCP peer even when Host and Origin are forged to look local", () => {
+    const forged = { host: "127.0.0.1:8799", origin: "http://127.0.0.1:8799", "sec-fetch-site": "same-origin", "sec-fetch-mode": "cors", "sec-fetch-dest": "empty" };
+    const denied = resolve(forged, "/api/bots", "GET", "203.0.113.9");
+    expect(denied.auth).toBeNull();
+    expect(denied.status).toBe(403);
+    expect(denied.error).toMatch(/loopback host required/);
+    for (const peer of ["127.0.0.1", "127.9.9.9", "::1", "::ffff:127.0.0.1"]) {
+      expect(resolve(forged, "/api/bots", "GET", peer).auth, peer).toEqual({ kind: "loopback", scopes: ["admin", "client"] });
+    }
+  });
+
+  it("still admits this machine's own same-origin browser page", () => {
+    const own = { host: "127.0.0.1:8799", origin: "http://127.0.0.1:8799", "sec-fetch-site": "same-origin", "sec-fetch-mode": "cors", "sec-fetch-dest": "empty" };
+    expect(resolve(own).auth).toEqual({ kind: "loopback", scopes: ["admin", "client"] });
+    expect(resolve({ host: "127.0.0.1:8799", "sec-fetch-site": "same-origin", "sec-fetch-mode": "cors", "sec-fetch-dest": "empty" }).auth)
+      .toEqual({ kind: "loopback", scopes: ["admin", "client"] });
+  });
+
   it("admits a bearer session from any host and reports how it authenticated", () => {
     const token = pairedToken();
     const r = resolve({ host: "100.64.0.9:8799", authorization: `Bearer ${token}` });
@@ -546,7 +593,7 @@ describe("an IPC listener (eacbot serve --tunnel) is remote by construction", ()
   // SAFETY: only headers, method and the socket peer are read; a unix-socket peer has no address
   const overSocket = (headers: Record<string, string>) => ({ headers, method: "GET", socket: {} }) as unknown as IncomingMessage;
 
-  it("counts as proxied whatever the headers say; a bare mock without a socket does not", () => {
+  it("counts as proxied whatever the headers say; a request with a loopback peer does not", () => {
     expect(ipcPeer(overSocket({ host: "127.0.0.1:8799" }))).toBe(true);
     expect(isProxied(overSocket({ host: "localhost" }))).toBe(true);
     expect(ipcPeer(request({ host: "127.0.0.1:8799" }))).toBe(false);

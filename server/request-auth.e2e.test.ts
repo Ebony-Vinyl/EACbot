@@ -38,6 +38,13 @@ describe("a browser on a self-hosted server's own machine", () => {
       expect((await raw(url, "/api/bots", fromPage(url))).status).toBe(200);
       expect((await raw(url, "/api/config", fromPage(url))).status).toBe(200);
 
+      const proxyOnly: Array<Record<string, string>> = [{ "x-forwarded-for": "" }, { "x-real-ip": "203.0.113.9" }];
+      for (const headers of proxyOnly) {
+        const proxied = await raw(url, "/api/bots", { ...fromPage(url), ...headers });
+        expect(proxied.status, JSON.stringify(headers)).toBe(403);
+        expect(JSON.parse(proxied.body).error, JSON.stringify(headers)).toMatch(/came through a proxy/);
+      }
+
       for (const headers of [otherPage, otherPort, navigation]) {
         for (const [method, path] of [["GET", "/api/bots"], ["GET", "/api/config"], ["GET", "/api/auth/session"], ["PATCH", "/api/config"]]) {
           const refused = await raw(url, path!, { ...headers, "content-type": "application/json" }, method, method === "PATCH" ? "{}" : undefined);
