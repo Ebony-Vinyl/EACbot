@@ -1,6 +1,6 @@
 # 08 证据抽查
 
-抽查时间：2026-11-14 12:13–13:05（Asia/Shanghai）  
+抽查开始时间：2026-11-14 12:13（Asia/Shanghai）；报告定稿时间：2026-11-14（具体时刻未单独记录；不晚于本文件提交时间 12:40:59）  
 抽查对象：`docs/cleanse/00-baseline.md` 与 01~07 号报告；报告产出前先抽查了 `docs/plan/01~05`。每份来源抽 10 条，共 13 份、130 条。
 代码口径：`D:\workspace\EACbot-clean-core`，分支 `codex/clean-core`，基线 `781c57e`。抽查期间仓库新增了提交 `b5ca7fd`（12:18“默认关闭三项外连”），工作树还有多项并行修改（`request-auth.ts`、`mcp-registry.ts`、`bot-thread-limits.ts`、`image-daily-cap.ts`、`SettingsModal.tsx`、`ChiefIntro.tsx` 等），因此涉及这些文件的行号会同时给出基线/当前口径；落地前必须按符号名复核。  
 方法：每份来源报告抽 10 条最具体、可验证的结论，逐条回到源码核对文件、行号和描述。只读，不修改代码。  
@@ -206,7 +206,7 @@
 | 来源报告 | 编号 | 原结论 | 实际代码位置 | 是否成立 | 偏差说明 |
 |---|---|---|---|---|---|
 | 07-quota.md | Q9 | 月度美元上限只在 budgets entitlement 下生效；超限后新回合返回 409 `spend_cap`；0 或不设视为不启用。 | `server/spend.ts:80-111`；`server/index.ts:7232-7236,7620` | 成立 | `spend.ts:81` 的 `!isEntitled("budgets") \|\| monthlyUsd <= 0` 与结论一致；`index.ts:7620` 才是 `startTurn` 前置检查，7232-7236 只是 directSend 的 409 包装。行号无漂移。 |
-| 07-quota.md | A4 | 每回合最多 3 条房间发言；`limits.roomPostsPerTurn` 已声明但未接线。 | `server/index.ts:1630,14024-14025,14119`；`server/room-post-budget.ts:36-40`；`server/config.ts:332` | 成立 | `roomPostsPerTurn()` 全仓只在 room-post-budget、limits、config 和测试中出现，index.ts 无引用；14024 仍比较常量 3，14119 才自增。行号与报告一致。 |
+| 07-quota.md | A4 | 每回合最多 3 条房间发言；`limits.roomPostsPerTurn` 已声明但未接线（抽查时口径）。 | `server/index.ts:14023-14025,14119`；`server/room-post-budget.ts:36-40`；`server/config.ts:332` | 抽查时成立；`7cac874` 后已不成立 | 抽查时 `roomPostsPerTurn()` 未进 index.ts，14024 仍比较常量 3；`7cac874` 后 :14023-14025 已调用并生效。07 已按最终代码更新。 |
 | 07-quota.md | A1 | 安装级每日默认 50 张图；`limits.imagesPerDay` 可配 1 到 1,000,000；按本地自然日计数并写盘，重启不清零。 | `server/image-daily-cap.ts:11,14-16,31,43-56`；`server/config.ts:329`；`server/routes/image-tools.ts:78,137` | 成立 | 50 和 1..1,000,000 均吻合；localDay 用本地 `getFullYear/getMonth/getDate`，写 `image-generation-day.json`。行号无漂移；`image-daily-cap.ts` 于 12:22 刚被改过，50 与 `quotaLimits()` 动态读取仍在。补充：settle 写盘失败只 `console.warn`（`:53-54`），会少计而非清零。 |
 | 07-quota.md | C18 | 每 bot 默认并发线程 16；`threads.maxConcurrentPerBot` 与 `limits.botThreads` 都可配到 1024；普通本地按内存算默认；Starter 强制 1、子线程放行 16。 | `server/bot-thread-limits.ts:8,10,26-27,31-39`；`server/config.ts:306,327` | 成立 | 16、1024、`min(ceiling,max(3,round(mem/2GiB)))` 与 Starter 1/子线程 16 均吻合；`threads.maxConcurrentPerBot` 无默认值，未设置时才走 `defaultBotThreads`。行号无漂移；该文件 12:21 刚改过，数值未变。 |
 | 07-quota.md | C20 | 单个 MCP 工具结果默认 8000 字符进上下文；最小 512；0 表示不截断；每 server 可配 0 到 2,000,000；环境变量只校验有限且不小于 0。 | `server/mcp-trim.ts:1,5,167`；`server/mcp-gate-config.ts:24-28,32-39`；`server/mcp-registry.ts:89-94` | 成立 | 8000/512 及 `Math.max(MIN_BUDGET, budget ?? DEFAULT)` 吻合；0 的“不截断”是靠 `hasOwnResultBudget` 要求 >=1 使 `gateRemote` 为 false、直连 server，而不是 trim 函数接受 0。行号无漂移。 |
@@ -247,6 +247,6 @@
 - **引用对象混用**：`04-core-spec.md` 描述的是另一套 `eacbot-core/src`，`05` 又把 eacbot-core 的“核心”和 EACbot 的“上游”混在一句里；拿 clean-core 去核对会得到大量“部分成立”。
 - **并行修改使结论过时**：`03` 的 B01/B02/B03 已被修掉，`02` 的 G-03/G-30/G-33 也已被改旧；报告应标注采集时间，落地前重新核对。
 
-本轮只读，没有修改源码、没有提交、没有 push。所有行号以 2026-11-14 12:20–13:00 的当前工作树为准；仓库 HEAD 已由 `781c57e` 前进到 `b5ca7fd`，引用前请按符号名复核。
+本轮只读，没有修改源码、没有提交、没有 push。所有行号以 2026-11-14 抽查期间的当前工作树为准；仓库 HEAD 已由 `781c57e` 前进到 `b5ca7fd`，引用前请按符号名复核。
 
 

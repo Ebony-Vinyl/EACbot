@@ -8,7 +8,7 @@
 
 云功能整体是“代码在启动图里、服务默认不连”。没有任何 `EAC_CLOUD_*`/`EAC_CONTROL_*` 时，`cloudHomeConfiguration()` 返回 null（`server/cloud-home.ts:49-51,69-71`），Cloud secrets 返回空对象（`server/cloud-secrets.ts:24-27`），control client 返回 `DISENGAGED` 且不发请求（`server/control-client.ts:60-65,96-103`），fleet 只做 `existsSync`，主服务仍能只绑 `127.0.0.1` 并完成本地回合（`server/index.ts:15506`）。真正的启动硬失败只有三类：静态 import 的文件缺失、Cloud/hosted 变量只配一半或值非法、`EAC_HOSTED_MODELS` 半配置；这些是配置完整性约束，不是“必须买云服务”。会发用户正文的路径也集中在显式功能：模型回合、Cloud Send/Move、Cloud Files、托管模型/试用 relay、Boat 文件与命令；健康报告、power、Team 规则、Connected Apps grant 只发固定代码、计数或签名元数据。Local VM、VPS 和 Fleet 的风险属于本机/运维权限面，不是厂商云后门。
 
-账号不是本地使用的硬门槛，但“浏览器打开 UI”和“本地进程调 API”必须分开看。首次启动不强制建账号或填邮箱；桌面壳和 CLI 的非浏览器回环请求默认是 owner（HEAD 的 `server/request-auth.ts:604-636`），普通浏览器在 HEAD 会得到 401 并进入配对页（`:619`），当前工作树已增加“同源 own-page 才放行”的窄例外。Host/Origin/代理检查、session scope、常量时间比较、过期会话不回退 owner，是安全必需；hosted、邮箱 OTP、配对码属于商业账号层。配额多数是保护性的，真正会自动删除用户可见数据的是 thread 事件日志保留/裁剪和 MCP 大结果只保留 20 个；Starter 的 5 bot/1 线程是商业分层。当前工作树已把图片日上限、线程数、房间速率、MCP server 数、附件库上限等接入 `limits.*`，并把前端 analytics 改为默认关闭，但 `roomPostsPerTurn`、`botsPerWorkspace` 仍是半接线，且这些改动尚未编译或测试。
+账号不是本地使用的硬门槛，但“浏览器打开 UI”和“本地进程调 API”必须分开看。首次启动不强制建账号或填邮箱；桌面壳和 CLI 的非浏览器回环请求默认是 owner（HEAD 的 `server/request-auth.ts:604-636`），普通浏览器在 HEAD 会得到 401 并进入配对页（`:619`），当前工作树已增加“同源 own-page 才放行”的窄例外。Host/Origin/代理检查、session scope、常量时间比较、过期会话不回退 owner，是安全必需；hosted、邮箱 OTP、配对码属于商业账号层。配额多数是保护性的，真正会自动删除用户可见数据的是 thread 事件日志保留/裁剪和 MCP 大结果只保留 20 个；Starter 的 5 bot/1 线程是商业分层。当前工作树已把图片日上限、线程数、房间速率、MCP server 数、附件库上限等接入 `limits.*`；`roomPostsPerTurn` 和 `botsPerWorkspace` 也已在 7cac874 接线（`server/index.ts:14023`、`:14214`、`:14254`、`:9317`）。前端 analytics 改为默认关闭；这些改动在总结成稿时尚未编译或测试。
 
 ## 十条最该先处理
 
@@ -26,7 +26,7 @@
 
 7. **Cloud Connected Apps 改成按需注册（04 C08/C09）。** Cloud home 启动后会向 broker 先 `POST /v1/installations`，再 `PUT /v1/installation/cloud`，失败按 30 秒到 30 分钟退避重试（`server/cloud-connected-apps.ts:20,114-168`；`electron/managed-composio.mjs:4,76-91`）；只发安装注册和 grant，不发聊天正文，但仍是默认厂商外连。方案 A：首次打开 Connected Apps 时再注册（推荐）；方案 B：保留启动注册但增加显式关闭开关；方案 C：OSS 完全禁用 broker。
 
-8. **完成 `limits.*` 的接线（07 A4/A12）。** 工作树新增了 `limits.roomPostsPerTurn`，但 `server/index.ts:1630,14024-14025` 仍用硬编码 3；`limits.botsPerWorkspace` 只接入了普通 `/api/bots` 创建（`server/routes/bots-create.ts:188-190`），内部 create-bot 和 teamSetup 仍用 100（`server/index.ts:9318,14214-14215`）。方案 A：把两个调用点全部接到配置读取，保留旧默认值（推荐）；方案 B：暂时移除半成品键，等接线完成再发布；方案 C：保留并在文档标注“只对部分入口生效”（不推荐，配置会假生效）。
+8. **确认 `limits.*` 的接线已落地（07 A4/A12）。** `limits.roomPostsPerTurn` 已由 `server/index.ts:14023` 读取，`:14024-14025` 用它拒绝；`limits.botsPerWorkspace` 已由 `:9317`、`:14214`、`:14254` 读取。默认仍为 3 和 100。方案 A：保留接线，补测试覆盖默认值和放大值（推荐）；方案 B：合并前只按符号名复核调用点；方案 C：回退硬编码（不推荐，配置会重新假生效）。
 
 9. **数据删除类默认保持关闭并加提示（07 L1/L2/C15）。** `threads.eventLogRetentionDays` 会删除关闭/归档线程的 `events/` 和 `native/` NDJSON，`eventLogMaxBytes` 会静默裁到最新一半（`server/thread-retention.ts:1,22-47`；`server/thread-log-rotation.ts:18-27`）；两者默认关闭，且不删 SQLite 聊天记录。MCP 大结果每个工作目录只保留最新 20 个，旧的直接 unlink（`server/drivers/chat-mcp-tools.ts:319-330`），这一项默认启用。方案 A：L1/L2 保持默认关闭，开启时 UI 明示并支持 dry-run/导出（推荐）；方案 B：完全改成手动清理；方案 C：保留自动清理但先写审计事件和备份。
 
@@ -34,4 +34,4 @@
 
 ## 口径与已落地变化
 
-审计基线是 `781c57e`；审计期间主线程已提交 `b5ca7fd`（默认关闭更新检查、问题上报和公告三项外连），当前 HEAD 已不等于基线，但本总结仍以四份报告的原始口径为准。04 的云文件未被主线程改动，行号按当前工作树；05 以 HEAD `781c57e` 为主，`config.ts` 的并行漂移另注；06 按 HEAD 并在文末单列工作树漂移；07 按 2026-11-14 12:27 左右的当前工作树引用。当前工作树已出现的未提交变化包括：新增 `server/limits.ts` 与 `config.limits`，`server/request-auth.ts` 的同源浏览器例外，`src/lib/analytics.ts` 的默认关闭，`ChiefIntro` 的“稍后设置”，以及 People/Activity 的桌面可见性修复。这些变化只经过静态阅读，没有编译、启动或测试；合并前应按符号名重新核对报告行号，并补跑 `pnpm typecheck`、相关 Vitest 和本机浏览器/桌面冒烟。
+审计基线是 `781c57e`；审计期间主线程已提交 `b5ca7fd`（默认关闭更新检查、问题上报和公告三项外连），当前 HEAD 已不等于基线，但本总结仍以四份报告的原始口径为准。04 的云文件未被主线程改动，行号按当前工作树；05 以 HEAD `781c57e` 为主，`config.ts` 的并行漂移另注；06 按 HEAD 并在文末单列工作树漂移；07 按 2026-11-14 最终工作树（HEAD `521754b`）引用，配额接线已按 `7cac874` 复核。本总结成稿时工作树已出现的变化包括：新增 `server/limits.ts` 与 `config.limits`，`server/request-auth.ts` 的同源浏览器例外，`src/lib/analytics.ts` 的默认关闭，`ChiefIntro` 的“稍后设置”，以及 People/Activity 的桌面可见性修复。这些变化在当时只经过静态阅读，没有编译、启动或测试；合并前应按符号名重新核对报告行号，并补跑 `pnpm typecheck`、相关 Vitest 和本机浏览器/桌面冒烟。

@@ -3,7 +3,7 @@
 采集日期：2026-11-14  
 仓库：D:\workspace\EACbot-clean-core  
 分支：codex/clean-core  
-审计基线：781c57e9a6fbf0f504704d358f4c82a1860490c2（短哈希 781c57e；当前工作树已含主线程未提交的 limits 改动）
+审计基线：781c57e9a6fbf0f504704d358f4c82a1860490c2（短哈希 781c57e；审计时工作树含未提交的 limits 改动，该改动已在 7cac874 提交）
 
 ## 一、审计范围、方法与前提
 
@@ -11,11 +11,11 @@
 
 **方法。** 只做静态只读审计：用 rg -n 定位符号，用带行号的 Get-Content 逐段核对，按“定义常量、配置 schema、调用点、拒绝/截断/删除动作”追链路。没有修改源码、配置、依赖，没有 git add、commit、push，也没有访问 D:\workspace\EACbot 原件。本报告只新建 docs/cleanse/07-quota.md。
 
-**审计期间源码发生了并行变化。** 第一次采集后，主线程在 2026-11-14 12:21 到 12:22 新增了 server/limits.ts，并修改了 server/config.ts、server/bot-thread-limits.ts、server/image-daily-cap.ts、server/room-post-budget.ts、server/tool-count-limit.ts、server/routes/bots-create.ts、server/routes/bot-patch.ts、server/attachments.ts、server/mcp-registry.ts 等文件。**本报告以下所有行号和结论都以这轮并行修改后的当前工作树为准。** 这轮修改新增了 config.json 的 limits 配置块，使图片日上限、线程上限、房间发言速率、工具数、MCP server 数、附件库字节上限等从硬编码变成可配置；同时也出现了“配置键已声明但调用点未接线”的半成品，详见第二节和第四节。
+**审计期间源码发生了并行变化。** 第一次采集后，主线程在 2026-11-14 12:21 到 12:22 新增了 server/limits.ts，并修改了 server/config.ts、server/bot-thread-limits.ts、server/image-daily-cap.ts、server/room-post-budget.ts、server/tool-count-limit.ts、server/routes/bots-create.ts、server/routes/bot-patch.ts、server/attachments.ts、server/mcp-registry.ts 等文件。**本报告以下所有行号和结论都以这轮并行修改后的当前工作树为准。** 这轮修改新增了 config.json 的 limits 配置块，使图片日上限、线程上限、房间发言速率、工具数、MCP server 数、附件库字节上限等从硬编码变成可配置。第一次采集时 roomPostsPerTurn、botsPerWorkspace 还是“配置键已声明但调用点未接线”的半成品；随后提交 7cac874 已把调用点补齐：server/index.ts:14023 读取 roomPostsPerTurn()，:14214 和 :14254 读取 maxBotsPerWorkspace(cfg)，team 创建路径在 :9317，详见第二节和第四节。
 
 **重要前提：未编译、未跑测试。** 按任务要求，本报告不把任何编译、类型检查、测试结果当作证据。00-baseline.md 记录“node_modules 缺失、BLOCKED”，但 08-evidence-audit.md:13 已指出依赖后来被其它小组安装；本次只做 Test-Path 也只读检查，结果显示根 node_modules、tsc.cmd、vitest.cmd 均存在。这个事实与本报告结论无关，本报告仍然没有运行 pnpm install、pnpm typecheck、pnpm build 或测试。
 
-**工作树。** 当前 git status --short 已有主线程的多项未提交修改（包括 server/config.ts、server/bot-thread-limits.ts、server/image-daily-cap.ts、server/room-post-budget.ts、server/tool-count-limit.ts、server/attachments.ts、server/mcp-registry.ts、server/routes/bots-create.ts、server/routes/bot-patch.ts、src 下的若干文件）以及新增的 server/limits.ts。本报告的配额相关引用都在这些文件里；因此这不是冻结快照，合并前应重新核对行号。
+**工作树。** 审计时 git status --short 有主线程的多项未提交修改（包括 server/config.ts、server/bot-thread-limits.ts、server/image-daily-cap.ts、server/room-post-budget.ts、server/tool-count-limit.ts、server/attachments.ts、server/mcp-registry.ts、server/routes/bots-create.ts、server/routes/bot-patch.ts、src 下的若干文件）以及新增的 server/limits.ts；这些改动已在 7cac874 提交。本报告的配额相关引用都在这些文件里；因此这不是冻结快照，合并前应重新核对行号。
 
 **证据口径。** 文中 文件:行 都是 EACbot-clean-core 当前文件。一个机制有多处证据时列 2 到 3 个关键位置。推断会明确标“推断”。没有证据的猜测不写进表格。
 
@@ -29,7 +29,7 @@ docs/cleanse/02-backend-gates.md 已经用 G-28 到 G-57 覆盖了 bot 数、线
 |---|---|---|---|
 | G-30 | “每个 bot 最多 16 个并发线程……超出排队”（docs/cleanse/02-backend-gates.md:44） | 人员发消息的正常路径可能先排队并返回 202（server/index.ts:7197-7203、server/routes/bot-messages.ts:332-340）；startTurn 的直接入口在容量已满时抛 409 thread_limit（server/index.ts:7630-7631）。另外 16 已不是硬上限：threads.maxConcurrentPerBot 和 limits.botThreads 都可到 1024（server/config.ts:305-311、:325-336）。 | **与 02 的 G-30 不一致。** 应写成“人员路径可排队；直接启动 409；16 只是默认，配置上限 1024”。 |
 | G-33 | “第 51 张拒绝，次日重置；计数落盘，重启不清零”（docs/cleanse/02-backend-gates.md:47） | 50 是默认值，不再是硬编码；limits.imagesPerDay 可改，范围 1 到 1,000,000，通过 saveConfig 保存后动态读取，无需重启（server/image-daily-cap.ts:30-31、server/config.ts:325-336、:1059）。按本地自然日，重启不清零；写盘失败只告警（server/image-daily-cap.ts:32-56）。 | **需更新。** 不是“写死 50”，而是“默认 50、可配置”。 |
-| G-43/G-44 | “每回合 3 条、每条 4000 字；每分钟 10 条、无人回应 2 条、熔断 5 分钟”（docs/cleanse/02-backend-gates.md:57-58） | 每分钟、无人回应、熔断分钟已经可配置（server/room-post-budget.ts:57-65）；每回合 3 条虽然新增了 limits.roomPostsPerTurn（server/room-post-budget.ts:36-40），但 server/index.ts 仍使用硬编码 MAX_ROOM_POSTS_PER_TURN=3（server/index.ts:1630、:14024-14025）。4000 字也仍硬编码（server/index.ts:9659）。 | **部分不一致。** 三个速率已可配，每回合 3 条和 4000 字仍是硬编码；roomPostsPerTurn 是“已声明未接线”。 |
+| G-43/G-44 | “每回合 3 条、每条 4000 字；每分钟 10 条、无人回应 2 条、熔断 5 分钟”（docs/cleanse/02-backend-gates.md:57-58） | 每分钟、无人回应、熔断分钟已经可配置（server/room-post-budget.ts:57-65）；每回合条数也已由 limits.roomPostsPerTurn 接管：server/index.ts:14023 调用 roomPostsPerTurn()，:14024-14025 用返回值拒绝（server/room-post-budget.ts:36-40、server/config.ts:332）。默认仍是 3；4000 字仍硬编码（server/index.ts:9659）。 | **部分不一致。** 三个速率和每回合条数都已可配，只有单条 4000 字仍是硬编码。 |
 | G-47 | “房间回合 5 分钟无进展即停，最多可配 1440 分钟”（docs/cleanse/02-backend-gates.md:61） | 普通无进展确实是 5 分钟（server/config.ts:45-47、server/index.ts:10312-10329）；但只要有工具在运行，静默上限会取 max(配置分钟, 60 分钟)（server/room-turn-timeout.ts:51-55、:127-129）。 | **不完整。** 不是所有场景都 5 分钟；长工具调用可静默 60 分钟。 |
 | G-57 | “未知模型上下文默认 128k……大窗口模型可能被过早压缩”（docs/cleanse/02-backend-gates.md:71） | 128000 是未知模型的兜底（server/context-budget.ts:4、:12）。大窗口会被过早压缩；小窗口则可能在实际窗口更小时仍按 128k 估算，反而有溢出风险。 | **需补充。** 两个方向的风险都要写。 |
 
@@ -39,13 +39,13 @@ docs/cleanse/02-backend-gates.md 已经用 G-28 到 G-57 覆盖了 bot 数、线
 
 | limits 键 | 范围 | 缺省 | 当前接线情况 |
 |---|---:|---:|---|
-| botsPerWorkspace | 1 到 100,000 | 100 | 普通 /api/bots 创建和 bot-patch 的 peers 使用 maxBotsPerWorkspace（server/routes/bots-create.ts:188-190、server/routes/bot-patch.ts:557）；server/index.ts 的内部 create-bot 和 teamSetup 仍用 MAX_WORKSPACE_BOTS=100（server/index.ts:9318、:14214-14215、:14253）。**部分接线。** |
+| botsPerWorkspace | 1 到 100,000 | 100 | 普通 /api/bots 创建和 bot-patch 的 peers 使用 maxBotsPerWorkspace（server/routes/bots-create.ts:188-190、server/routes/bot-patch.ts:557）；server/index.ts 的内部 create-bot、teamSetup 和 team 创建路径也已接线（:14214、:14254、:9317）。**已接线。** |
 | botThreads | 1 到 1024 | 16 | 只在 threads.maxConcurrentPerBot 未设置时作为默认线程数的上限（server/bot-thread-limits.ts:17-33）。设置 threads.maxConcurrentPerBot 时后者优先。 |
 | attachmentsMaxBytes | 1 到 1,073,741,824 | 512MB；Cloud home/team 8GB | server/attachments.ts:31-39 读取；环境变量 EAC_ATTACHMENTS_MAX_BYTES 优先于配置。 |
 | imagesPerDay | 1 到 1,000,000 | 50 | 图片日上限每次 reserve 动态读取（server/image-daily-cap.ts:30-44）。**已接线。** |
 | chatToolsPerRequest | 1 到 10,000 | 128 | chatToolLimitFor 动态读取（server/tool-count-limit.ts:127-134）。**已接线。** 设得太高时仍可能被 provider 拒绝，再由 learned limit 重试。 |
 | mcpServers | 1 到 10,000 | 20 | maxMcpServers 动态读取（server/mcp-registry.ts:80-83）。**已接线。** |
-| roomPostsPerTurn | 1 到 1,000 | 3 | 只在 room-post-budget.ts:36-40 导出；server/index.ts 仍用 MAX_ROOM_POSTS_PER_TURN=3（server/index.ts:1630、:14024）。**已声明未接线。** |
+| roomPostsPerTurn | 1 到 1,000 | 3 | server/index.ts:14023 调用 roomPostsPerTurn()，:14024-14025 用返回值拒绝（server/room-post-budget.ts:36-40）。**已接线。** |
 | roomPostsPerMinute | 1 到 1,000 | 10 | decideRoomPost 默认参数读取 roomPostLimits（server/room-post-budget.ts:57-65、:123-124）。**已接线。** |
 | roomPostsWithoutReply | 0 到 1,000 | 2 | 0 表示拒绝所有无人回应的 bot 帖子；nonNegative 允许 0（server/room-post-budget.ts:54-65、:133）。**已接线。** |
 | roomBreakerMinutes | 1 到 1,440 | 5 | 转成毫秒，同时把 posts 的 retentionMs 拉长到至少这个值（server/room-post-budget.ts:57-64）。**已接线。** |
@@ -63,19 +63,19 @@ docs/cleanse/02-backend-gates.md 已经用 G-28 到 G-57 覆盖了 bot 数、线
 - **harness-budget**：浏览器、数据等普通调用 120 秒；stdio 代理等 130 秒；手机设备调用 705 秒；云电脑复制 540 秒、代理 550 秒。全部是毫秒常量，没有配置项（server/harness-budget.ts:2-18）。
 - **context-budget**：未知模型按 128000 tokens 估算；自动压缩默认在窗口 80% 触发，硬顶窗口 90%、引擎原生压缩点的 90%；重建提示默认 24000 bytes、最多 40 条消息；房间会话默认 90% 重置。压缩是“摘要折叠”，不删除 SQLite 原始消息（server/context-budget.ts:4、:21-25、server/context-rebuild.ts:156、:193、server/room-context.ts:6）。
 - **image-daily-cap**：默认每个安装每天 50 张，limits.imagesPerDay 可配 1 到 1,000,000；按进程本地自然日，计数写 image-generation-day.json，重启不清零；通过 saveConfig 保存后动态读取，下一次生成生效，手改文件则要等 loadConfig（server/image-daily-cap.ts:30-44、server/config.ts:325-336、:1059）。单回合另有默认 4 张、范围 1 到 10 的 imageGen.maxPerTurn（shared/image-generation.ts:5、server/image-generation-config.ts:12-15）。
-- **room-post-budget**：同一 bot 60 秒默认最多 10 条，limits.roomPostsPerMinute 可配 1 到 1,000；同一 bot 完全相同文本 60 秒内拒绝；120 秒内三个 bot 形成“首尾相同”的四人环就熔断，默认 5 分钟，limits.roomBreakerMinutes 可配 1 到 1440；5 分钟内无人回复的 bot 帖子默认达到 2 条就停，limits.roomPostsWithoutReply 可配 0 到 1,000。每回合 3 条和单条 4000 字仍是硬编码（server/room-post-budget.ts:28-65、server/index.ts:1630、:9659）。
+- **room-post-budget**：同一 bot 60 秒默认最多 10 条，limits.roomPostsPerMinute 可配 1 到 1,000；同一 bot 完全相同文本 60 秒内拒绝；120 秒内三个 bot 形成“首尾相同”的四人环就熔断，默认 5 分钟，limits.roomBreakerMinutes 可配 1 到 1440；5 分钟内无人回复的 bot 帖子默认达到 2 条就停，limits.roomPostsWithoutReply 可配 0 到 1,000。每回合默认 3 条已由 limits.roomPostsPerTurn 接管（server/index.ts:14023-14025）；单条 4000 字仍是硬编码（server/index.ts:9659）。
 - **thread-retention**：只配置后才启用。threads.eventLogRetentionDays 范围 1 到 3650 天，未设置时永不扫描；threads.eventLogMaxBytes 范围 256KB 到 4GB，未设置时不限。前者每天扫一次并删除空闲 thread 的 events/ 和 native/ NDJSON；后者在追加后超过上限时把每个日志裁到“最新一半”。**这两项会删日志，但不删 SQLite 会话记录**（server/thread-retention.ts:1、:22-47、server/config.ts:305-311、:649-655、server/thread-log-rotation.ts:18-27）。
 - **mcp-result-budget**：单个工具结果默认只放 8000 字符进上下文；最小 512；0 表示不截断；每个 MCP server 可配 0 到 2,000,000 字符；环境变量 EAC_MCP_RESULT_BUDGET 只要求有限且不小于 0，没有上限校验（server/mcp-trim.ts:1、:5、server/mcp-gate-config.ts:23-40、server/mcp-registry.ts:89-94）。
 - **container-limits**：托管桌面容器 PIDS_LIMIT=4096，旧容器若正好是 512 会尝试原地升到 4096；内存 4GB、swap 4GB、CPU 2 核是另外写死的创建参数（server/container-limits.ts:3-18、server/container-computer.ts:852-878、server/vps-computer.ts:852-858）。
-- **config.ts 与 index.ts 的相邻上限**：每回合 10 个附件、5 个新线程、4 个新 bot、bot 指令 4000 字、workspace 100 个 bot；月度花费上限只在 budgets entitlement 下生效（server/index.ts:1629-1632、:7387、:1829、server/spend.ts:80-111）。
+- **config.ts 与 index.ts 的相邻上限**：每回合 10 个附件、5 个新线程、4 个新 bot、bot 指令 4000 字、workspace 默认 100 个 bot（limits.botsPerWorkspace 可配）；月度花费上限只在 budgets entitlement 下生效（server/index.ts:1629-1632、:7387、:14214、server/spend.ts:80-111）。
 
 ### 2）触发后的行为：拒绝、截断、排队、降级、静默丢弃还是抛错
 
 **拒绝请求并返回 HTTP 状态码的：**
 
 - 图片日上限、单回合图片上限：工具调用返回 429；提示“今天已经 N 张”或“本回合已经有 N 张”（server/routes/image-tools.ts:59-61、:78）。
-- 房间每回合 3 条、房间限速/重复/环/升级：返回 429；单条超过 4000 字返回 400（server/index.ts:14024-14030、:14055-14058、:14082-14084）。
-- 附件 10 个、开线程 5 个、建 bot 4 个：返回 429；workspace 100 个 bot 返回 409（server/index.ts:13381、:13756-13757、:14211-14215、server/routes/bots-create.ts:188-190）。
+- 房间每回合默认 3 条（limits.roomPostsPerTurn 可配）、房间限速/重复/环/升级：返回 429；单条超过 4000 字返回 400（server/index.ts:14024-14030、:14055-14058、:14082-14084）。
+- 附件 10 个、开线程 5 个、建 bot 4 个：返回 429；workspace 达到当前上限（默认 100）返回 409（server/index.ts:13381、:13756-13757、:14211-14215、server/routes/bots-create.ts:188-190）。
 - bot 并发线程：直接启动路径返回 409，错误码 thread_limit；人员发消息路径可以先排队并返回 202（server/index.ts:7630-7631、:7197-7203、server/routes/bot-messages.ts:332-340）。
 - 月度花费上限：返回 409，错误码 spend_cap（server/index.ts:7232-7236、server/spend.ts:100-111）。
 - 房间发言长度、bot 指令长度：返回 400（server/index.ts:14027-14030、:14228-14229）。
@@ -112,7 +112,7 @@ docs/cleanse/02-backend-gates.md 已经用 G-28 到 G-57 覆盖了 bot 数、线
 - 防 MCP 响应爆炸/OOM：128 默认工具限制、2000 工具/server、100 页、64KB schema、1MB 目录、2MB 帧、10000 帧、50KB 输出、1MB 入/16MB 出（C10 到 C14）。
 - 防工具结果撑爆上下文：8000 字符默认预算、64MB ResultStore、20 个保存结果（C15、C20、L4）。
 - 防磁盘无限增长：thread 日志上限、thread 日志保留、MCP spill 24 小时（L1 到 L3）。
-- 防死循环和刷屏：房间 10/分钟、重复 60 秒、环检测、无人回应 2 条、每回合 3 条（A4 到 A9）。
+- 防死循环和刷屏：房间 10/分钟、重复 60 秒、环检测、无人回应 2 条、每回合默认 3 条（A4 到 A9）。
 - 防资源耗尽：每 bot 线程上限、workspace bot 上限、每回合 4 bot、每回合 5 线程、每回合 10 附件（A10 到 A12、C18）。
 - 防容器 fork 炸弹和资源抢占：4096 PIDs、4GB 内存、2 CPU（C16、C17）。
 
@@ -125,12 +125,12 @@ docs/cleanse/02-backend-gates.md 已经用 G-28 到 G-57 覆盖了 bot 数、线
 
 ### 4）硬编码与配置
 
-**已经可配置的：** threads.maxConcurrentPerBot（1 到 1024）、threads.eventLogMaxBytes、threads.eventLogRetentionDays、limits.botThreads（1 到 1024）、limits.imagesPerDay（1 到 1,000,000）、limits.chatToolsPerRequest（1 到 10,000）、limits.roomPostsPerMinute（1 到 1,000）、limits.roomPostsWithoutReply（0 到 1,000）、limits.roomBreakerMinutes（1 到 1,440）、limits.attachmentsMaxBytes、limits.mcpServers、limits.botsPerWorkspace（1 到 100,000）、context.compactAt、context.autoCompact、context.rebuildBytes、context.roomCompactAt、mcp.callTimeoutMinutes、imageGen.maxPerTurn、budgets.monthlyUsd、budgets.warnAtPercent、rooms.turnTimeoutMinutes。范围分别见第二节 limits 表和主表 C2、C4、C6、C7、C18、C22、A2、L1、L2、Q9、Q10。
+**已经可配置的：** threads.maxConcurrentPerBot（1 到 1024）、threads.eventLogMaxBytes、threads.eventLogRetentionDays、limits.botThreads（1 到 1024）、limits.imagesPerDay（1 到 1,000,000）、limits.chatToolsPerRequest（1 到 10,000）、limits.roomPostsPerMinute（1 到 1,000）、limits.roomPostsWithoutReply（0 到 1,000）、limits.roomBreakerMinutes（1 到 1,440）、limits.attachmentsMaxBytes、limits.mcpServers、limits.botsPerWorkspace（1 到 100,000）、limits.roomPostsPerTurn（1 到 1,000）、context.compactAt、context.autoCompact、context.rebuildBytes、context.roomCompactAt、mcp.callTimeoutMinutes、imageGen.maxPerTurn、budgets.monthlyUsd、budgets.warnAtPercent、rooms.turnTimeoutMinutes。范围分别见第二节 limits 表和主表 C2、C4、C6、C7、C18、C22、A2、A4、A12、L1、L2、Q9、Q10。
 
-**写死但已经声明配置键、只是尚未接线的：**
+**曾在本轮并行修改中半接线、已由 7cac874 补齐的：**
 
-- limits.roomPostsPerTurn：config schema 允许 1 到 1000，room-post-budget.ts 也导出了 roomPostsPerTurn，但 server/index.ts 仍用 MAX_ROOM_POSTS_PER_TURN=3（server/index.ts:1630、:14024-14025）。改这个键目前不会改变每回合 3 条的行为。
-- limits.botsPerWorkspace：普通 /api/bots 创建和 bot-patch 的 peers 会读（server/routes/bots-create.ts:188-190、server/routes/bot-patch.ts:557），但内部 create-bot 和 teamSetup 仍用 MAX_WORKSPACE_BOTS=100（server/index.ts:9318、:14214-14215、:14253）。改这个键只影响部分入口。
+- limits.roomPostsPerTurn：config schema 允许 1 到 1000；server/index.ts:14023 已调用 roomPostsPerTurn()，:14024-14025 用返回值拒绝。默认仍是 3，改这个键会改变每回合上限。
+- limits.botsPerWorkspace：普通 /api/bots 创建和 bot-patch 的 peers 会读（server/routes/bots-create.ts:188-190、server/routes/bot-patch.ts:557）；内部 create-bot、teamSetup 和 team 创建路径也已接到 maxBotsPerWorkspace（server/index.ts:14214、:14254、:9317）。
 
 **仍然完全硬编码的主要数字：** 每回合 10 个附件、每回合 5 个新线程、每回合 4 个新 bot、bot 指令 4000 字、房间单条 4000 字、线程硬上限 1024、工具/server 2000、100 页、64KB/1MB、2MB/32MB、10000 帧、50KB、MCP 结果 8000、ResultStore 64MB、保存结果 20、PIDs 4096、内存 4GB、CPU 2、浏览器 120/130 秒、设备 705 秒、电脑复制 540/550 秒、未知模型 128k、重放 40 条、failover 500 条、learned 500 条、tool-budget 1000 条。逐项是否应外置见第六节。
 
@@ -197,7 +197,7 @@ docs/cleanse/02-backend-gates.md 已经用 G-28 到 G-57 覆盖了 bot 数、线
 | A1 | server/config.ts:329、server/image-daily-cap.ts:11、server/image-daily-cap.ts:30-44、server/image-daily-cap.ts:48-56、server/routes/image-tools.ts:78、server/routes/image-tools.ts:137 | 每天 N 张图的安装级上限；只统计 bot 生成，不统计设置里的头像；按本地日；limits.imagesPerDay 可改 | 当天已生成加正在生成的图片达到当前上限 | 50 张/安装/本地日；limits.imagesPerDay 可配 1 到 1,000,000 | 技术限制；成本控制，默认已可配置 | 保留（已可配置） |
 | A2 | shared/image-generation.ts:5、server/image-generation-config.ts:12-15、server/routes/image-tools.ts:59-61 | 单回合最多生成 N 张图；达到后 429 | 本回合已挂起加正在生成的图片达到 maxPerTurn | 4 张；imageGen.maxPerTurn 可配 1 到 10 | 技术限制；成本控制 | 保留（已可配置） |
 | A3 | server/drivers/agents-image-tools.ts:4、server/routes/image-tools.ts:22-24 | 图片提示词最多 4000 字符 | prompt 超过 4000 | 4000 字符；无配置 | 技术限制；防超长输入 | 保留 |
-| A4 | server/config.ts:332、server/index.ts:1630、server/index.ts:14024-14025、server/index.ts:14119、server/room-post-budget.ts:36-40 | 每回合最多 3 条房间发言；limits.roomPostsPerTurn 已声明但未接线 | 同一 internal capability 已成功发 3 条 | 3 条；limits.roomPostsPerTurn 可配 1 到 1000，但当前不生效 | 技术限制；防刷屏和循环；配置半成品 | 改可配置（把 roomPostsPerTurn 接进 server/index.ts） |
+| A4 | server/config.ts:332、server/index.ts:14023-14025、server/index.ts:14119、server/room-post-budget.ts:36-40 | 每回合最多 3 条房间发言；limits.roomPostsPerTurn 已接线，默认 3、可配 1 到 1000 | 同一 internal capability 已成功发到当前上限 | 默认 3 条；limits.roomPostsPerTurn 可配 1 到 1000 | 技术限制；防刷屏和循环；已可配置 | 保留（默认 3）；补测试覆盖 3 和 10 |
 | A5 | server/index.ts:9659、server/index.ts:14027-14030 | 单条房间发言最多 4000 字符 | message 长度超过 4000 | 4000 字符；无配置 | 技术限制；防上下文和刷屏 | 改可配置（默认 4000） |
 | A6 | server/config.ts:333、server/room-post-budget.ts:28-29、server/room-post-budget.ts:57-65、server/room-post-budget.ts:123-124 | 同一 bot 60 秒内最多 N 条房间发言；limits.roomPostsPerMinute 可改 | 同一 bot 在 60 秒内超过当前 N | 10 条/60 秒；limits.roomPostsPerMinute 可配 1 到 1000 | 技术限制；防刷屏 | 保留（已可配置） |
 | A7 | server/room-post-budget.ts:30、server/room-post-budget.ts:107-115 | 同一 bot 60 秒内重复完全相同文本就拒绝 | 同 bot、同 text、60 秒内 | 60 秒；无配置 | 技术限制；防重复刷屏 | 保留 |
@@ -205,7 +205,7 @@ docs/cleanse/02-backend-gates.md 已经用 G-28 到 G-57 覆盖了 bot 数、线
 | A9 | server/config.ts:334、server/room-post-budget.ts:33-34、server/room-post-budget.ts:57-65、server/room-post-budget.ts:130-137 | 5 分钟内没有人类回复的 bot 帖子达到 N 条就拒绝继续发；limits.roomPostsWithoutReply 可改，0 表示全拒 | 最近 5 分钟 bot 帖子达到当前 N，且最后一条在最后一次人类消息之后 | 2 条/5 分钟；limits.roomPostsWithoutReply 可配 0 到 1000 | 技术限制；防 bot 在没有人的房间自说自话 | 保留（已可配置） |
 | A10 | server/index.ts:1629、server/index.ts:13353、server/index.ts:13381 | 每回合最多附加 10 个文件 | 本回合附件数达到 10 | 10 个；无配置；limits.attachmentsMaxBytes 管的是附件库字节，不是个数 | 技术限制；防大提示词和磁盘压力 | 改可配置（默认 10） |
 | A11 | server/index.ts:7387、server/index.ts:13756-13757、server/index.ts:14150-14151 | 每回合最多打开 5 个新线程 | 本回合已打开 5 个线程 | 5 个；无配置 | 技术限制；防 bot 扇出 | 改可配置（默认 5） |
-| A12 | server/config.ts:326、server/index.ts:1631、server/index.ts:1829、server/index.ts:9318、server/index.ts:14214-14215、server/index.ts:14253、server/routes/bots-create.ts:188-190 | 每回合最多创建 4 个 bot；workspace bot 上限部分读 limits.botsPerWorkspace | 本回合创建第 5 个，或入口看到的 workspace 达到当前上限 | 4 个/回合；workspace 默认 100；limits.botsPerWorkspace 可配 1 到 100,000，但内部 create-bot/teamSetup 仍用 100 | 技术限制；防资源和权限爆炸；配置部分接线 | 改可配置（完成 internal/teamSetup 接线，保留默认 4/100） |
+| A12 | server/config.ts:326、server/index.ts:1631、server/index.ts:9317、server/index.ts:14214-14215、server/index.ts:14254-14255、server/routes/bots-create.ts:188-190 | 每回合最多创建 4 个 bot；workspace bot 上限已读 limits.botsPerWorkspace | 本回合创建第 5 个，或入口看到的 workspace 达到当前上限 | 4 个/回合；workspace 默认 100；limits.botsPerWorkspace 可配 1 到 100,000 | 技术限制；防资源和权限爆炸；已可配置 | 保留（默认 4/100） |
 | A13 | server/index.ts:1632、server/index.ts:14228-14229 | 通过 internal 能力创建 bot 时，instructions 最多 4000 字符 | instructions 长度超过 4000 | 4000 字符；无配置 | 技术限制；防超长提示词 | 保留 |
 | Q1 | server/engine-limits.ts:38-41、server/engine-limits.ts:97-105、server/routes/engine-limits.ts:39-43 | 只读展示引擎账户限额；只列 claudeAgent、codex、grokAgent；metered 账户显示 unsupported；guest 403 | 机器人调用 usage_limits 工具 | 无数量上限；三类 reporting driver；无配置 | 技术限制；信息展示，不执行拒绝 | 保留 |
 | Q2 | server/plan-usage.ts:115、server/plan-usage.ts:317、server/engine-limits.ts:25-26、server/routes/engine-limits.ts:41 | 计划用量缓存 45 秒；除非显式刷新，机器人循环调用拿到同一份数据 | 45 秒内重复读同一组账户 | 45 秒；无配置 | 技术限制；防 provider API 被轮询打爆 | 保留 |
@@ -289,9 +289,9 @@ reserve() 先读当天的磁盘计数，再加上内存里的 held；两者相�
 
 房间预算的“拒绝不记录”很重要：如果每次拒绝也写进 posts，被 blocked 的 bot 会越拒越深，最后永远出不来（server/room-post-budget.ts:82-99）。所以拒绝只返回 message，不把这次尝试算进 sender 速率；只有真正 append 的帖子才进入 posts（server/index.ts:14119）。
 
-limits 只覆盖 senderMax、escalateMax、breakerCooldownMs；duplicate 窗口 60 秒、ring 窗口 120 秒、sender 窗口 60 秒、escalate 窗口 5 分钟仍是硬编码（server/room-post-budget.ts:28-34）。roomBreakerMinutes 变大时，retentionMs 会跟着变大，posts 数组在内存里保留更久；这是为了防止“提高预算后看不到旧帖子”，但也增加了内存占用。
+roomPostLimits 只覆盖 senderMax、escalateMax、breakerCooldownMs；每回合条数由单独的 roomPostsPerTurn 读取，默认 3、可配（server/room-post-budget.ts:36-40）。duplicate 窗口 60 秒、ring 窗口 120 秒、sender 窗口 60 秒、escalate 窗口 5 分钟仍是硬编码（server/room-post-budget.ts:28-34）。roomBreakerMinutes 变大时，retentionMs 会跟着变大，posts 数组在内存里保留更久；这是为了防止“提高预算后看不到旧帖子”，但也增加了内存占用。
 
-最关键的半成品是 limits.roomPostsPerTurn：它已经在 room-post-budget.ts:36-40 导出，但 server/index.ts 仍用 MAX_ROOM_POSTS_PER_TURN=3（server/index.ts:1630、:14024-14025）。因此改这个键目前不会改变每回合 3 条的行为；这不是配置解析失败，而是调用点没换。
+limits.roomPostsPerTurn 已在 7cac874 接线：server/index.ts:14023 调用 roomPostsPerTurn()，:14024-14025 用返回值拒绝。默认仍是 3；改这个键会按 config.json 改变每回合上限。
 
 ### 5.10 thread-retention 与 thread-log-rotation
 
@@ -313,9 +313,9 @@ Starter 的 5 bot 和 1 线程都来自 cloudPlanTier.starter()；非 Cloud 或�
 
 ### 5.13 limits 配置块的接线状态
 
-limits 的 10 个键都在 config.ts 的 strict schema 里，且 saveConfig 会把整块写入并刷新内存镜像（server/config.ts:325-336、:957-1059）。所以“改了 config.json 不生效”通常不是 schema 问题，而是调用点没有读 quotaLimits。当前明确没有接线的有两个：roomPostsPerTurn 和 botsPerWorkspace 的内部 create-bot/teamSetup 路径。
+limits 的 10 个键都在 config.ts 的 strict schema 里，且 saveConfig 会把整块写入并刷新内存镜像（server/config.ts:325-336、:957-1059）。所以“改了 config.json 不生效”通常不是 schema 问题，而是调用点没有读 quotaLimits。原先半接线的 roomPostsPerTurn 和 botsPerWorkspace 已由 7cac874 补齐：server/index.ts:14023、:14214、:14254、:9317 都已读取配置。
 
-反过来，imagesPerDay、chatToolsPerRequest、mcpServers、attachmentsMaxBytes、roomPostsPerMinute、roomPostsWithoutReply、roomBreakerMinutes 都已经在各自模块里读 quotaLimits()。这轮修改把原先报告里的多个“硬编码”风险降级为“可配置”，但新增了两个半成品接线风险。
+反过来，imagesPerDay、chatToolsPerRequest、mcpServers、attachmentsMaxBytes、roomPostsPerMinute、roomPostsWithoutReply、roomBreakerMinutes 都已经在各自模块里读 quotaLimits()。这轮修改把原先报告里的多个“硬编码”风险降级为“可配置”；两个半成品接线点也已由 7cac874 补齐。
 
 ### 5.14 构造时机与惰性触发
 
@@ -344,12 +344,12 @@ limits 的 10 个键都在 config.ts 的 strict schema 里，且 saveConfig 会�
 | RING_WINDOW_MS（server/room-post-budget.ts:31） | 120,000ms | 无配置 | 可保留，防环 |
 | DEFAULT_BREAKER_MINUTES（server/room-post-budget.ts:32） | 5 分钟 | 默认值；limits.roomBreakerMinutes 可配 1 到 1440 | 已可配置 |
 | ESCALATE_MAX（server/room-post-budget.ts:34） | 2 条/5 分钟 | 默认值；limits.roomPostsWithoutReply 可配 0 到 1000 | 已可配置 |
-| MAX_ROOM_POSTS_PER_TURN（server/index.ts:1630） | 3 条/回合 | 仍硬编码；limits.roomPostsPerTurn 已声明未接线 | 应接线，默认保持 3 |
+| roomPostsPerTurn（server/index.ts:14023-14025） | 3 条/回合 | 默认值；limits.roomPostsPerTurn 可配 1 到 1000 | 已可配置，保留默认 |
 | ROOM_POST_MAX_CHARS（server/index.ts:9659） | 4000 字符 | 无配置 | 应外置，或按房间配置 |
 | MAX_ATTACHED_FILES_PER_TURN（server/index.ts:1629） | 10 个/回合 | 无配置；limits.attachmentsMaxBytes 管字节不管个数 | 应外置 |
 | MAX_THREADS_OPENED_PER_TURN（server/index.ts:7387） | 5 个/回合 | 无配置 | 应外置 |
 | MAX_CREATED_BOTS_PER_TURN（server/index.ts:1631） | 4 个/回合 | 无配置 | 应外置 |
-| MAX_WORKSPACE_BOTS（server/index.ts:1829） | 100 个/workspace | 默认值；limits.botsPerWorkspace 可配 1 到 100,000，但内部路径未接线 | 完成接线，保留默认 |
+| maxBotsPerWorkspace（server/config.ts:636-638；调用点 server/index.ts:9317、:14214、:14254） | 100 个/workspace | 默认值；limits.botsPerWorkspace 可配 1 到 100,000，调用点已接线 | 已可配置，保留默认 |
 | MAX_CREATED_BOT_INSTRUCTIONS（server/index.ts:1632） | 4000 字符 | 无配置 | 可保留，属输入保护 |
 | MAX_CONCURRENT_BOT_THREADS（server/bot-thread-limits.ts:8） | 16 个/bot 默认 | 默认值；limits.botThreads 和 threads.maxConcurrentPerBot 可配 1 到 1024 | 已可配置 |
 | MAX_BOT_THREADS_SETTING（server/bot-thread-limits.ts:10） | 1024 个/bot | 配置 schema 硬上限 | 保留，防止误设过大 |
@@ -391,7 +391,7 @@ limits 的 10 个键都在 config.ts 的 strict schema 里，且 saveConfig 会�
 | 建议 | 编号 | 执行后的最坏后果 |
 |---|---|---|
 | 保留 | C2、C3、C4、C6、C7、C9、C10、C11、C12、C13、C14、C16、C18、C20、C21、C22、A1、A2、A3、A6、A7、A8、A9、A13、Q1、Q2、Q4、Q5、Q6、Q7、Q8、Q9、Q10、Q11、Q12、Q13、L3、L4、L5 | 删除这些保护后，最坏会出现上下文溢出、provider 400、MCP 进程 OOM、房间 bot 循环、容器 fork 炸弹、月度超支、Starter 计划被突破、旧工具结果无限增长或对话无法回切。它们不是“看起来有风险”，而是有明确触发条件的技术边界。 |
-| 改可配置 | C1、C5、C8、C15、C17、C19、A4、A5、A10、A11、A12、Q3 | 如果把硬编码直接删除而不给替代值，最坏后果分别是：未知模型按错误窗口压缩或溢出；重放历史过少导致回答断片；慢网页全部超时；保存结果无限占磁盘；4GB/2CPU 容器被重负载拖死；线程和 bot 扇出耗尽内存；房间发言或附件/线程/bot 数量失控；90% 预警和 60 秒调度缓冲消失。建议保留默认值，只增加配置入口或完成已有配置的接线。 |
+| 改可配置 | C1、C5、C8、C15、C17、C19、A4、A5、A10、A11、A12、Q3 | 如果把硬编码直接删除而不给替代值，最坏后果分别是：未知模型按错误窗口压缩或溢出；重放历史过少导致回答断片；慢网页全部超时；保存结果无限占磁盘；4GB/2CPU 容器被重负载拖死；线程和 bot 扇出耗尽内存；房间发言或附件/线程/bot 数量失控；90% 预警和 60 秒调度缓冲消失。建议保留默认值，只增加配置入口；已有配置键的调用点按 7cac874 复核。 |
 | 默认关闭（保持） | L1、L2 | 这两项已经默认关闭。若默认打开，最坏后果是用户在没有预期的情况下丢失 thread 的 events/ 和 native/ 日志；SQLite 聊天记录还在，但事件回放、审计和排障材料会消失。L1 是整文件删除，L2 是静默裁掉旧半段，二者都不可逆。 |
 | 删除 | 无 | 本次没有建议直接删除的配额。唯一可以考虑的“删除”是合法的产品降级：移除 enterprise/ 目录，让 budgets、Starter 计划、白标、托管工作区等 entitlement 一起失效。这不是绕过许可，而是承认 OSS 版没有这些商业功能；降级后月度预算拦截和 Starter 限制都会消失，hosted workspace 相关能力还会 503。 |
 
@@ -410,8 +410,8 @@ limits 的 10 个键都在 config.ts 的 strict schema 里，且 saveConfig 会�
 | 1 | L1 | **自动删除 thread 日志** | 配置 eventLogRetentionDays 后，关闭或归档超过 N 天的线程会被删除 events/ 和 native/ NDJSON；这是不可逆的用户可见数据丢失。默认关闭，但一旦管理员打开就可能批量发生。 | 保持默认关闭；UI 明确显示“会删除事件日志”；提供导出或 dry-run；不删除 SQLite 消息。 |
 | 2 | L2 | **静默裁剪 thread 日志** | eventLogMaxBytes 只保留最新一半，没有日志、没有提示、没有备份；排障时旧事件已经没了。 | 默认关闭；开启时记录一次审计事件并在 UI 显示；提供保留副本选项。 |
 | 3 | C15 | **自动删除旧 MCP 大结果** | 每个工作目录只留 20 个 mcp-results 文件；旧文件被 unlink。用户可能把文件当长期结果。 | 改成可配置；删除前写审计；或在 UI 说明“只保留最近 20 个”。 |
-| 4 | A4 | **roomPostsPerTurn 配置已声明但没接线** | 管理员把 limits.roomPostsPerTurn 改成 10，server/index.ts 仍按 3 拒绝；这是配置假生效，容易误导排障。 | 把 roomPostsPerTurn 接进 server/index.ts，保留默认 3；写测试覆盖 3 和 10。 |
-| 5 | A12 | **botsPerWorkspace 只接线一半** | 普通 /api/bots 创建会读新上限，但内部 create-bot、teamSetup 仍用 100；同一工作区会出现“人能创建更多、bot 不能”的不一致。 | 让内部 create-bot 和 teamSetup 也调用 maxBotsPerWorkspace；保留默认 100。 |
+| 4 | A4 | **roomPostsPerTurn 曾半接线，已在 7cac874 修复** | 审计时 server/index.ts 仍按常量 3 拒绝；现在 :14023-14025 已读配置，默认 3，改键会生效。 | 保留默认 3；合并前按符号名复核调用点。 |
+| 5 | A12 | **botsPerWorkspace 曾只接线一半，已在 7cac874 修复** | 审计时内部 create-bot/teamSetup 仍用 100；现在 :9317、:14214、:14254 都读 maxBotsPerWorkspace。 | 保留默认 100；合并前按符号名复核调用点。 |
 | 6 | C1 | **未知模型一律按 128k 估算** | 小窗口模型可能在真实窗口更小时仍按 128k 估算，导致 provider 溢出；大窗口模型又会被过早压缩。 | 改可配置或强制模型目录声明；压缩前用 provider 上报值优先。 |
 | 7 | C20 | **MCP 结果默认 8000 字符，可能丢关键内容** | 复杂 JSON 被结构化裁剪，模型只看到句柄和横幅；如果模型不会用 query_result，就会基于不完整数据回答。 | 保留默认，但按 server 配置；在 UI 显示被裁剪的 server 和原始大小；对关键 server 设更大预算。 |
 | 8 | A8 | **房间环熔断状态只在内存** | 重启后 roomPostBudgets 清空，冷却状态消失；如果 bot 仍在循环，重启后可能马上再次形成环。 | 保留检测；把 breaker 状态持久化，或至少在重启后冷却一段时间；阈值可配置。 |
@@ -422,7 +422,7 @@ limits 的 10 个键都在 config.ts 的 strict schema 里，且 saveConfig 会�
 
 1. **没有运行编译和测试。** 因此不能确认类型检查、构建和测试是否通过；本报告只对静态代码和行号负责。00-baseline.md 的 BLOCKED 与当前 node_modules 存在性不一致，08-evidence-audit.md:13 已指出这一点；正式验收前应重新采集基线。
 2. **没有实际触发 429/409。** 图片、房间、附件、线程、bot、花费的 HTTP 状态是从代码分支读出的，没有启动服务做端到端验证；前端是否把每个错误都展示给用户也没有验证。
-3. **本轮并行修改仍在进行。** 12:21 到 12:22 新增的 limits 配置只完成了部分接线：roomPostsPerTurn 和 botsPerWorkspace 的内部路径还没接。主线程可能在本报告写完后继续改这些文件；合并前必须重新跑一次引用抽查。
+3. **本轮并行修改已收尾。** 12:21 到 12:22 新增的 limits 配置在 7cac874 中补齐了调用点：roomPostsPerTurn 在 server/index.ts:14023，botsPerWorkspace 在 :9317、:14214、:14254。合并前仍应按符号名重跑一次引用抽查，确认后续改动没有让行号漂移。
 4. **thread-retention 的 UI 入口没有追。** 当前能确认 threads.eventLogRetentionDays 和 eventLogMaxBytes 在 config schema 和运行时代码里存在，但没有逐页检查设置界面是否暴露这两个键；如果只能手改 config.json，普通用户不会误开，风险更低。
 5. **图片日上限的时区依赖进程 TZ。** server/time-zone.ts:30-41 会在 Cloud 启动时采纳保存的时区，但本报告没有动态验证 createImageDailyCap 创建时 TZ 已经生效；静态上它用的是 Date 的本地 getter，因此结论是“进程本地日”，不是固定 UTC。
 6. **图片计数写盘失败会绕过上限。** settle 写盘失败只 console.warn，下一次 madeToday 读不到新计数；没有测试“磁盘满时仍可继续生成多少张”，只能标注为推断的绕过路径。
@@ -445,8 +445,8 @@ limits 的 10 个键都在 config.ts 的 strict schema 里，且 saveConfig 会�
 | 线程拒绝 | server/index.ts:7631 | throw Object.assign(new Error(botThreadLimitText(...)), { status: 409, code: "thread_limit" }); | 命中 |
 | 房间默认速率 | server/room-post-budget.ts:29 | const SENDER_MAX = 10; | 命中 |
 | 房间可配速率 | server/room-post-budget.ts:60 | senderMax: positiveLimit(configured.roomPostsPerMinute, SENDER_MAX), | 命中 |
-| 房间每回合硬编码 | server/index.ts:1630 | const MAX_ROOM_POSTS_PER_TURN = 3; | 命中 |
-| 房间每回合配置 | server/room-post-budget.ts:38-40 | roomPostsPerTurn() 导出，但 index 未引用 | 命中 |
+| 房间每回合默认值 | server/room-post-budget.ts:38-40 | roomPostsPerTurn() 返回 quotaLimits().roomPostsPerTurn ?? 3 | 命中 |
+| 房间每回合接线 | server/index.ts:14023-14025 | const postsPerTurn = roomPostsPerTurn(); 并用它拒绝 | 命中 |
 | 工具默认上限 | shared/tool-budget.ts:2 | export const CHAT_TOOL_LIMIT = 128; | 命中 |
 | 工具动态读取 | server/tool-count-limit.ts:134 | quotaLimits().chatToolsPerRequest ?? CHAT_TOOL_LIMIT | 命中 |
 | MCP 结果默认值 | server/mcp-trim.ts:1 | export const DEFAULT_RESULT_BUDGET = 8_000; | 命中 |
@@ -454,4 +454,4 @@ limits 的 10 个键都在 config.ts 的 strict schema 里，且 saveConfig 会�
 | thread 日志删除 | server/thread-retention.ts:34 | for (const dir of [EVENTS_DIR, NATIVE_DIR]) { | 命中 |
 | 月度预算 entitlement | server/spend.ts:81 | if (!isEntitled("budgets") || ... ) return null; | 命中 |
 
-**结论：** 主表的高风险数值和删除路径没有发现行号漂移。唯一需要保留的限定是：所有引用都是 2026-11-14 12:22 左右当前工作树口径，不是冻结的 781c57e 快照；合并前应再跑一次同样的抽查。
+**结论：** 主表的高风险数值和删除路径没有发现行号漂移。唯一需要保留的限定是：所有引用都是 2026-11-14 最终工作树（HEAD 521754b）口径，不是冻结的 781c57e 快照；roomPostsPerTurn 和 botsPerWorkspace 已按 7cac874 后的调用点复核，合并前应再跑一次同样的抽查。
