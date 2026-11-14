@@ -39,6 +39,8 @@ const memoryStorage = {
 
 beforeEach(() => {
   storage.clear();
+  // These cases describe an install the person opted in; the never-chosen case removes this key.
+  storage.set("omb-analytics-opt-out", "0");
   ph.captured = [];
   vi.stubGlobal("localStorage", memoryStorage);
 });
@@ -238,7 +240,9 @@ describe("the daily usage snapshot", () => {
   });
 
   it("sends once per page load when storage throws, through the page's own memory", async () => {
-    const { snapshot } = await freshModules();
+    const { analytics, snapshot } = await freshModules();
+    // No storage is left to hold the choice, so this page's memory keeps the explicit opt-in.
+    analytics.setAnalyticsEnabled(true);
     vi.stubGlobal("localStorage", { getItem: () => { throw new Error("denied"); }, setItem: () => { throw new Error("denied"); } });
     expect(await snapshot.sendDailySnapshot(hostileState(), hostileSources(), DAY)).toBe(true);
     expect(await snapshot.sendDailySnapshot(hostileState(), hostileSources(), DAY + 1_000)).toBe(false);
@@ -293,6 +297,17 @@ describe("the daily usage snapshot", () => {
 describe("an opted-out install", () => {
   it("captures nothing and asks no server, bridge or provider anything", async () => {
     storage.set("omb-analytics-opt-out", "1");
+    const { snapshot } = await freshModules();
+    const sources = hostileSources();
+    const spies = [vi.spyOn(sources, "request"), vi.spyOn(sources, "connectedApps"), vi.spyOn(sources.companion!, "state"), vi.spyOn(sources.cloudAccount!, "state"), vi.spyOn(sources.cloudPlan!, "state")];
+    expect(await snapshot.sendDailySnapshot(hostileState(), sources, DAY)).toBe(false);
+    for (const spy of spies) expect(spy).not.toHaveBeenCalled();
+    expect(ph.captured).toEqual([]);
+    expect(storage.has("omb-analytics-snapshot-day")).toBe(false);
+  });
+
+  it("does the same when no choice was ever made", async () => {
+    storage.delete("omb-analytics-opt-out");
     const { snapshot } = await freshModules();
     const sources = hostileSources();
     const spies = [vi.spyOn(sources, "request"), vi.spyOn(sources, "connectedApps"), vi.spyOn(sources.companion!, "state"), vi.spyOn(sources.cloudAccount!, "state"), vi.spyOn(sources.cloudPlan!, "state")];

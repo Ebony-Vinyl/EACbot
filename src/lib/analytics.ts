@@ -6,7 +6,8 @@ import { readAdvancedMode } from "@/lib/interface-mode";
 
 const TOKEN = "phc_m2hP39w8y2gLPvHgDvSXAu6xcZ3agjf4ruL56rGcMZEe";
 
-// Read before init(): an opted-out install must never call posthog.init(), so no request leaves the machine.
+// Read before init(): analytics is off until the person turns it on, so a fresh install never calls posthog.init()
+// and no request leaves the machine. "0" is an explicit opt-in, "1" an explicit opt-out.
 const OPT_OUT_KEY = "omb-analytics-opt-out";
 // The desktop app's own page is served on whichever of its ports was free, and each port has its own storage.
 const desktopSwitch = () => globalThis.window?.ogb?.desktopAnalytics;
@@ -23,9 +24,9 @@ export function analyticsEnabled(): boolean {
   const desktop = desktopSwitch()?.enabled();
   if (typeof desktop === "boolean") return desktop;
   try {
-    return localStorage.getItem(OPT_OUT_KEY) !== "1";
+    return localStorage.getItem(OPT_OUT_KEY) === "0";
   } catch {
-    return true;
+    return false;
   }
 }
 
@@ -58,19 +59,22 @@ export function setAnalyticsEnabled(enabled: boolean) {
   }
 }
 
-function keepStoredOptOut() {
+/** Keep an explicit choice made on one of this desktop's pages for the others, whose storage is separate. */
+function keepStoredChoice() {
   const desktop = desktopSwitch();
   if (!desktop?.set || desktop.enabled() !== null) return;
+  let stored: string | null;
   try {
-    if (localStorage.getItem(OPT_OUT_KEY) !== "1") return;
+    stored = localStorage.getItem(OPT_OUT_KEY);
   } catch {
     return;
   }
-  void desktop.set(false).catch(() => {});
+  if (stored !== "0" && stored !== "1") return;
+  void desktop.set(stored === "0").catch(() => {});
 }
 
 export function initAnalytics(): Promise<void> {
-  keepStoredOptOut();
+  keepStoredChoice();
   if (client || !analyticsEnabled()) return Promise.resolve();
   loading ??= import("posthog-js")
     .then(({ default: posthog }) => start(posthog))

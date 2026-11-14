@@ -8,7 +8,8 @@ import type { ImageGenerationConfig } from "../shared/image-generation.ts";
 import { imageGenConfigSchema, imageGenPatchSchema, keepKeysOutOfImageModels, type ImageGenCredentialPatch } from "./image-generation-config.ts";
 import { botAvatarUrlSchema } from "../shared/bot-avatar.ts";
 import { writeFileAtomic } from "./atomic.ts";
-import { defaultBotThreads, MAX_CONCURRENT_BOT_THREADS } from "./bot-thread-limits.ts";
+import { defaultBotThreads, MAX_BOT_THREADS_SETTING } from "./bot-thread-limits.ts";
+import { positiveLimit, setQuotaLimits, type QuotaLimits } from "./limits.ts";
 import { anthropicKeyEnv } from "./anthropic-key-env.ts";
 import { withoutComputerEngine } from "./computer-engine-removal.ts";
 import { newBotDefaultsSchema, type NewBotDefaults } from "./new-bot-defaults.ts";
@@ -302,7 +303,7 @@ const cacheKeepWarmSchema = z.object({
   windowMinutes: z.number().int().min(15).max(MAX_WINDOW_MINUTES).optional(),
 }).strict();
 const threadsConfigSchema = z.object({
-  maxConcurrentPerBot: z.number().int().min(1).max(MAX_CONCURRENT_BOT_THREADS),
+  maxConcurrentPerBot: z.number().int().min(1).max(MAX_BOT_THREADS_SETTING),
   /** Byte cap for each thread's events/ and native/ log; absent means unbounded. */
   eventLogMaxBytes: z.number().int().min(MIN_THREAD_EVENT_LOG_BYTES).max(MAX_THREAD_EVENT_LOG_BYTES).optional(),
   /** Days a closed or archived thread's event logs survive; absent keeps them forever. */
@@ -320,6 +321,19 @@ const threadsPatchSchema = threadsConfigSchema.extend({
   eventLogMaxBytes: threadsConfigSchema.shape.eventLogMaxBytes.nullable(),
   eventLogRetentionDays: threadsConfigSchema.shape.eventLogRetentionDays.nullable(),
 });
+/** The caps that used to be fixed numbers, each with the old value as its default: absent changes nothing. */
+const limitsConfigSchema = z.object({
+  botsPerWorkspace: z.number().int().min(1).max(100_000).optional(),
+  botThreads: z.number().int().min(1).max(MAX_BOT_THREADS_SETTING).optional(),
+  attachmentsMaxBytes: z.number().int().min(1).max(1024 * 1024 ** 3).optional(),
+  imagesPerDay: z.number().int().min(1).max(1_000_000).optional(),
+  chatToolsPerRequest: z.number().int().min(1).max(10_000).optional(),
+  mcpServers: z.number().int().min(1).max(10_000).optional(),
+  roomPostsPerTurn: z.number().int().min(1).max(1_000).optional(),
+  roomPostsPerMinute: z.number().int().min(1).max(1_000).optional(),
+  roomPostsWithoutReply: z.number().int().min(0).max(1_000).optional(),
+  roomBreakerMinutes: z.number().int().min(1).max(1_440).optional(),
+}).strict();
 const appConfigSchema = z.object({
   /** Set only by the verified domain endpoint, never by a config patch. */
   customDomain: z.string().optional(),
@@ -422,6 +436,8 @@ const appConfigSchema = z.object({
     tidyHour: z.number().int().min(0).max(23).optional(),
   }).strict().optional(),
   threads: threadsConfigSchema.optional(),
+  /** Caps that may be raised past their old fixed values; see server/limits.ts. */
+  limits: limitsConfigSchema.optional(),
   /** Minimum days of decision-log month files kept; EAC_DECISION_RETENTION_DAYS wins. */
   decisions: z.object({ retentionDays: z.number().int().min(1).max(3650).optional() }).strict().optional(),
   loopGuard: loopGuardConfigSchema.optional(),
@@ -500,6 +516,7 @@ export interface AppConfig extends HelperConfig {
   rooms?: { turnTimeoutMinutes: number };
   mcp?: { callTimeoutMinutes?: number };
   threads?: { maxConcurrentPerBot: number; eventLogMaxBytes?: number; eventLogRetentionDays?: number };
+  limits?: QuotaLimits;
   context?: { rebuildBytes?: number; compactAt?: number; autoCompact?: boolean; roomCompactAt?: number; roomSessions?: boolean; replayToolHistory?: boolean };
   memory?: { captureQuietMs?: number; tidyHour?: number };
   localVm?: { mode?: "shared" | "per-bot" | "pool"; maxInstances?: number; idleTimeoutMinutes?: number; preserveInstalledApps?: boolean };
@@ -613,6 +630,12 @@ export function browserEngineAttachCdpUrl(cfg: AppConfig): string | null {
 
 export function roomTurnTimeoutMinutes(cfg: AppConfig): number {
   return cfg.rooms?.turnTimeoutMinutes ?? DEFAULT_ROOM_TURN_TIMEOUT_MINUTES;
+}
+
+/** Bots one workspace may hold: config.json "limits.botsPerWorkspace", else the original 100. */
+export const DEFAULT_MAX_WORKSPACE_BOTS = 100;
+export function maxBotsPerWorkspace(cfg: Pick<AppConfig, "limits"> = {}): number {
+  return positiveLimit(cfg.limits?.botsPerWorkspace, DEFAULT_MAX_WORKSPACE_BOTS);
 }
 
 export function mcpCallTimeoutMinutes(cfg: AppConfig): number {
@@ -794,6 +817,7 @@ export function loadConfig(): AppConfig {
     if (process.env.EAC_SIGNIN_EMAILS !== undefined) cfg.signIn.admins = splitEmails(process.env.EAC_SIGNIN_EMAILS);
     if (process.env.EAC_SIGNIN_MEMBER_EMAILS !== undefined) cfg.signIn.members = splitEmails(process.env.EAC_SIGNIN_MEMBER_EMAILS);
   }
+  setQuotaLimits(cfg.limits);
   return cfg;
 }
 
@@ -933,7 +957,7 @@ export function saveConfig(
   const keepImageModels = keepKeysOutOfImageModels(disk, checkedPatch.imageGen);
   const storedProfiles = storedBrowserProfilesSchema.safeParse(disk.browserProfiles);
   if (storedProfiles.success) disk.browserProfiles = storedProfiles.data;
-  for (const key of ["xai", "anthropic", "mistral", "cerebras", "treg", "postiz", "groq", "greenference", "meta", "deepseek", "openai", "openrouter", "openaiCompat", "composio", "box", "opencodeGo", "tts", "decider", "imageGen", "live", "profile", "rooms", "mcp", "threads", "context", "memory", "localVm", "features", "budgets", "billing", "decisions", "loopGuard", "onboarding", "browserEngine", "newBots", "safetyFloor"] as const) {
+  for (const key of ["xai", "anthropic", "mistral", "cerebras", "treg", "postiz", "groq", "greenference", "meta", "deepseek", "openai", "openrouter", "openaiCompat", "composio", "box", "opencodeGo", "tts", "decider", "imageGen", "live", "profile", "rooms", "mcp", "threads", "limits", "context", "memory", "localVm", "features", "budgets", "billing", "decisions", "loopGuard", "onboarding", "browserEngine", "newBots", "safetyFloor"] as const) {
     const section = checkedPatch[key];
     if (!section) continue;
     const current = jsonObjectSchema.safeParse(disk[key]);
@@ -1031,6 +1055,8 @@ export function saveConfig(
   mkdirSync(DATA_DIR, { recursive: true });
   writeFileAtomic(p, JSON.stringify(disk, null, 2), { mode: 0o600 });
   storedConfig.forget();
+  const applied = storedAppConfigSchema.safeParse(disk);
+  setQuotaLimits(applied.success ? applied.data.limits : undefined);
   for (const listener of configSaveListeners) {
     try {
       listener(before, disk);

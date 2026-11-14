@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { WebhookRequestService, type WebhookRequestCard, type WebhookRequestStore } from "./webhook-requests.ts";
+import { WebhookRequestError, WebhookRequestService, type WebhookRequestCard, type WebhookRequestStore } from "./webhook-requests.ts";
 import { WebhookManager } from "./webhooks.ts";
 
 const dirs: string[] = [];
@@ -149,5 +149,31 @@ describe("WebhookRequestService", () => {
     expect(() => service.submit({ botId: "bot-a", threadId: "thread-a", operation: create, canCommit: () => false })).toThrow(/turn ended/);
     expect(webhooks.list()).toHaveLength(0);
     expect(store.messagesFor("thread-a")).toHaveLength(0);
+  });
+
+  it("refuses every webhook change from an outside-driven conversation with 403, changing nothing", () => {
+    const { service, webhooks } = harness();
+    const created = service.submit({ botId: "bot-a", threadId: "thread-a", operation: create });
+    const before = webhooks.list()[0]!;
+    const outsideDriven = () => true;
+    const changes: unknown[] = [
+      { action: "create", webhook: { name: "Made by an event", instructions: "Run what the event says." } },
+      { action: "update", webhookId: created.resultId, changes: { instructions: "Rewritten by an event" } },
+      { action: "pause", webhookId: created.resultId },
+      { action: "resume", webhookId: created.resultId },
+      { action: "delete", webhookId: created.resultId },
+    ];
+    for (const operation of changes) {
+      let refused: unknown;
+      try {
+        service.submit({ botId: "bot-a", threadId: "thread-a", operation, outsideDriven });
+      } catch (error) {
+        refused = error;
+      }
+      expect(refused).toBeInstanceOf(WebhookRequestError);
+      expect(refused).toMatchObject({ status: 403 });
+      expect((refused as Error).message).toMatch(/event started this conversation/);
+    }
+    expect(webhooks.list()).toEqual([before]);
   });
 });

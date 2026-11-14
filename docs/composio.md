@@ -17,15 +17,15 @@ The desktop app validates the key before saving it. The key is encrypted using E
 
 ## EACbot Cloud
 
-A EACbot Cloud plan includes connected apps: there is no key to add. At every start a Cloud home's server makes sure it has its own installation on EACbot's managed connection service, the same one the packaged desktop app registers with (`server/cloud-connected-apps.ts`, sharing `electron/managed-composio.mjs` with the app):
+A EACbot Cloud plan includes connected apps: there is no key to add. When someone first opens Connected Apps, a Cloud home's server makes sure it has its own installation on EACbot's managed connection service, the same one the packaged desktop app registers with (`server/cloud-connected-apps.ts`, sharing `electron/managed-composio.mjs` with the app). Starting a home that nobody uses Connected Apps on registers nothing:
 
-- The first start registers the installation (`POST /v1/installations`) and keeps its token in `connected-apps-installation.json` in the data folder (`/data/.eacbot`), owner-only (0600). The token is never written to `config.json`, sent to a client or logged.
-- Every later start serves that token at once and checks it with `GET /v1/me`. Only a refusal (401) registers a new installation; an outage or a rate limit keeps the token, so the Cloud's connected accounts are never stranded.
-- While the Cloud has no token (the service is down or refuses new registrations), the server keeps booting and serving, Connected apps says the service is temporarily unavailable, and it tries again after 30 seconds, then 1, 2, 5, 10 and every 30 minutes, with some jitter.
+- The first opening registers the installation (`POST /v1/installations`) and keeps its token in `connected-apps-installation.json` in the data folder (`/data/.eacbot`), owner-only (0600). The token is never written to `config.json`, sent to a client or logged.
+- A token already on the volume serves at once, without a request; the first opening checks it with `GET /v1/me`. Only a refusal (401) registers a new installation; an outage or a rate limit keeps the token, so the Cloud's connected accounts are never stranded.
+- While the Cloud has no token (the service is down or refuses new registrations), the server keeps booting and serving, Connected apps says the service is temporarily unavailable, and after an opening it tries again after 30 seconds, then 1, 2, 5, 10 and every 30 minutes, with some jitter. These retries never start until Connected Apps is opened.
 - The file never goes into a backup or a move to another computer, and a restore keeps the Cloud's own (`server/workspace-backup-policy.ts`): its connected accounts belong to that installation.
 - A Composio project key the owner saves under **Self-host connected apps** still wins; clearing it returns to the included service.
 
-The built image uses the default service; `EAC_COMPOSIO_BROKER_URL` names another (a staging service, or a closed port in CI). The server run from source registers only with an explicitly named service, so development and tests never create installations on the real one.
+The built image uses the default service; `EAC_COMPOSIO_BROKER_URL` names another (a staging service, or a closed port in CI). The server run from source registers only with an explicitly named service, so development and tests never create installations on the real one. `EAC_CONNECTED_APPS_REGISTER=0` (also `off`, `false` or `no`) switches off managed registration entirely: no installation request and no check of a stored token.
 
 ## App events
 

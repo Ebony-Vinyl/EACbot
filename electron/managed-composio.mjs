@@ -1,5 +1,14 @@
 const TOKEN = /^[0-9a-f]{64}$/;
 
+/** 0/off/false/no switches off every managed installation registration (the packaged app and a Cloud home). */
+export const MANAGED_COMPOSIO_REGISTER_ENV = "EAC_CONNECTED_APPS_REGISTER";
+
+export function managedComposioRegistrationEnabled(environment = process.env) {
+  const value = environment?.[MANAGED_COMPOSIO_REGISTER_ENV];
+  const normalized = typeof value === "string" ? value.trim().toLowerCase() : "";
+  return !["0", "off", "false", "no"].includes(normalized);
+}
+
 /** EACbot's connected-apps service (cloudflare/composio-broker): the packaged desktop app and a Cloud home use it. */
 export const DEFAULT_MANAGED_COMPOSIO_BROKER_URL = "https://eacbot-composio.milindsoni201.workers.dev";
 
@@ -52,6 +61,10 @@ export async function ensureManagedComposioCredentials({
   existingCredentialTimeoutMs = 8_000,
   registrationTimeoutMs = 15_000,
 }) {
+  if (!managedComposioRegistrationEnabled()) {
+    log("connected-apps registration is switched off");
+    return credentials;
+  }
   const url = normalizeManagedComposioBrokerUrl(brokerUrl);
   if (!url) {
     if (brokerUrl) log("connected-apps broker URL rejected: HTTPS or a loopback HTTP URL is required");

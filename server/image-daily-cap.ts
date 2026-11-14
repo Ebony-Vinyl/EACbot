@@ -5,7 +5,9 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { writeFileAtomic } from "./atomic.ts";
+import { quotaLimits } from "./limits.ts";
 
+/** Images a day when config.json says nothing; "limits.imagesPerDay" raises it. */
 export const IMAGE_DAILY_CAP = 50;
 export const IMAGE_DAY_FILE = "image-generation-day.json";
 
@@ -22,10 +24,11 @@ export interface ImageDailyCap {
 }
 
 export function createImageDailyCap(dataDir: string, options: { cap?: number; now?: () => Date } = {}): ImageDailyCap {
-  const cap = options.cap ?? IMAGE_DAILY_CAP;
   const now = options.now ?? (() => new Date());
   const file = join(dataDir, IMAGE_DAY_FILE);
   let held = 0;
+  /** A cap the caller fixed, else the saved one, read on each use so a new setting needs no restart. */
+  const cap = (): number => options.cap ?? quotaLimits().imagesPerDay ?? IMAGE_DAILY_CAP;
   const madeToday = (): number => {
     try {
       const saved = JSON.parse(readFileSync(file, "utf8")) as { day?: unknown; count?: unknown } | null;
@@ -36,9 +39,9 @@ export function createImageDailyCap(dataDir: string, options: { cap?: number; no
     }
   };
   return {
-    cap,
+    get cap() { return cap(); },
     reserve() {
-      if (madeToday() + held >= cap) return false;
+      if (madeToday() + held >= cap()) return false;
       held += 1;
       return true;
     },

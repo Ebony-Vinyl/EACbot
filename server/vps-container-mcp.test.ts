@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 
+import { CONTROL_PLANE_MISSING } from "./control-client.ts";
 import { vpsContainerName } from "./vps-computer.ts";
 
 const temporary: string[] = [];
@@ -13,7 +14,7 @@ afterEach(async () => {
   await Promise.all(temporary.splice(0).map((path) => rm(path, { recursive: true, force: true })));
 });
 
-function runBridge(bin: string, input: string) {
+function runBridge(bin: string, input: string, extraEnv: Record<string, string> = {}) {
   return new Promise<{ code: number | null; stdout: string; stderr: string }>((resolve, reject) => {
     const child = spawn(
       process.execPath,
@@ -23,7 +24,7 @@ function runBridge(bin: string, input: string) {
         vpsContainerName("bridge-test"),
       ],
       {
-        env: { ...process.env, EAC_EXTRA_PATH: bin, NODE_NO_WARNINGS: "1" },
+        env: { ...process.env, EAC_EXTRA_PATH: bin, NODE_NO_WARNINGS: "1", ...extraEnv },
         stdio: ["pipe", "pipe", "pipe"],
       },
     );
@@ -80,5 +81,39 @@ describe.skipIf(process.platform === "win32")("VPS Cua MCP bridge", () => {
     const result = await runBridge(bin, "x".repeat(4 * 1024 * 1024));
 
     expect(result.code).toBe(0);
+  });
+
+  it("refuses a computer call whose control gate is missing, and says why", async () => {
+    const bin = await mkdtemp(join(tmpdir(), "eacbot-vps-mcp-gateless-"));
+    temporary.push(bin);
+    await writeFile(
+      join(bin, "docker"),
+      `#!/bin/sh\n` +
+        `while IFS= read -r line; do\n` +
+        `  case "$line" in\n` +
+        `    *'"method":"tools/list"'* ) printf '{"jsonrpc":"2.0","id":1,"result":{"tools":[]}}\\n' ;;\n` +
+        `    *'"method":"tools/call"'* ) printf 'CALL-RECEIVED:\\n' >&2 ;;\n` +
+        `  esac\n` +
+        `done\n`,
+      { mode: 0o700 },
+    );
+
+    const input =
+      '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}\n' +
+      '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"click","arguments":{}}}\n';
+    const result = await runBridge(bin, input, { EAC_CONTROL_URL: "", EAC_CONTROL_TOKEN: "" });
+
+    expect(result.code, result.stderr).toBe(0);
+    const lines = result.stdout.trim().split("\n").filter(Boolean).map((line) => JSON.parse(line));
+    // The refusal is written by the bridge and can overtake the child's echo of an earlier request; JSON-RPC matches by id.
+    expect(lines).toHaveLength(2);
+    expect(lines.find((line) => line.id === 1)).toEqual({ jsonrpc: "2.0", id: 1, result: { tools: [] } });
+    expect(lines.find((line) => line.id === 2)).toEqual({
+      jsonrpc: "2.0",
+      id: 2,
+      result: { content: [{ type: "text", text: CONTROL_PLANE_MISSING }], isError: true },
+    });
+    expect(result.stderr).toContain("no control gate configured");
+    expect(result.stderr).not.toContain("CALL-RECEIVED");
   });
 });

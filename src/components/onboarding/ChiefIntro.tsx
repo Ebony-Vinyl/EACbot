@@ -31,9 +31,9 @@ function canLead(bot: Bot, instances: ReturnType<typeof useStore>["state"]["inst
 
 /** The first run's second screen, over the empty app: EACbot as the person's Chief of Staff (Create), or, where they
  * already have bots, one of those (Choose, then Confirm). It shows only where no other bot is the Chief (chiefStepFits)
- * and asks for a choice, so Escape leaves only the list. Create flies EACbot onto its sidebar tile; the chat comes when
- * it lands (`onDone`), and `onLeave` fades the scrim with the dialog. */
-export function ChiefIntro({ replay, onDone, onLeave }: { replay: boolean; onDone: (botId: string | null) => void; onLeave?: () => void }) {
+ * and recommends a choice, but Set up later leaves the first run without one. Create flies EACbot onto its sidebar tile;
+ * the chat comes when it lands (`onDone`), and `onLeave` fades the scrim with the dialog. */
+export function ChiefIntro({ replay, onDone, onLeave, onLater }: { replay: boolean; onDone: (botId: string | null) => void; onLeave?: () => void; onLater?: () => void }) {
   const { state, dispatch } = useStore();
   const reduced = usePrefersReducedMotion();
   const viewer = useViewerEmail();
@@ -68,11 +68,11 @@ export function ChiefIntro({ replay, onDone, onLeave }: { replay: boolean; onDon
   };
 
   // Opacity only; a timer moves on, since a hidden window runs no animation to its end.
-  const leave = (botId: string | null, after: number) => {
+  const leave = (botId: string | null, after: number, then: () => void = () => onDone(botId)) => {
     setLeaving(true);
     onLeave?.();
     dialog.current?.animate([{ opacity: 1 }, { opacity: 0 }], { duration: CHIEF_FADE_MS, fill: "forwards" });
-    setTimeout(() => onDone(botId), after);
+    setTimeout(then, after);
   };
 
   const create = () => {
@@ -97,6 +97,12 @@ export function ChiefIntro({ replay, onDone, onLeave }: { replay: boolean; onDon
     if (maus && !maus.welcomed) dispatch({ type: "updateBot", botId: maus.id, patch: { welcomed: true } });
     if (!bot.chiefOfStaff) dispatch({ type: "updateBot", botId: bot.id, patch: { chiefOfStaff: true } });
     leave(bot.id, CHIEF_FADE_MS);
+  };
+
+  const skip = () => {
+    if (leaving) return;
+    setWelcomingBot(null);
+    leave(null, CHIEF_FADE_MS, onLater ?? (() => onDone(null)));
   };
 
   const enabled = choices.filter((bot) => canLead(bot, state.instances));
@@ -189,6 +195,12 @@ export function ChiefIntro({ replay, onDone, onLeave }: { replay: boolean; onDon
             )}
             <button type="button" data-primary="" data-chief-create="" onClick={create} disabled={!maus} className={cn(PRIMARY, "w-full min-w-0")}>
               <span className="truncate">{t("onboarding.chief.create")}</span>
+            </button>
+          </div>
+          <div className="px-4 pb-4 text-center">
+            <button type="button" data-chief-later="" onClick={skip} disabled={leaving}
+              className="rounded text-[13px] leading-[18px] text-ink-secondary transition-colors hover:text-ink disabled:opacity-50">
+              {t("onboarding.meet.setupLater")}
             </button>
           </div>
         </>

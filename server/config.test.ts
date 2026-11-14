@@ -2,7 +2,7 @@ import { chmodSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, utime
 import { join } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { botThreadLimitText, defaultBotThreads, maxConcurrentBotThreads, maxConcurrentChildThreads } from "./bot-thread-limits.ts";
+import { botThreadLimitText, defaultBotThreads, MAX_BOT_THREADS_SETTING, maxConcurrentBotThreads, maxConcurrentChildThreads } from "./bot-thread-limits.ts";
 import type { JsonValue } from "./schema.ts";
 import { imageSlots } from "./image-generation.ts";
 
@@ -151,7 +151,7 @@ describe("configuration boundaries", () => {
     expect(botThreadLimitText({ threads: { maxConcurrentPerBot: 5 } }, desktop(16))).toBe("this bot has reached its limit of 5 parallel threads — wait for one to finish");
     expect(parseStoredConfig({ threads: { maxConcurrentPerBot: 16 } })).toEqual({ threads: { maxConcurrentPerBot: 16 } });
     expect(maxConcurrentBotThreads(parseConfigPatch({ threads: { maxConcurrentPerBot: 1 } }))).toBe(1);
-    for (const value of [0, -1, 17, 1.5, "10", null]) {
+    for (const value of [0, -1, MAX_BOT_THREADS_SETTING + 1, 1.5, "10", null]) {
       expect(() => parseConfigPatch({ threads: { maxConcurrentPerBot: value } })).toThrow("threads.maxConcurrentPerBot");
     }
   });
@@ -2129,6 +2129,16 @@ describe("customMcpServers with url entries", () => {
       docs: { type: "sse", url: "https://docs.example/sse", headers: { Authorization: "Bearer t" } },
       notes: { command: "npx", args: [], env: {} },
     });
+  });
+
+  it("never mounts an old plain-http remote server, so no engine can send its headers", () => {
+    const cfg = {
+      mcpServers: {
+        legacy: { type: "http", url: "http://mcp.example.com/mcp", headers: { Authorization: "Bearer legacy-secret" }, enabled: true },
+        local: { type: "http", url: "http://127.0.0.1:8123/mcp", headers: {}, enabled: true },
+      },
+    } as Parameters<typeof customMcpServers>[0];
+    expect(customMcpServers(cfg)).toEqual({ local: { type: "http", url: "http://127.0.0.1:8123/mcp", headers: {} } });
   });
 });
 

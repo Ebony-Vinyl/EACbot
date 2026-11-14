@@ -8,8 +8,8 @@ import { z } from "zod";
 import { DEVS_REPORT_LIMITS, withoutContact, type DevsReportPayload } from "./devs-report.ts";
 
 export const BUG_REPORT_PATH = "/api/bug-reports";
+/** The Cloud origin host-doctor probes (server/headless/host-doctor.ts); bug reports never fall back to it. */
 export const PRODUCTION_CLOUD_ORIGIN = "https://cloud.eacbot.com";
-export const STAGING_CLOUD_ORIGIN = "https://omb-cloud-staging.fly.dev";
 const SEND_TIMEOUT_MS = 20_000;
 const ANSWER_MAX_BYTES = 16 * 1024;
 
@@ -20,19 +20,20 @@ export type SendOutcome =
   /** The endpoint refused this report; sending it again would be refused again. */
   | { ok: false; retry: false; why: "refused"; detail: string };
 
-/** EAC_BUG_REPORT_URL (an https address, or http on this machine's loopback, for fixtures), else a Cloud home's own
- * Admin origin, else the staging or production Cloud. */
-export function bugReportEndpoint(env: NodeJS.ProcessEnv, cloudOrigin?: string | null): string {
+const REPORTS_OFF = "Bug reports are turned off on this server.";
+
+/** EAC_BUG_REPORT_URL (an https address, or http on this machine's loopback, for fixtures). Empty when unset or invalid,
+ * so this server sends nothing: there is no built-in or Cloud-derived destination to fall back to. */
+export function bugReportEndpoint(env: NodeJS.ProcessEnv): string {
   const explicit = env.EAC_BUG_REPORT_URL?.trim();
   if (explicit) {
     try {
       const url = new URL(explicit);
       const loopback = url.protocol === "http:" && ["127.0.0.1", "[::1]", "localhost"].includes(url.hostname);
       if ((url.protocol === "https:" || loopback) && !url.username && !url.password) return url.href;
-    } catch { /* not an address: the default below */ }
+    } catch { /* not an address: off, never a public default */ }
   }
-  const origin = cloudOrigin ?? (env.EAC_CLOUD_STAGING === "1" ? STAGING_CLOUD_ORIGIN : PRODUCTION_CLOUD_ORIGIN);
-  return `${origin.replace(/\/+$/, "")}${BUG_REPORT_PATH}`;
+  return "";
 }
 
 async function boundedJson(response: Response): Promise<Record<string, unknown>> {
@@ -75,6 +76,7 @@ async function post(endpoint: string, payload: DevsReportPayload, fetcher: typeo
 export const devsReportSender = (endpoint: string, fetcher: typeof fetch = fetch) => (payload: DevsReportPayload) => sendDevsReport(endpoint, payload, fetcher);
 
 export async function sendDevsReport(endpoint: string, payload: DevsReportPayload, fetcher: typeof fetch = fetch): Promise<SendOutcome> {
+  if (!endpoint.trim()) return { ok: false, retry: false, why: "refused", detail: REPORTS_OFF };
   let answer = await post(endpoint, payload, fetcher);
   // An address the endpoint will not take must not cost the person their report.
   if (answer?.status === 400 && /contact/i.test(sentence(answer.body.error)) && (payload.contactEmail || payload.contact)) {
@@ -116,12 +118,14 @@ export function bugReportsHomeSignature(secret: string, machineId: string, times
   return createHmac("sha256", secret).update(`omb-bug-reports-v1\n${machineId}\n${timestamp}\n${nonce}\n${bodyHash}`).digest("base64url");
 }
 
-/** The question's address: the report endpoint's origin, at BUG_REPORT_STATUS_PATH. */
-export const bugReportStatusEndpoint = (reportEndpoint: string): string => new URL(BUG_REPORT_STATUS_PATH, reportEndpoint).href;
+/** The question's address: the report endpoint's origin, at BUG_REPORT_STATUS_PATH; empty when reports are off. */
+export const bugReportStatusEndpoint = (reportEndpoint: string): string =>
+  reportEndpoint.trim() ? new URL(BUG_REPORT_STATUS_PATH, reportEndpoint).href : "";
 
 /** One question; null when there is no usable answer (offline, an Admin from before this route, a refusal): asked again later. */
 export async function askReportStatus(endpoint: string, question: ReportStatusQuestion, home: ReportStatusHome | null, fetcher: typeof fetch = fetch,
   now = Date.now): Promise<ReportStatusAnswer | null> {
+  if (!endpoint.trim()) return null;
   const body = JSON.stringify({ installId: question.installId, ids: question.ids.slice(0, BUG_REPORT_STATUS_MAX_IDS) });
   const timestamp = String(Math.floor(now() / 1000)), nonce = randomBytes(18).toString("base64url");
   const signed: Record<string, string> = home ? { "x-omb-cloud-machine": home.machineId, "x-omb-cloud-timestamp": timestamp, "x-omb-cloud-nonce": nonce,

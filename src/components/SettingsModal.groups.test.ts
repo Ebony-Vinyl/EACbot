@@ -102,11 +102,12 @@ describe("Settings rail groups", () => {
     expect(SETTINGS_GROUPS.map((group) => group.id)).toEqual(["you", "ai", "computers", "account"]);
     const ids = SECTIONS.map((entry) => entry.id);
     expect(new Set(ids).size).toBe(ids.length);
-    expect(ids).toHaveLength(21); // 16 + the shared Skills library (AI group) + Image generation (AI) + Logins (Devices) + Import and a team's Bot access (Account)
+    expect(ids).toHaveLength(22); // 16 + the shared Skills library (AI group) + Image generation (AI) + Logins (Devices) + Import and a team's Bot access (Account) + Announcements
     for (const entry of SECTIONS) expect(SETTINGS_GROUPS.map((group) => group.id)).toContain(entry.group);
   });
 
   it("shows every desktop page under its labelled group", () => {
+    fixture.ownerOrAdmin = true;
     vi.stubGlobal("window", { ogb: { environments: {}, organization: {}, cloudAccount: {} } });
     const html = render();
     for (const label of ["You", "AI", "Devices", "Account"]) expect(html).toContain(`>${label}</div>`);
@@ -115,7 +116,7 @@ describe("Settings rail groups", () => {
       you: ["general", "appearance", "companion"],
       ai: ["engines", "connections", "decisionModel", "imageGeneration"],
       computers: ["desktopWorkspaces", "computer", "logins"],
-      account: ["cloudAccount", "organization", "usage", "backups", "import", "experimental"],
+      account: ["cloudAccount", "organization", "usage", "backups", "import", "people", "activity", "experimental", "announcements"],
     });
     expect(html).toContain('<optgroup label="AI">');
   });
@@ -123,7 +124,7 @@ describe("Settings rail groups", () => {
   it("keeps the browser-only pages for a hosted workspace's admins", () => {
     fixture.ownerOrAdmin = true;
     const groups = rail(render());
-    expect(groups.account).toEqual(["usage", "backups", "import", "people", "activity", "experimental"]);
+    expect(groups.account).toEqual(["usage", "backups", "import", "people", "activity", "experimental", "announcements"]);
     expect(Object.values(groups).flat()).not.toContain("desktopWorkspaces");
     expect(Object.values(groups).flat()).not.toContain("cloudAccount");
   });
@@ -137,6 +138,17 @@ describe("Settings rail groups", () => {
     fixture.config = {};
     fixture.ownerOrAdmin = true;
     expect(Object.values(rail(render())).flat()).not.toContain("botAccess");
+  });
+
+  it("shows People to an owner, and not to a member or on a cloud home", () => {
+    fixture.ownerOrAdmin = false;
+    expect(Object.values(rail(render())).flat()).not.toContain("people");
+    fixture.ownerOrAdmin = null;
+    expect(Object.values(rail(render())).flat()).not.toContain("people");
+    fixture.ownerOrAdmin = true;
+    expect(rail(render()).account).toContain("people");
+    fixture.config = { cloudHome: true };
+    expect(Object.values(rail(render())).flat()).not.toContain("people");
   });
 
   it("shows a paired remote client only Appearance, Remote access and Servers", () => {

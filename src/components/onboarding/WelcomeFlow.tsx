@@ -95,7 +95,8 @@ export function WelcomeFlow({
       if (keepsDraft) clearWelcomeDraft();
       onDone(botId);
       try {
-        const patch = replay ? completionPatch() : firstRunPatch(record.current, new Date());
+        // Skipping the Chief step completes the first run without claiming the Chief was met.
+        const patch = replay || reason === "skipped" ? completionPatch() : firstRunPatch(record.current, new Date());
         const config = await api("/api/config", { method: "PUT", body: JSON.stringify(patch), signal: AbortSignal.timeout(10_000) });
         dispatch({ type: "configStatus", config });
       } catch {
@@ -167,7 +168,8 @@ export function WelcomeFlow({
       )}
     >
       {chief ? (
-        <ChiefIntro replay={replay} onLeave={fadeScrim} onDone={(botId) => void finish("completed", botId)} />
+        <ChiefIntro replay={replay} onLeave={fadeScrim} onDone={(botId) => void finish("completed", botId)}
+          onLater={() => void finish("skipped", null)} />
       ) : (
         <MeetScreen hosted={hosted} onNext={next} />
       )}

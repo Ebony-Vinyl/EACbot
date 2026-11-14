@@ -273,7 +273,7 @@ describe("the relay", () => {
 });
 
 describe("adding from the shelf", () => {
-  it("adds a team with skills on, routines paused, and every record stamped", async () => {
+  it("adds a team with organization skills waiting for review, routines paused, and every record stamped", async () => {
     const app = await installation();
     app.store.createBot({ name: "Scout" });
     const library = app.open();
@@ -310,11 +310,11 @@ describe("adding from the shelf", () => {
     expect(byKey.get("lead")!.packageBase!.approval!.r).toBe(app.parts.partHash("auto"));
 
     expect(app.skills.listSkills(scout.id)).toEqual([
-      expect.objectContaining({ name: "pricing-policy", enabled: true, source: "org:acme/sales-desk@1.3.0" }),
-      expect.objectContaining({ name: "research-brief", enabled: true, source: "org:acme/sales-desk@1.3.0" }),
+      expect.objectContaining({ name: "pricing-policy", enabled: false, source: "org:acme/sales-desk@1.3.0" }),
+      expect.objectContaining({ name: "research-brief", enabled: false, source: "org:acme/sales-desk@1.3.0" }),
     ]);
     expect(app.skills.listSkills(scout.id)[0]).not.toHaveProperty("package");
-    expect(app.skills.skillPackageStamps(scout.id)).toContainEqual({ name: "pricing-policy", enabled: true,
+    expect(app.skills.skillPackageStamps(scout.id)).toContainEqual({ name: "pricing-policy", enabled: false,
       stamp: { installId, key: "pricing-policy", release: "1.3.0", r: expect.stringMatching(hex), w: expect.stringMatching(hex) } });
 
     expect(result.routines).toHaveLength(2);
@@ -462,7 +462,7 @@ describe("adding from the shelf", () => {
     expect(app.posted.at(-1).packages).toEqual([
       { packageId: TEAM_ID, release: "1.3.0", sha256: team.sha256, state: "removed", reason: "removed_locally" },
     ]);
-    expect(app.skills.listSkills(own.id)).toEqual([expect.objectContaining({ name: "objection-handling", enabled: true })]);
+    expect(app.skills.listSkills(own.id)).toEqual([expect.objectContaining({ name: "objection-handling", enabled: false })]);
     const again = library.add(TEAM_ID, app.importDeps) as any;
     expect(again).toMatchObject({ ok: true, status: 201 });
     expect(again.value.result.bots).toHaveLength(3);
@@ -655,7 +655,7 @@ describe("adding from the shelf", () => {
       ],
     });
     const added = library.addOfferedSkill(bot.id, installId, "follow-up");
-    expect(added).toMatchObject({ ok: true, status: 201, value: { name: "follow-up", enabled: true, source: "org:acme/sales-skills@2.0.1" } });
+    expect(added).toMatchObject({ ok: true, status: 201, value: { name: "follow-up", enabled: false, source: "org:acme/sales-skills@2.0.1" } });
     expect(library.addOfferedSkill(bot.id, installId, "follow-up")).toMatchObject({ ok: false, status: 409, code: "skill_exists" });
     expect(library.addOfferedSkill(bot.id, installId, "not-offered")).toMatchObject({ ok: false, status: 404 });
     expect(library.offeredSkills(bot.id).skills.find((skill) => skill.name === "follow-up")!.added).toBe(true);
@@ -835,7 +835,7 @@ describe("presets from the shelf", () => {
     presets.applyPresetToBot(made.id, app.importDeps.presets.resolve(row!.id)!, app.importDeps);
     expect(app.store.bot(made.id)!.installedPackage).toMatchObject({ source: "org", installId, presetKey: "support" });
     const released = team.document.package.skills.entries.find((skill: { name: string }) => skill.name === "objection-handling").instructions;
-    expect(app.skills.skillPackageStamps(made.id)).toEqual([{ name: "objection-handling", enabled: true, stamp: {
+    expect(app.skills.skillPackageStamps(made.id)).toEqual([{ name: "objection-handling", enabled: false, stamp: {
       installId, key: "objection-handling", release: "1.3.0", r: app.parts.partHash(released),
       w: app.parts.partHash(app.skills.readSkillFile(made.id, "objection-handling")), via: "preset",
     } }]);
@@ -853,7 +853,7 @@ describe("presets from the shelf", () => {
     expect(app.importDeps.presets.list()).toEqual([expect.objectContaining({ id: row!.id, installId, key: "support" })]);
     expect(app.readState().installs[installId]).toMatchObject({ status: "installed", presets: { support: { presetId: row!.id } } });
     expect(library.add(TEAM_ID, app.importDeps)).toMatchObject({ ok: true, status: 200, value: { alreadyAdded: true } });
-    expect(app.skills.skillPackageStamps(made.id)).toEqual([expect.objectContaining({ name: "objection-handling", enabled: true })]);
+    expect(app.skills.skillPackageStamps(made.id)).toEqual([expect.objectContaining({ name: "objection-handling", enabled: false })]);
   });
 
   it("never adopts an install from a preset-made bot's stamped skill: a lost index comes back at the release that was added", async () => {
@@ -941,7 +941,7 @@ describe("presets from the shelf", () => {
     expect(indexed.presets).toEqual({ support: { presetId: row!.id, r: app.parts.partHash(skills.document.package.presets[0]) } });
     const made = app.store.createBot({ name: "Sky" });
     presets.applyPresetToBot(made.id, app.importDeps.presets.resolve(row!.id)!, app.importDeps);
-    expect(app.skills.listSkills(made.id)).toEqual([expect.objectContaining({ name: "objection-handling", enabled: true, source: "org:acme/sales-skills@2.0.1" })]);
+    expect(app.skills.listSkills(made.id)).toEqual([expect.objectContaining({ name: "objection-handling", enabled: false, source: "org:acme/sales-skills@2.0.1" })]);
     const mine = app.store.createBot({ name: "Mine" });
     presets.applyPresetToBot(mine.id, app.importDeps.presets.resolve(row!.id)!, app.importDeps);
     app.skills.removeSkill(mine.id, "objection-handling");
@@ -1051,6 +1051,19 @@ describe("a newer release of an added team", () => {
     expect(botOf("lead").soul).toBe("My own instructions.");
   });
 
+  it("keeps an organization skill on when the person enabled it before an update", async () => {
+    const { app, botOf, update } = await addedTeam();
+    const lead = botOf("lead");
+    expect(app.skills.setSkillEnabled(lead.id, "pricing-policy", true)).toMatchObject({ enabled: true });
+
+    await update();
+
+    expect(app.skills.listSkills(lead.id).find((skill) => skill.name === "pricing-policy")).toMatchObject({
+      enabled: true,
+      source: "org:acme/sales-desk@1.4.0",
+    });
+  });
+
   it("adds a skill new to a bot in this release, never one the person took off, and keeps a skill switched off", async () => {
     const { app, botOf, update } = await addedTeam();
     const lead = botOf("lead");
@@ -1062,7 +1075,7 @@ describe("a newer release of an added team", () => {
       NEXT(document);
       document.package.agents.find((agent: any) => agent.key === "lead").skills.push("objection-handling");
     }));
-    expect(app.skills.listSkills(lead.id).map((skill) => [skill.name, skill.enabled]).sort()).toEqual([["objection-handling", true], ["pricing-policy", false]]);
+    expect(app.skills.listSkills(lead.id).map((skill) => [skill.name, skill.enabled]).sort()).toEqual([["objection-handling", false], ["pricing-policy", false]]);
     expect(app.skills.readSkillFile(lead.id, "pricing-policy")).toMatch(/Seats are 59 from January\./);
     expect(app.skills.listSkills(scout.id).map((skill) => skill.name)).not.toContain(scoutHad[0]);
   });

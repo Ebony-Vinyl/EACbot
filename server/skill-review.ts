@@ -318,6 +318,8 @@ export interface SkillReviewDeps {
   skills: (botId: string) => ReviewSkill[];
   currentSha: (botId: string, name: string) => string | null;
   apply: (botId: string, threadId: string, change: ReviewChange) => { ok: true } | { ok: false; error: string };
+  /** Keeps a refused change for the person to approve instead of dropping it. */
+  defer?: (botId: string, threadId: string, change: ReviewChange) => { ok: true } | { ok: false; error: string };
   statePath: string;
   settleDelayMs?: number;
   now?: () => number;
@@ -441,6 +443,8 @@ export function createSkillReview(deps: SkillReviewDeps): SkillReview {
       return { state: "skipped", applied: [], note: "the conversation is gone" };
     }
     const applied: string[] = [];
+    const deferred: string[] = [];
+    const failures: string[] = [];
     for (const change of pending.changes) {
       if (change.action === "update" && deps.currentSha(botId, change.name) !== change.baseSha256) {
         log(`${botId}: left "${change.name}" alone — it changed after the review read it`);
@@ -448,11 +452,25 @@ export function createSkillReview(deps: SkillReviewDeps): SkillReview {
       }
       const result = deps.apply(botId, pending.threadId, change);
       if (result.ok) applied.push(change.name);
-      else log(`${botId}: could not ${change.action} "${change.name}": ${result.error}`);
+      else {
+        const kept = deps.defer?.(botId, pending.threadId, change);
+        if (kept?.ok) {
+          deferred.push(change.name);
+          log(`${botId}: kept "${change.name}" for approval: ${result.error}`);
+        } else {
+          const why = kept && "error" in kept ? `${result.error}; could not keep it: ${kept.error}` : result.error;
+          failures.push(why);
+          log(`${botId}: could not ${change.action} "${change.name}": ${why}`);
+        }
+      }
     }
     settleCounter(botId, pending.threadId, pending.steps);
-    log(`${botId}: ${applied.length ? `changed ${applied.join(", ")}` : pending.note || "Nothing to save."}`);
-    return { state: applied.length ? "applied" : "nothing", applied, ...(pending.note ? { note: pending.note } : {}) };
+    log(`${botId}: ${applied.length ? `changed ${applied.join(", ")}` : deferred.length ? `kept ${deferred.join(", ")} for approval` : failures[0] || pending.note || "Nothing to save."}`);
+    return {
+      state: applied.length ? "applied" : deferred.length ? "deferred" : failures.length ? "failed" : "nothing",
+      applied,
+      ...(pending.note || failures.length ? { note: [pending.note, ...failures].filter(Boolean).join("; ") } : {}),
+    };
   };
 
   async function review(botId: string, threadId: string, controller: AbortController): Promise<ReviewReport> {

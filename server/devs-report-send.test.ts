@@ -55,16 +55,24 @@ describe("sending a @devs report", () => {
     expect(outcome).toMatchObject({ ok: false, retry: false, why: "refused" });
     expect(sent).toHaveLength(0);
   });
+
+  it("sends nothing when no report endpoint is configured", async () => {
+    const { sent, fetcher } = endpoint(answer(201, { id: "r3" }));
+    expect(await sendDevsReport("", PAYLOAD, fetcher)).toEqual({
+      ok: false, retry: false, why: "refused", detail: "Bug reports are turned off on this server.",
+    });
+    expect(sent).toHaveLength(0);
+  });
 });
 
 describe("where reports go", () => {
-  it("is a fixture's loopback or https address, else a Cloud home's own origin, else the staging or production Cloud", () => {
+  it("is only the address EAC_BUG_REPORT_URL names, and off otherwise", () => {
     expect(bugReportEndpoint({ EAC_BUG_REPORT_URL: "http://127.0.0.1:4400/api/bug-reports" })).toBe("http://127.0.0.1:4400/api/bug-reports");
-    expect(bugReportEndpoint({ EAC_BUG_REPORT_URL: "http://192.0.2.1/api/bug-reports" })).toBe("https://cloud.eacbot.com/api/bug-reports");
-    expect(bugReportEndpoint({ EAC_BUG_REPORT_URL: "https://user:pw@evil.example/x" })).toBe("https://cloud.eacbot.com/api/bug-reports");
-    expect(bugReportEndpoint({}, "https://cloud.eacbot.com")).toBe("https://cloud.eacbot.com/api/bug-reports");
-    expect(bugReportEndpoint({ EAC_CLOUD_STAGING: "1" })).toBe("https://omb-cloud-staging.fly.dev/api/bug-reports");
-    expect(bugReportEndpoint({})).toBe("https://cloud.eacbot.com/api/bug-reports");
+    expect(bugReportEndpoint({ EAC_BUG_REPORT_URL: "https://cloud.example/api/bug-reports" })).toBe("https://cloud.example/api/bug-reports");
+    expect(bugReportEndpoint({ EAC_BUG_REPORT_URL: "http://192.0.2.1/api/bug-reports" })).toBe("");
+    expect(bugReportEndpoint({ EAC_BUG_REPORT_URL: "https://user:pw@evil.example/x" })).toBe("");
+    expect(bugReportEndpoint({ EAC_CLOUD_STAGING: "1" })).toBe("");
+    expect(bugReportEndpoint({})).toBe("");
   });
 });
 
@@ -107,5 +115,13 @@ describe("asking what became of the reports this app sent", () => {
     const many = endpoint(answer(200, { reports: [], notify: true }));
     await askReportStatus("https://cloud.example/api/bug-reports/status", { ...QUESTION, ids: Array.from({ length: 60 }, (_, index) => `r${index}`) }, null, many.fetcher);
     expect((many.sent[0]!.body.ids as string[]).length).toBe(50);
+  });
+
+  it("asks nothing when no report endpoint is configured", async () => {
+    const { sent, fetcher } = endpoint(answer(200, ANSWER));
+    expect(bugReportStatusEndpoint("")).toBe("");
+    expect(await askReportStatus("", QUESTION, null, fetcher)).toBeNull();
+    expect(await devsStatusAsker("", null, fetcher)(QUESTION)).toBeNull();
+    expect(sent).toHaveLength(0);
   });
 });

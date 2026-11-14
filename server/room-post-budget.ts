@@ -1,3 +1,5 @@
+import { positiveLimit, quotaLimits, type QuotaLimits } from "./limits.ts";
+
 export interface RoomPostRecord {
   botId: string;
   text: string;
@@ -27,10 +29,40 @@ const SENDER_WINDOW_MS = 60_000;
 const SENDER_MAX = 10;
 const DUPLICATE_WINDOW_MS = 60_000;
 const RING_WINDOW_MS = 120_000;
-const BREAKER_COOLDOWN_MS = 5 * 60_000;
+const DEFAULT_BREAKER_MINUTES = 5;
 const ESCALATE_WINDOW_MS = 5 * 60_000;
 const ESCALATE_MAX = 2;
-const RETENTION_MS = Math.max(SENDER_WINDOW_MS, DUPLICATE_WINDOW_MS, RING_WINDOW_MS, ESCALATE_WINDOW_MS);
+
+/** Room posts one bot turn may make: config.json "limits.roomPostsPerTurn", else the original 3. */
+export const DEFAULT_ROOM_POSTS_PER_TURN = 3;
+export function roomPostsPerTurn(): number {
+  return positiveLimit(quotaLimits().roomPostsPerTurn, DEFAULT_ROOM_POSTS_PER_TURN);
+}
+
+/** The posting budgets config.json may raise; absent keys keep the original numbers. */
+export interface RoomPostLimits {
+  /** Posts one bot may make in a room in a minute. */
+  senderMax: number;
+  /** Unanswered bot posts a room takes before it asks a person; 0 refuses every unanswered post. */
+  escalateMax: number;
+  /** How long a room stays closed after the loop breaker trips. */
+  breakerCooldownMs: number;
+  /** How long a record is kept, so a raised budget still sees the posts it must count. */
+  retentionMs: number;
+}
+
+const nonNegative = (value: number | undefined, fallback: number): number =>
+  typeof value === "number" && Number.isInteger(value) && value >= 0 ? value : fallback;
+
+export function roomPostLimits(configured: QuotaLimits = quotaLimits()): RoomPostLimits {
+  const breakerCooldownMs = positiveLimit(configured.roomBreakerMinutes, DEFAULT_BREAKER_MINUTES) * 60_000;
+  return {
+    senderMax: positiveLimit(configured.roomPostsPerMinute, SENDER_MAX),
+    escalateMax: nonNegative(configured.roomPostsWithoutReply, ESCALATE_MAX),
+    breakerCooldownMs,
+    retentionMs: Math.max(SENDER_WINDOW_MS, DUPLICATE_WINDOW_MS, RING_WINDOW_MS, ESCALATE_WINDOW_MS, breakerCooldownMs),
+  };
+}
 
 export function emptyRoomPostBudget(): RoomPostBudget {
   return { posts: [] };
@@ -48,10 +80,14 @@ function closesRing(senders: string[], candidate: string): boolean {
 }
 
 /** Refusals are never recorded: counting them would let a blocked bot deepen its own block. */
-export function decideRoomPost(budget: RoomPostBudget, attempt: RoomPostAttempt): RoomPostDecision {
+export function decideRoomPost(
+  budget: RoomPostBudget,
+  attempt: RoomPostAttempt,
+  limits: RoomPostLimits = roomPostLimits(),
+): RoomPostDecision {
   const { botId, botName, text, now, lastHumanAt } = attempt;
-  const posts = budget.posts.filter((post) => now - post.at < RETENTION_MS);
-  const tripped = budget.trippedAt !== undefined && now - budget.trippedAt < BREAKER_COOLDOWN_MS
+  const posts = budget.posts.filter((post) => now - post.at < limits.retentionMs);
+  const tripped = budget.trippedAt !== undefined && now - budget.trippedAt < limits.breakerCooldownMs
     ? budget.trippedAt
     : undefined;
   const kept: RoomPostBudget = tripped === undefined ? { posts } : { posts, trippedAt: tripped };
@@ -85,16 +121,16 @@ export function decideRoomPost(budget: RoomPostBudget, attempt: RoomPostAttempt)
     );
   }
   const bySender = posts.filter((post) => post.botId === botId && now - post.at < SENDER_WINDOW_MS).length;
-  if (bySender >= SENDER_MAX) {
+  if (bySender >= limits.senderMax) {
     return refuse(
       "sender-rate",
-      `You have posted ${SENDER_MAX} times in this room in the last minute, which is the limit. Do not retry this call — finish your turn and say anything further to the user directly.`,
+      `You have posted ${limits.senderMax} times in this room in the last minute, which is the limit. Do not retry this call — finish your turn and say anything further to the user directly.`,
     );
   }
   const unanswered = posts.filter(
     (post) => now - post.at < ESCALATE_WINDOW_MS && (lastHumanAt === undefined || post.at > lastHumanAt),
   ).length;
-  if (unanswered >= ESCALATE_MAX) {
+  if (unanswered >= limits.escalateMax) {
     return refuse(
       "escalate",
       `This room has already taken ${unanswered} bot posts that nobody has answered, which is as far as bots go without a person. Stop posting and ask the user what they want said in the room — tell them that anything they write in the room themselves re-opens it, and that it also re-opens by itself after a few minutes. Do not retry this call.`,

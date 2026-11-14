@@ -24,10 +24,12 @@ export interface HoldShift<T> {
 export interface AppliedHolds<R, Run> extends HoldShift<R> {
   /** Queued runs of the paused routines, cancelled before they started. */
   cancelled: Run[];
+  /** Running or waiting runs of the paused routines, stopped with them. */
+  stopped: Run[];
 }
 
 type HeldRoutine = { id: string; enabled: boolean; heldFor?: RoutineHoldCause; nextRunAt: number | null; schedule: { type: string } };
-type HeldRun = { routineId: string; status: string; attention?: string; finishedAt?: number; error?: string };
+type HeldRun = { routineId: string; status: string; target?: string; goalStatus?: string; attention?: string; finishedAt?: number; error?: string };
 
 /** Turns the routines a change of cause holds off (their queued runs cancelled) and the ones it frees back on from `now`.
  * `next` is the routine's first occurrence from `now`; a one-time run whose time passed while it waited stays over. */
@@ -42,7 +44,14 @@ export function applyHolds<R extends HeldRoutine, Run extends HeldRun>(routines:
   const paused = new Set(shift.paused.map((routine) => routine.id));
   const cancelled = runs.filter((run) => run.status === "queued" && paused.has(run.routineId));
   for (const run of cancelled) Object.assign(run, { status: "cancelled", attention: undefined, finishedAt: now, error: "The routine was paused before this run started" });
-  return { ...shift, cancelled };
+  // Pausing is meant to stop the routine, not only its next start: a run already working would otherwise keep using
+  // tools and could still message someone after the owner left.
+  const stopped = runs.filter((run) => ["running", "waiting"].includes(run.status) && paused.has(run.routineId));
+  for (const run of stopped) Object.assign(run, {
+    status: "cancelled", ...(run.target === "room-goal" ? { goalStatus: "stopped" } : {}),
+    attention: undefined, finishedAt: now, error: "The routine was paused while this run was still working",
+  });
+  return { ...shift, cancelled, stopped };
 }
 
 /** Stamps the routines a change from `before` to `after` holds or frees. A routine held for a cause that ended takes the

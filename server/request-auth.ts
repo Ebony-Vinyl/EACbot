@@ -1,5 +1,5 @@
 // Loopback requests (Host and Origin both loopback) or paired sessions (bearer, cookie, stream ticket); a session swaps the loopback rule for same-origin (CSRF) and a scope check.
-// Browsers never get loopback trust: a page a bot opens is a browser on this machine too.
+// A browser gets loopback trust only as a self-hosted owner server's own same-origin page; every other browser, a shared server's and the desktop app's need a session.
 import type { IncomingMessage } from "node:http";
 import { timingSafeEqual } from "node:crypto";
 import { isIP } from "node:net";
@@ -131,6 +131,27 @@ export function isLoopbackHost(host: string | undefined): boolean {
   return hostname === "::1" || hostname === "0:0:0:0:0:0:0:1";
 }
 
+/** The TCP peer's address on this machine. Node reports a dual-stack IPv4 peer as `::ffff:127.x.x.x` or
+ * `::ffff:7fxx:xxxx`, so both mapped forms count. */
+export function isLoopbackPeer(address: string | undefined): boolean {
+  if (!address) return false;
+  const value = address.trim().toLowerCase();
+  const family = isIP(value);
+  if (family === 4) return value.startsWith("127.");
+  if (family !== 6) return false;
+  if (value === "::1" || value === "0:0:0:0:0:0:0:1") return true;
+  const mapped = /^::ffff:(.+)$/.exec(value)?.[1];
+  if (!mapped) return false;
+  if (isIP(mapped) === 4) return mapped.startsWith("127.");
+  const words = /^([0-9a-f]{1,4}):([0-9a-f]{1,4})$/.exec(mapped);
+  return words !== null && (parseInt(words[1], 16) >>> 8) === 0x7f;
+}
+
+/** A live IncomingMessage always carries its TCP peer; a hand-built fixture may omit the socket entirely. */
+function hasLoopbackPeer(req: IncomingMessage): boolean {
+  return req.socket === undefined || isLoopbackPeer(req.socket.remoteAddress);
+}
+
 /** Browsers send Sec-Fetch-Site and Sec-Fetch-Dest on every request to a loopback address and Origin on every WebSocket
  * handshake (Chrome 155 sends no Sec-Fetch-* there); a page can remove none of them. Node's fetch (undici) sends
  * Sec-Fetch-Mode alone, so it does not count; curl, the companion and the desktop app's main process send none. */
@@ -176,10 +197,13 @@ export function requestOrigin(req: IncomingMessage): string | null {
   return `${proto}://${host.toLowerCase()}`;
 }
 
-/** A proxy that hands the server a loopback Host must not turn a remote client into the owner. */
+const PROXY_HEADERS = ["x-forwarded-for", "x-forwarded-proto", "x-forwarded-host", "forwarded", "x-real-ip"] as const;
+
+/** A proxy that hands the server a loopback Host must not turn a remote client into the owner. A header's presence
+ * counts even when its value is empty: a proxy may strip the value while still being the request's only peer. */
 export function isProxied(req: IncomingMessage): boolean {
   const h = req.headers;
-  return ipcPeer(req) || Boolean(h["x-forwarded-for"] || h["x-forwarded-proto"] || h["x-forwarded-host"] || h["forwarded"]);
+  return ipcPeer(req) || PROXY_HEADERS.some((name) => h[name] !== undefined);
 }
 
 /** An IPC listener's only peer is a forwarding gateway, so its requests are remote: never loopback trust. */
@@ -207,13 +231,19 @@ export function fromOwnPage(req: IncomingMessage): boolean {
 /** Unlike isSameOrigin, a request with neither Origin nor Sec-Fetch-Site fails. */
 export function provesSameOrigin(req: IncomingMessage): boolean {
   if (headerValue(req.headers.origin)) return isSameOrigin(req);
-  return headerValue(req.headers["sec-fetch-site"])?.trim().toLowerCase() === "same-origin";
+  const site = headerValue(req.headers["sec-fetch-site"])?.trim().toLowerCase();
+  if (site === "same-origin") return true;
+  // A person typing this server's address, following a bookmark or an outside link sends no Origin and reports
+  // "none". Accept that only for a top-level document navigation, which no other page can forge for itself.
+  const mode = headerValue(req.headers["sec-fetch-mode"])?.trim().toLowerCase();
+  const dest = headerValue(req.headers["sec-fetch-dest"])?.trim().toLowerCase();
+  return site === "none" && mode === "navigate" && dest === "document";
 }
 
 /** Remote clients arrive through a local proxy whose X-Forwarded-For names the source (Caddy overwrites the client's). */
 export function requestSource(req: IncomingMessage): string {
   const peer = req.socket?.remoteAddress || "unknown";
-  const viaLocalProxy = ipcPeer(req) || peer === "127.0.0.1" || peer === "::1" || peer === "::ffff:127.0.0.1";
+  const viaLocalProxy = ipcPeer(req) || isLoopbackPeer(peer);
   // Only the LAST hop was written by the trusted same-machine proxy.
   const hops = viaLocalProxy ? (headerValue(req.headers["x-forwarded-for"]) ?? "").split(",").map((h) => h.trim()).filter(Boolean) : [];
   const forwarded = hops.length ? hops[hops.length - 1] : undefined;
@@ -602,7 +632,7 @@ export function resolveRequestAuth(req: IncomingMessage, options: ResolveOptions
   }
 
   const proxied = isProxied(req);
-  const loopback = !proxied && isLoopbackHost(headerValue(req.headers.host)) && isAllowedOrigin(headerValue(req.headers.origin));
+  const loopback = !proxied && hasLoopbackPeer(req) && isLoopbackHost(headerValue(req.headers.host)) && isAllowedOrigin(headerValue(req.headers.origin));
   if (loopback) {
     const companionToken = headerValue(req.headers["x-openmausbot-companion-auth"]);
     if (companionToken && options.loopbackMutationToken !== undefined) {
@@ -616,7 +646,15 @@ export function resolveRequestAuth(req: IncomingMessage, options: ResolveOptions
     }
     const desktopOwner = options.loopbackMutationToken !== undefined &&
       secureTokenMatch(headerValue(req.headers[DESKTOP_OWNER_HEADER]), options.loopbackMutationToken) && fromOwnPage(req);
-    if (fromBrowser(req) && !desktopOwner && !options.trustLocalBrowser) return deny(401, BROWSER_SIGN_IN);
+    // A page this server itself served on a single-user owner server is the owner, but only when the browser proves
+    // the request comes from that exact origin. Any other page on this machine (another port, a file, a sandbox) is not;
+    // a shared server and the desktop app keep requiring a session, so proxy, service and mutation boundaries do not move.
+    if (fromBrowser(req) && !desktopOwner && !options.trustLocalBrowser) {
+      const ownPageOwner = options.loopbackMutationToken === undefined &&
+        options.loopbackTrust !== "service" &&
+        provesSameOrigin(req);
+      if (!ownPageOwner) return deny(401, BROWSER_SIGN_IN);
+    }
     if (options.loopbackMutationToken !== undefined && mutatingPublicRoute(method, path) && !desktopOwner) {
       return deny(403, "forbidden: this change must come from the desktop app or a paired device");
     }
@@ -640,6 +678,9 @@ export function resolveRequestAuth(req: IncomingMessage, options: ResolveOptions
     return deny(403, "forbidden: this request came through a proxy (pair this device to use the server remotely)");
   }
   if (!isLoopbackHost(headerValue(req.headers.host))) {
+    return deny(403, "forbidden: loopback host required (pair this device to use the server remotely)");
+  }
+  if (!hasLoopbackPeer(req)) {
     return deny(403, "forbidden: loopback host required (pair this device to use the server remotely)");
   }
   return deny(403, "forbidden: cross-origin request");

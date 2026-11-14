@@ -1,6 +1,6 @@
-// The full server as a Cloud home, from boot to Connected apps: it registers its own installation with the connected-apps
-// service (a local stand-in), keeps it across a restart, and serves the service's whole catalog. Disposable home; every
-// other request is offline.
+// The full server as a Cloud home, from boot to Connected apps: booting registers nothing, the first catalog request
+// registers its own installation with the connected-apps service (a local stand-in), and a restart keeps it. Disposable
+// home; every other request is offline.
 import { randomBytes } from "node:crypto";
 import { spawn, type ChildProcess } from "node:child_process";
 import { createServer, type Server } from "node:http";
@@ -48,7 +48,7 @@ async function api(method: string, path: string, options: { body?: unknown; remo
   return { status: response.status, body: await response.json().catch(() => null) as any };
 }
 
-async function boot(): Promise<void> {
+async function boot(extraEnv: Record<string, string> = {}): Promise<void> {
   // Offline but for the stand-in service, so the server reaches nothing else.
   const prelude = `data:text/javascript,${encodeURIComponent(`const real = globalThis.fetch;
 globalThis.fetch = async (input, init) => {
@@ -66,6 +66,7 @@ globalThis.fetch = async (input, init) => {
       EAC_CLOUD_BOOTSTRAP_SECRET: secret, EAC_PUBLIC_URL: `https://${HOST}`,
       // From source the server registers nowhere unless told where, as here.
       EAC_COMPOSIO_BROKER_URL: brokerUrl,
+      ...extraEnv,
     },
     stdio: ["ignore", "pipe", "pipe"],
   });
@@ -89,6 +90,8 @@ globalThis.fetch = async (input, init) => {
   }, body: JSON.parse(body) });
   ownerToken = (await api("POST", "/api/auth/pair", { remote: true, body: { code: granted.body.code } })).body.token as string;
 }
+
+const pause = (ms = 500) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function catalog() {
   let reply: Awaited<ReturnType<typeof api>> | undefined;
@@ -156,6 +159,10 @@ afterAll(async () => {
 
 describe("connected apps on a Cloud home", { timeout: 90_000 }, () => {
   it("come included: the Cloud registers itself and serves the service's whole catalog, with no key to add", async () => {
+    // Starting a Cloud home nobody has opened Connected Apps on reaches no broker.
+    await pause();
+    expect(brokerCalls).toEqual([]);
+
     const body = await catalog();
     expect(body).toMatchObject({ configured: true, mode: "managed", setup: "ready", source: "api" });
     expect(body.cards.map((card: { slug: string }) => card.slug)).toEqual(expect.arrayContaining(["outlook", "linkedin", "calendly"]));
@@ -179,12 +186,17 @@ describe("connected apps on a Cloud home", { timeout: 90_000 }, () => {
     child = null;
     const before = brokerCalls.length;
     await boot();
+    await pause();
+    expect(brokerCalls.slice(before)).toEqual([]);
     const body = await catalog();
     expect(body).toMatchObject({ configured: true, mode: "managed", setup: "ready" });
     const since = brokerCalls.slice(before);
     expect(since).toContainEqual({ method: "GET", path: "/v1/me", bearer: `Bearer ${brokerToken}` });
     expect(since.filter((call) => call.path === "/v1/installations")).toEqual([]);
     expect(brokerCalls.filter((call) => call.path === "/v1/installations")).toHaveLength(1);
+    // Opening Connected Apps again reuses the checked installation instead of checking it twice.
+    await catalog();
+    expect(since.filter((call) => call.path === "/v1/me")).toHaveLength(1);
   });
 
   it("while the service will not register it, still starts, and says the included service is unavailable instead of asking for a key", async () => {
@@ -194,10 +206,26 @@ describe("connected apps on a Cloud home", { timeout: 90_000 }, () => {
     registrationOpen = false;
     const before = brokerCalls.filter((call) => call.path === "/v1/installations").length;
     await boot();
-    await expect.poll(() => brokerCalls.filter((call) => call.path === "/v1/installations").length, { timeout: 15_000 }).toBe(before + 1);
-    await expect.poll(() => log.includes("connected-apps registration failed: registration is temporarily closed"), { timeout: 15_000 }).toBe(true);
+    await pause();
+    expect(brokerCalls.filter((call) => call.path === "/v1/installations")).toHaveLength(before);
     const reply = await api("GET", "/api/connectors/catalog");
     expect(reply.status).toBe(200);
     expect(reply.body).toMatchObject({ configured: false, mode: "unavailable", setup: "service-unavailable" });
+    expect(brokerCalls.filter((call) => call.path === "/v1/installations")).toHaveLength(before + 1);
+    expect(log).toContain("connected-apps registration failed: registration is temporarily closed");
+  });
+
+  it("registers nothing when EAC_CONNECTED_APPS_REGISTER is off", async () => {
+    await waitForExit(child!, { signal: "SIGTERM" });
+    child = null;
+    rmSync(join(dataDir, CLOUD_CONNECTED_APPS_FILE), { force: true });
+    registrationOpen = true;
+    const before = brokerCalls.length;
+    await boot({ EAC_CONNECTED_APPS_REGISTER: "0" });
+    await pause();
+    const reply = await api("GET", "/api/connectors/catalog");
+    expect(reply.body).toMatchObject({ configured: false, mode: "unavailable" });
+    expect(brokerCalls.slice(before)).toEqual([]);
+    expect(log).toContain("connected-apps registration is switched off");
   });
 });

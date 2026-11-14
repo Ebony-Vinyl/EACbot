@@ -310,6 +310,15 @@ describe("advertised base URL", () => {
     for (const bad of ["bots.example.com", "ftp://bots.example.com", "", "/hooks"]) {
       expect(() => advertisedWebhookBase(bad)).toThrow(/absolute http\(s\) URL such as https:\/\//);
     }
-    expect(advertisedWebhookBase("http://10.0.0.5:8800///")).toBe("http://10.0.0.5:8800");
+  });
+
+  it("requires https for a public base and allows http only on a loopback address", () => {
+    for (const loopback of ["http://127.0.0.1:8800///", "http://localhost:8800", "http://[::1]:8800"]) {
+      expect(advertisedWebhookBase(loopback)).toBe(loopback.replace(/\/+$/, ""));
+    }
+    for (const publicHttp of ["http://bots.example.com", "http://10.0.0.5:8800", "http://192.168.1.4:8800"]) {
+      expect(() => advertisedWebhookBase(publicHttp)).toThrow(/must use https unless it is a loopback address/);
+    }
+    expect(advertisedWebhookBase("https://bots.example.com///")).toBe("https://bots.example.com");
   });
 });

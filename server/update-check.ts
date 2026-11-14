@@ -1,9 +1,23 @@
-// A self-hosted server cannot replace itself, so this only says whether a newer release exists and how this install is updated.
+// A self-hosted server cannot replace itself, so this only says whether a newer release exists and how this install is
+// updated. It asks a release endpoint only when EAC_UPDATE_CHECK_URL names one: an install with no such setting never
+// makes the request.
 import { existsSync } from "node:fs";
 import { join, sep } from "node:path";
 
-export const LATEST_RELEASE_URL = "https://api.github.com/repos/milind-soni/EACbot/releases/latest";
 const CACHE_MS = 60 * 60_000;
+
+/** EAC_UPDATE_CHECK_URL: the release endpoint to ask, an https address (or http on this machine's loopback, for
+ * fixtures). Empty when unset, invalid, or carrying credentials; then this server does not check at all. */
+export function updateCheckUrl(env: NodeJS.ProcessEnv = process.env): string {
+  const text = env.EAC_UPDATE_CHECK_URL?.trim();
+  if (!text) return "";
+  try {
+    const url = new URL(text);
+    const loopback = url.protocol === "http:" && ["127.0.0.1", "[::1]", "localhost"].includes(url.hostname);
+    if ((url.protocol === "https:" || loopback) && !url.username && !url.password) return url.href;
+  } catch { /* not an address */ }
+  return "";
+}
 
 /** "managed" is a hosted or Cloud server that is updated for its owner. */
 export type InstallKind = "desktop" | "managed" | "docker" | "podman" | "npm" | "git" | "unknown";
@@ -67,17 +81,21 @@ export interface UpdateCheck {
   releaseUrl?: string;
   command?: string;
   restart?: boolean;
+  /** false when no release source is configured (EAC_UPDATE_CHECK_URL unset): nothing was asked. */
+  checked?: boolean;
 }
 
-/** One cached GitHub lookup an hour, shared by every caller. */
+/** One cached lookup an hour, shared by every caller; an empty url means no lookup. */
 export function createUpdateChecker(options: {
   current: string;
   install: InstallKind;
+  url?: string;
   fetch?: typeof fetch;
   now?: () => number;
 }) {
   const fetchRelease = options.fetch ?? fetch;
   const now = options.now ?? Date.now;
+  const releaseUrl = (options.url ?? "").trim();
   let cached: { at: number; result: UpdateCheck } | undefined;
   let inflight: Promise<UpdateCheck> | undefined;
   const base = (): UpdateCheck => ({
@@ -89,16 +107,17 @@ export function createUpdateChecker(options: {
 
   return async function check(): Promise<UpdateCheck> {
     if (options.install === "desktop" || options.install === "managed") return base();
+    if (!releaseUrl) return { ...base(), checked: false };
     if (cached && now() - cached.at < CACHE_MS) return cached.result;
     inflight ??= (async () => {
       try {
-        const response = await fetchRelease(LATEST_RELEASE_URL, {
-          headers: { accept: "application/vnd.github+json", "user-agent": "eacbot-update-check" },
+        const response = await fetchRelease(releaseUrl, {
+          headers: { accept: "application/json", "user-agent": "eacbot-update-check" },
           signal: AbortSignal.timeout(8_000),
         });
-        if (!response.ok) throw new Error(`GitHub answered ${response.status}`);
+        if (!response.ok) throw new Error(`The release source answered ${response.status}`);
         const release = await response.json() as { tag_name?: unknown; html_url?: unknown };
-        if (typeof release.tag_name !== "string") throw new Error("GitHub sent no release tag");
+        if (typeof release.tag_name !== "string") throw new Error("The release source sent no release tag");
         const latest = release.tag_name.replace(/^v/, "");
         const result: UpdateCheck = {
           ...base(),

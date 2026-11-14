@@ -52,6 +52,8 @@ export type LifecycleAction = "pull" | "run" | "start" | "stop" | "remove";
 const INTERNAL_VIEWER_PORT = 6901;
 const HOST_VIEWER_PORT = 6080;
 const MEMORY_BYTES = 4 * 1024 * 1024 * 1024;
+// Quoted so shells keep the angle brackets literal; the user replaces it before running the manual command.
+const SETUP_PASSWORD_PLACEHOLDER = '"<your-password>"';
 
 export interface LocalVmTarget {
   key: string;
@@ -824,9 +826,12 @@ export function podmanSecurityIsHardened(
 
 export function containerRunArgs(
   runtime: Runtime,
-  password = "CHANGE_ME",
+  password: string,
   target: LocalVmTarget = SHARED_LOCAL_VM_TARGET,
 ): string[] {
+  if (!password || password === "CHANGE_ME") {
+    throw new Error("containerRunArgs requires a non-default VNC password");
+  }
   if (runtime === "container" && target.key !== SHARED_LOCAL_VM_TARGET.key) {
     throw new Error("Per-bot Local VMs require Docker or Podman because Apple container requires a fixed host port");
   }
@@ -1160,7 +1165,7 @@ type ContainerMcpLaunch = {
 
 export function containerComputerMcp(
   runtime: Runtime,
-  control?: { url: string; token: string },
+  control: { url: string; token: string },
   target: LocalVmTarget = SHARED_LOCAL_VM_TARGET,
 ): ContainerMcpLaunch {
   return {
@@ -1169,7 +1174,8 @@ export function containerComputerMcp(
     // The control pair rides in env, not argv, which `ps` shows for the bridge's whole life.
     env: {
       ELECTRON_RUN_AS_NODE: "1",
-      ...(control ? { EAC_CONTROL_URL: control.url, EAC_CONTROL_TOKEN: control.token } : {}),
+      EAC_CONTROL_URL: control.url,
+      EAC_CONTROL_TOKEN: control.token,
     },
   };
 }
@@ -1216,7 +1222,7 @@ export function setupCommands(
     run:
       runtime === "container" && target.key !== SHARED_LOCAL_VM_TARGET.key
         ? null
-        : command(containerRunArgs(runtime, "CHANGE_ME", target)),
+        : command(containerRunArgs(runtime, SETUP_PASSWORD_PLACEHOLDER, target)),
     start: command(["start", target.containerName]),
     stop: command(["stop", target.containerName]),
     remove: command(["rm", runtime === "container" ? "--force" : "-f", target.containerName]),

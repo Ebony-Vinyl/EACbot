@@ -218,7 +218,7 @@ function claimDay(day: string): boolean {
   return true;
 }
 
-/** At most one app_snapshot per app origin per UTC day; an opted-out install makes no request at all. */
+/** At most one app_snapshot per app origin per UTC day; without an explicit opt-in it makes no request and claims no day. */
 export async function sendDailySnapshot(state: SnapshotState, sources: UsageSources, now = Date.now()): Promise<boolean> {
   if (!analyticsEnabled() || gathering || !state.config) return false;
   if (!claimDay(utcDay(now))) return false;

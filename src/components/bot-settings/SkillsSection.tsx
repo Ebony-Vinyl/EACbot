@@ -370,8 +370,9 @@ export function SkillsSection({ bot }: { bot: Bot }) {
       const result = (await api(`/api/bots/${bot.id}/skills`, {
         method: "POST",
         body: JSON.stringify({ source: trimmed }),
-      })) as { imported?: SkillImportSummary[] };
-      setImportMessage([...skillImportLines(result.imported ?? []), t("skills.import.reviewBelow")].join(" "));
+      })) as { imported?: SkillImportSummary[]; warning?: string };
+      setImportMessage([...skillImportLines(result.imported ?? []), result.warning ?? "", t("skills.import.reviewBelow")]
+        .filter(Boolean).join(" "));
       setSource("");
       await refresh();
     } catch (cause) {

@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { CONTROL_BUSY, CONTROL_HANDED_BACK, CONTROL_WAIT_MS, CONTROL_WAITED, controlRefusal, type ControlState } from "../control-client.ts";
+import { CONTROL_BUSY, CONTROL_HANDED_BACK, CONTROL_PLANE_MISSING, CONTROL_WAIT_MS, CONTROL_WAITED, controlRefusal, type ControlState } from "../control-client.ts";
 import { computerPersonAwayText } from "../computer-wait.ts";
 import { ChatMcpClient } from "../drivers/chat-mcp-tools.ts";
 import { createGateInterceptor } from "../mcp-bridge.ts";
@@ -110,6 +110,7 @@ describe("callOutcome", () => {
     ["a person holds the computer", { held: true, helpOpen: false, reason: "person" }, {}],
     ["another thread holds it", { held: true, helpOpen: false, blockedReason: CONTROL_BUSY }, {}],
     ["its state cannot be confirmed", { held: true, helpOpen: false }, {}],
+    ["its control gate is not configured", { held: true, helpOpen: false, blockedReason: CONTROL_PLANE_MISSING }, {}],
     ["the call waited for it", { held: false, helpOpen: false }, { actWithinMs: -1 }],
     ["the person handed it back mid-call", { held: true, helpOpen: false, blockedReason: CONTROL_HANDED_BACK }, {}],
     ["the person has had it too long", { held: true, helpOpen: false, blockedReason: computerPersonAwayText(30 * 60_000) }, {}],

@@ -1469,14 +1469,16 @@ computers belong to this machine on every request.
 
 Connected apps (Gmail, Outlook, Slack, LinkedIn, Calendly and the rest of the
 catalog) come with the plan through EACbot's managed connection service,
-the same one the packaged desktop app uses. The Admin sets nothing for it: at
-every start the server registers the Cloud's own installation if it has none,
-keeps the token owner-only in `/data/.eacbot/connected-apps-installation.json`
-(never in a backup, a move or `config.json`), checks it with the service, and
-retries with backoff while the service is down, without holding up the start.
-An owner's own Composio project key still wins. The details are in
+the same one the packaged desktop app uses. The Admin sets nothing for it: the
+first time someone opens Connected Apps the server registers the Cloud's own
+installation if it has none, keeps the token owner-only in
+`/data/.eacbot/connected-apps-installation.json` (never in a backup, a move or
+`config.json`), checks it with the service, and retries with backoff while the
+service is down. A Cloud home nobody uses Connected Apps on registers nothing
+at start. An owner's own Composio project key still wins. The details are in
 [composio.md](composio.md#mausbot-cloud). `EAC_COMPOSIO_BROKER_URL` (env, not
-secret, optional) points a Cloud at another service, such as a staging one.
+secret, optional) points a Cloud at another service, such as a staging one;
+`EAC_CONNECTED_APPS_REGISTER=0` switches managed registration off entirely.
 
 For a paid plan the Admin also sets `EAC_CLOUD_CONNECTED_APPS_GRANT` (secret):
 a grant it signs for the machine id, which the server presents to the service

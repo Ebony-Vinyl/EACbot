@@ -241,6 +241,22 @@ describe("the scheduler", () => {
     expect(review.status(BOT.id, "thread-a").steps).toBe(2);
   });
 
+  it("keeps a refused change for approval instead of dropping it", async () => {
+    const deferred: Array<{ threadId: string; change: ReviewChange }> = [];
+    const { review } = harness({
+      apply: () => ({ ok: false, error: "this conversation cannot apply skill changes without review" }),
+      defer: (_botId, threadId, change) => {
+        deferred.push({ threadId, change });
+        return { ok: true };
+      },
+    });
+    review.noteTurn(BOT.id, "thread-a", 3);
+
+    await expect(review.run(BOT.id, "thread-a")).resolves.toMatchObject({ state: "deferred", applied: [] });
+    expect(deferred).toEqual([{ threadId: "thread-a", change: expect.objectContaining({ action: "create", name: "chart-making" }) }]);
+    expect(review.status(BOT.id, "thread-a").steps).toBe(0);
+  });
+
   it("starts counting again when the bot changes a skill itself", () => {
     const { review } = harness();
     review.noteTurn(BOT.id, "thread-a", 2);

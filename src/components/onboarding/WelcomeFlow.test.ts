@@ -148,6 +148,18 @@ describe("the Chief step", () => {
     expect(chiefStep).toBe(false);
   };
 
+  it("can be left with Set up later, saving a plain completion rather than a Chief meeting", async () => {
+    await show();
+    await toChief();
+    expect(text()).toContain("Introducing your Chief of Staff");
+    await press("Set up later");
+    await tick(CHIEF_FADE_MS);
+    expect(f.onDone).toHaveBeenCalledExactlyOnceWith(null);
+    await act(async () => {});
+    expect(saved()[0].onboarding).toEqual(expect.objectContaining({ version: WELCOME_VERSION }));
+    expect(saved()[0].onboarding.hintsSeen).toBeUndefined();
+  });
+
   it("is skipped once EACbot has met the person", async () => {
     f.state = { ...f.state, bots: [{ ...maus, welcomed: true }] };
     await finishesAtNext();

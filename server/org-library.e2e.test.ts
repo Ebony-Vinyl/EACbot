@@ -85,7 +85,7 @@ it("shows the organization's shelf, adds a team once, and keeps its stamps off t
     for (const bot of bots) {
       expect(bot.installedPackage).toMatchObject({ source: "org", ref: "acme/sales-desk", publisher: { name: "Acme Partners" } });
       const listed = (await call("GET", `/api/bots/${bot.id}/skills`)).body.skills as Array<{ enabled: boolean }>;
-      expect(listed.every((skill) => skill.enabled)).toBe(true);
+      expect(listed.every((skill) => !skill.enabled)).toBe(true);
     }
     expect((await call("GET", "/api/routines")).body.routines.every((routine: any) => !routine.enabled)).toBe(true);
     const state = JSON.parse(readFileSync(join(fixture.info.dataDir, "org-library", "state.json"), "utf8"));
@@ -96,7 +96,7 @@ it("shows the organization's shelf, adds a team once, and keeps its stamps off t
     const offered = (await call("GET", `/api/org-library/skills?botId=${bots[0].id}`)).body;
     expect(offered.skills.map((skill: any) => skill.name)).toEqual(["objection-handling", "objection-handling", "follow-up"]);
     const put = await call("POST", "/api/org-library/skills", { botId: bots[0].id, installId: library.body.installId, name: "follow-up" });
-    expect(put).toMatchObject({ status: 201, body: { skill: { name: "follow-up", enabled: true } } });
+    expect(put).toMatchObject({ status: 201, body: { skill: { name: "follow-up", enabled: false } } });
 
     await call("POST", "/api/testing/org-library", { library: null }, { "x-eacbot-test-org-library": key });
     expect((await call("GET", "/api/org-library")).body).toEqual({ organization: null, packages: [] });

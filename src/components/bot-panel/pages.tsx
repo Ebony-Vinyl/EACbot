@@ -277,8 +277,8 @@ export function SkillsPage({ bot }: PageContext) {
     skills.setError("");
     setImported([]);
     try {
-      const result = await api<{ imported?: SkillImportSummary[] }>(`/api/bots/${bot.id}/skills`, { method: "POST", body: JSON.stringify({ source: trimmed }) });
-      setImported(skillImportLines(result.imported ?? []));
+      const result = await api<{ imported?: SkillImportSummary[]; warning?: string }>(`/api/bots/${bot.id}/skills`, { method: "POST", body: JSON.stringify({ source: trimmed }) });
+      setImported([...skillImportLines(result.imported ?? []), ...(result.warning ? [result.warning] : [])]);
       setSource("");
       await skills.refresh();
     } catch (cause) {

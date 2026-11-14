@@ -10,9 +10,11 @@ export interface ServerUpdateCheck {
   releaseUrl?: string;
   command?: string;
   restart?: boolean;
+  /** false when this server has no release source configured (EAC_UPDATE_CHECK_URL unset), so nothing was asked. */
+  checked?: boolean;
 }
 
-export type ServerUpdatePhase = "idle" | "checking" | "up-to-date" | "available" | "reload" | "error";
+export type ServerUpdatePhase = "idle" | "checking" | "up-to-date" | "not-checked" | "available" | "reload" | "error";
 
 /**
  * What a finished check means for this page. A tab left open across a server update keeps running
@@ -20,6 +22,8 @@ export type ServerUpdatePhase = "idle" | "checking" | "up-to-date" | "available"
  */
 export function serverCheckPhase(check: ServerUpdateCheck, bundle = appVersion()): ServerUpdatePhase {
   if (check.available) return "available";
+  // A server with no release source did not compare anything; that is not the same as being up to date.
+  if (check.checked === false) return "not-checked";
   if (check.install === "desktop" || check.install === "managed") return "up-to-date";
   return bundle !== "dev" && check.current !== bundle ? "reload" : "up-to-date";
 }
@@ -34,6 +38,10 @@ export function serverUpdateRow(
 ): { label: string; subtitle?: string } {
   if (phase === "checking") return { label: t("sidebar.update.checking") };
   if (phase === "error") return { label: t("sidebar.update.checkFailed") };
+  if (phase === "not-checked") {
+    const label = otherServer ? t("sidebar.update.checkOffOther", { name: otherServer }) : t("sidebar.update.checkOff");
+    return { label };
+  }
   if (check?.install === "desktop") return { label: t("sidebar.update.howDesktop") };
   if (check?.install === "managed") return { label: t("sidebar.update.managed") };
   if (phase === "available" && check?.latest) {
