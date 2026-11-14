@@ -137,7 +137,7 @@ describe("classifyRoutineFailure", () => {
   });
 
   it("reads the spend cap and any other refusal to start, and leaves an engine that would not spawn a plain failure", () => {
-    expect(dispatchRefusal(Object.assign(new Error("this workspace has reached its monthly spend limit of $20.00"), { status: 409, code: "spend_cap" }))).toEqual({ cause: "cap" });
+    expect(dispatchRefusal(Object.assign(new Error("this workspace has reached its monthly spend limit of $20.00"), { status: 409, code: "spend_cap" }))).toEqual({ cause: "spend_cap" });
     expect(dispatchRefusal(Object.assign(new Error(BUSY), { status: 409 }))).toEqual({ cause: "refused" });
     expect(dispatchRefusal(Object.assign(new Error("no such bot"), { status: 404 }))).toEqual({ cause: "refused" });
     expect(dispatchRefusal(new Error("spawn claude ENOENT"))).toEqual({});
@@ -262,14 +262,26 @@ describe("an unattended run that fails for a passing reason", () => {
     expect(dispatchErrors).toHaveLength(1);
   });
 
-  it("never retries a run the spend cap kept from starting", async () => {
+  it("never retries a run the spend cap kept from starting, and marks it skipped with one owner notice", async () => {
     const h = harness();
     h.refuse(Object.assign(new Error("this workspace has reached its monthly spend limit of $20.00"), { status: 409, code: "spend_cap" }));
     const run = await h.start(h.routine().id);
-    expect(h.run(run.id)).toMatchObject({ status: "failed", error: "this workspace has reached its monthly spend limit of $20.00" });
+    expect(h.run(run.id)).toMatchObject({
+      status: "missed",
+      error: "Skipped, not retried: this workspace has reached its monthly spend limit of $20.00",
+    });
+    expect(h.failed).toEqual([expect.objectContaining({
+      alert: { detail: "This run was skipped because the workspace's monthly spend limit is reached. Raise it under Settings → Usage, then run this routine again." },
+    })]);
     h.refuse(null);
     await h.advance(MINUTE);
     expect(h.attempts).toHaveLength(1);
+
+    // The same cap on the next scheduled run does not repeat the notice until a run completes.
+    h.refuse(Object.assign(new Error("this workspace has reached its monthly spend limit of $20.00"), { status: 409, code: "spend_cap" }));
+    const next = await h.start(h.routine().id);
+    expect(h.run(next.id).status).toBe("missed");
+    expect(h.failed.at(-1)?.alert).toBeNull();
   });
 
   it("never starts a room goal again by itself", async () => {
