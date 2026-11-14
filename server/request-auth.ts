@@ -1,5 +1,5 @@
 // Loopback requests (Host and Origin both loopback) or paired sessions (bearer, cookie, stream ticket); a session swaps the loopback rule for same-origin (CSRF) and a scope check.
-// Browsers never get loopback trust: a page a bot opens is a browser on this machine too.
+// A browser gets loopback trust only as a self-hosted owner server's own same-origin page; every other browser, a shared server's and the desktop app's need a session.
 import type { IncomingMessage } from "node:http";
 import { timingSafeEqual } from "node:crypto";
 import { isIP } from "node:net";
@@ -616,7 +616,15 @@ export function resolveRequestAuth(req: IncomingMessage, options: ResolveOptions
     }
     const desktopOwner = options.loopbackMutationToken !== undefined &&
       secureTokenMatch(headerValue(req.headers[DESKTOP_OWNER_HEADER]), options.loopbackMutationToken) && fromOwnPage(req);
-    if (fromBrowser(req) && !desktopOwner && !options.trustLocalBrowser) return deny(401, BROWSER_SIGN_IN);
+    // A page this server itself served on a single-user owner server is the owner, but only when the browser proves
+    // the request comes from that exact origin. Any other page on this machine (another port, a file, a sandbox) is not;
+    // a shared server and the desktop app keep requiring a session, so proxy, service and mutation boundaries do not move.
+    if (fromBrowser(req) && !desktopOwner && !options.trustLocalBrowser) {
+      const ownPageOwner = options.loopbackMutationToken === undefined &&
+        options.loopbackTrust !== "service" &&
+        provesSameOrigin(req);
+      if (!ownPageOwner) return deny(401, BROWSER_SIGN_IN);
+    }
     if (options.loopbackMutationToken !== undefined && mutatingPublicRoute(method, path) && !desktopOwner) {
       return deny(403, "forbidden: this change must come from the desktop app or a paired device");
     }

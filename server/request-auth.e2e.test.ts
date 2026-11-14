@@ -1,5 +1,5 @@
-// A real self-hosted server, asked the way a browser on its own machine asks: refused until it signs in once, while
-// the CLI keeps working and a development server keeps trusting its local browser.
+// A real self-hosted server, asked the way a browser on its own machine asks: its own page is the owner without a
+// cookie, every other page still signs in, and the CLI and a development server keep their rules.
 import { request } from "node:http";
 import { describe, expect, it } from "vitest";
 
@@ -24,14 +24,21 @@ function raw(url: string, path: string, headers: Record<string, string>, method 
 
 const fromPage = (origin: string) => ({ origin, "sec-fetch-site": "same-origin", "sec-fetch-mode": "cors", "sec-fetch-dest": "empty" });
 const otherPage = { origin: "http://localhost:3000", "sec-fetch-site": "cross-site", "sec-fetch-mode": "no-cors", "sec-fetch-dest": "empty" };
+const otherPort = { origin: "http://127.0.0.1:3000", "sec-fetch-site": "same-site", "sec-fetch-mode": "cors", "sec-fetch-dest": "empty" };
 const navigation = { "sec-fetch-site": "none", "sec-fetch-mode": "navigate", "sec-fetch-dest": "document", "sec-fetch-user": "?1" };
 
 describe("a browser on a self-hosted server's own machine", () => {
-  it("is refused until it signs in once with a pairing code, while the CLI keeps working", async () => {
+  it("gets the owner from this server's own page without a cookie, while every other page and the CLI keep their rules", async () => {
     const fixture = await launchVerificationServer({ EAC_DEV_TRUST_LOCAL_BROWSER: "0" });
     const url = fixture.info.url;
     try {
-      for (const headers of [fromPage(url), otherPage, navigation]) {
+      const own = await raw(url, "/api/auth/session", fromPage(url));
+      expect(own.status).toBe(200);
+      expect(JSON.parse(own.body)).toMatchObject({ kind: "loopback", scopes: ["admin", "client"] });
+      expect((await raw(url, "/api/bots", fromPage(url))).status).toBe(200);
+      expect((await raw(url, "/api/config", fromPage(url))).status).toBe(200);
+
+      for (const headers of [otherPage, otherPort, navigation]) {
         for (const [method, path] of [["GET", "/api/bots"], ["GET", "/api/config"], ["GET", "/api/auth/session"], ["PATCH", "/api/config"]]) {
           const refused = await raw(url, path!, { ...headers, "content-type": "application/json" }, method, method === "PATCH" ? "{}" : undefined);
           expect(refused.status, `${method} ${path}`).toBe(401);
@@ -41,9 +48,13 @@ describe("a browser on a self-hosted server's own machine", () => {
       const socket = await raw(url, "/api/desktop-viewer/local/shared/websockify", {
         origin: url, upgrade: "websocket", connection: "Upgrade", "sec-websocket-version": "13", "sec-websocket-key": "dGhlIHNhbXBsZSBub25jZQ==",
       });
-      expect(socket.status).toBe(401);
+      expect(socket.status, "this server's own page may open the WebSocket").not.toBe(401);
+      const foreignSocket = await raw(url, "/api/desktop-viewer/local/shared/websockify", {
+        origin: "http://localhost:3000", upgrade: "websocket", connection: "Upgrade", "sec-websocket-version": "13", "sec-websocket-key": "dGhlIHNhbXBsZSBub25jZQ==",
+      });
+      expect(foreignSocket.status, "another page on this machine may not").toBe(401);
       // Public routes still answer a stranger: the sign-in page needs them.
-      expect(await raw(url, "/api/health", fromPage(url)).then((answer) => JSON.parse(answer.body))).toEqual({ app: "eacbot" });
+      expect(await raw(url, "/api/health", otherPage).then((answer) => JSON.parse(answer.body))).toEqual({ app: "eacbot" });
 
       // The CLI is Node's fetch, which sends Sec-Fetch-Mode alone.
       const cli = await fetch(`${url}/api/bots`);

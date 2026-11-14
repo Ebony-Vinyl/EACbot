@@ -710,7 +710,7 @@ describe("loopback trust: owner on one person's machine, service on a shared wor
   });
 });
 
-describe("a browser on this machine is not the owner", () => {
+describe("a browser is the owner only as this server's own page", () => {
   let dir: string;
   let sessions: SessionRegistry;
   const cookieName = "omb_session_8799_env";
@@ -719,6 +719,9 @@ describe("a browser on this machine is not the owner", () => {
   const navigation = { host: "127.0.0.1:8799", "sec-fetch-site": "none", "sec-fetch-mode": "navigate", "sec-fetch-dest": "document", "sec-fetch-user": "?1" };
   const socket = { host: "127.0.0.1:8799", origin: "http://localhost:3000", upgrade: "websocket", connection: "Upgrade" };
   const ownUi = { host: "127.0.0.1:8799", origin: "http://127.0.0.1:8799", "sec-fetch-site": "same-origin", "sec-fetch-mode": "cors", "sec-fetch-dest": "empty" };
+  // A same-origin GET may omit Origin (Chrome includes Sec-Fetch-Site even then).
+  const ownGet = { host: "127.0.0.1:8799", "sec-fetch-site": "same-origin", "sec-fetch-mode": "cors", "sec-fetch-dest": "empty" };
+  const ownSocket = { host: "127.0.0.1:8799", origin: "http://127.0.0.1:8799", upgrade: "websocket", connection: "Upgrade" };
   const check = (headers: Record<string, string>, path = "/api/bots", method = "GET", options: { desktopToken?: string; trust?: "owner" | "service"; localBrowsers?: boolean } = {}) =>
     resolveRequestAuth(request(headers, method), {
       sessions, cookieName, streamPath: "/api/events", url: new URL(path, "http://x"),
@@ -746,11 +749,18 @@ describe("a browser on this machine is not the owner", () => {
     }
   });
 
-  it("refuses a self-hosted server's browser on loopback, reads included, and says how to sign in", () => {
-    for (const headers of [page, navigation, socket, ownUi]) {
+  it("admits this server's own page, reads and writes, and refuses every other browser page", () => {
+    for (const [headers, label] of [[ownUi, "own page"], [ownGet, "own GET"]] as const) {
+      for (const [method, path] of [["GET", "/api/bots"], ["GET", "/api/config"], ["GET", "/api/auth/session"], ["PATCH", "/api/config"]] as const) {
+        const admitted = check(headers, path, method);
+        expect(admitted.auth, `${label} ${method} ${path}`).toEqual({ kind: "loopback", scopes: ["admin", "client"] });
+      }
+    }
+    expect(check(ownSocket, "/api/desktop-viewer/local/shared/websockify", "GET").auth?.kind).toBe("loopback");
+    for (const headers of [page, navigation, socket]) {
       for (const [method, path] of [["GET", "/api/bots"], ["GET", "/api/config"], ["GET", "/api/auth/session"], ["POST", "/api/auth/pairing"], ["GET", "/api/desktop-viewer/local/shared/websockify"]]) {
         const refused = check(headers, path, method);
-        expect(refused.auth, `${method} ${path}`).toBeNull();
+        expect(refused.auth, `${method} ${path} ${JSON.stringify(headers)}`).toBeNull();
         expect(refused.status).toBe(401);
         expect(refused.error).toBe(BROWSER_SIGN_IN);
       }
@@ -758,9 +768,31 @@ describe("a browser on this machine is not the owner", () => {
     expect(check({ host: "127.0.0.1:8799" }).auth).toEqual({ kind: "loopback", scopes: ["admin", "client"] });
   });
 
+  it("does not borrow the owner for another port, another scheme, or a request with no same-origin proof", () => {
+    const otherPort = { ...ownUi, origin: "http://127.0.0.1:3000", "sec-fetch-site": "same-site" };
+    const otherScheme = { ...ownUi, origin: "https://127.0.0.1:8799" };
+    const noProof = { host: "127.0.0.1:8799", "sec-fetch-dest": "empty" };
+    for (const headers of [otherPort, otherScheme, noProof, navigation, page]) {
+      const refused = check(headers, "/api/bots");
+      expect(refused.auth, JSON.stringify(headers)).toBeNull();
+      expect(refused.status).toBe(401);
+    }
+    expect(check({ host: "[::1]:8799", origin: "http://[::1]:8799", "sec-fetch-site": "same-origin", "sec-fetch-dest": "empty" }, "/api/bots").auth?.kind).toBe("loopback");
+  });
+
   it("refuses it under service trust too, where it would otherwise get the service routes", () => {
-    expect(check(page, "/api/health", "GET", { trust: "service" }).auth).toBeNull();
+    for (const headers of [page, ownUi]) {
+      const refused = check(headers, "/api/health", "GET", { trust: "service" });
+      expect(refused.auth, JSON.stringify(headers)).toBeNull();
+      expect(refused.status).toBe(401);
+    }
     expect(check({ host: "127.0.0.1:8799" }, "/api/health", "GET", { trust: "service" }).auth?.kind).toBe("loopback");
+  });
+
+  it("keeps proxy and non-loopback requests out, even with a same-origin-looking page", () => {
+    expect(check({ ...ownUi, "x-forwarded-for": "203.0.113.9" }, "/api/bots").status).toBe(403);
+    const remote = { host: "bots.example.com", origin: "http://bots.example.com", "sec-fetch-site": "same-origin", "sec-fetch-dest": "empty" };
+    expect(check(remote, "/api/bots").status).toBe(403);
   });
 
   it("lets the desktop app's own window in with its owner header, on http and WebSocket alike", () => {
