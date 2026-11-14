@@ -100,3 +100,83 @@ Muse 必须直接基于 KugouMusic.NET 的实际可复用实现，不以换后�
 另一条记录：B站研究 → 带来源产物 → 共享已批准兴趣 → 自然语言面板 → 撤销空间后确认下次模型请求不含旧内容。
 
 发生真实外发后记录外部不可逆影响；回滚应用不能声称撤回已发消息。报告列出失败/跳过/限制，不以“不知道有问题”作为“所有功能正常”。
+
+
+## M6 代码与本机验收（2026-11-14）
+
+本次改动影响范围是任务、调度接入、用量及对应界面模块。实现基线为 `1928a44`，按任务领域、计量、宿主组合、界面、插件面板与验收文档分层提交。环境为 macOS、Node 24.22.2、pnpm 10.33.0、Electron 43.7.9。
+
+### 代码范围
+
+- `shared/plugins/tasks.ts`、`server/plugins/kanban.ts`、`server/tasks/runtime.ts` 与 `/api/boards` 提供任务、依赖、版本、评论、产物、归档和账户过滤。账户由绑定 Bot 派生。
+- 任务执行及一次性/Cron 计划接入既有 RoutineManager。状态变化映射回任务，执行结果保留在实际会话并记录到产物。恢复读取持久 run，旧事件按 run 身份与创建时间过滤，取消计划回到待办。
+- `server/usage-metering.ts`、`server/host/usage-metering.ts` 和 `/api/usage/metering` 复用原账本及支出规则。文本、插件、服务端 TTS/STT、图片生成在实际入口计量，视频使用共享单位合同。费用来源、币种、未知费用、重复记录与父子归因分别处理。
+- 侧栏任务中心、用量页、声明式和沙箱面板消费同一服务。任务页面使用现有主题，窄屏采用分组布局。
+
+### 自动验证
+
+最终一轮执行以下定向测试。
+
+```sh
+pnpm exec vitest run server/tasks server/plugins/kanban.test.ts server/routes/boards.test.ts server/usage-metering.test.ts server/routines.test.ts server/routines-startup.test.ts server/routine-recovery.test.ts server/routine-cron.e2e.test.ts server/usage-ledger.test.ts server/usage-ledger-api.test.ts shared/plugins/panel-frame.test.ts server/host/plugins-mcp.test.ts server/plugins/registry.test.ts server/routes/tts.test.ts server/routes/image-tools.test.ts scripts/testing/index-route-ratchet.test.ts scripts/testing/file-size-ratchet.test.ts
+pnpm build
+pnpm lint
+pnpm check:contrast
+pnpm i18n:check
+git diff --check
+```
+
+| 检查 | 实际结果 |
+| --- | --- |
+| 定向测试 | 18 个文件、379 项通过。另 1 个文件体积守护测试失败，报告下述三项基线问题 |
+| TASK-01 | 执行器状态、依赖环、版本冲突、账户过滤、评论与产物、真实会话执行及权限拒绝已验证 |
+| TASK-02 | 租约竞争/过期接管、旧执行器拒绝、重复完成、执行器重启后单次恢复已有覆盖 |
+| TASK-03 | 既有 RoutineManager 的计划、重试、恢复与 Cron 回归通过。新增任务计划取消和完整后端恢复通过 |
+| USAGE-01/02 | 旧账本兼容、任务归因、重复调用去重、汇总行、多币种、不同单位、未知费用、分页与脱正文 CSV 已验证 |
+| `pnpm build` | 通过，包含前后端 TypeScript 和 Vite 构建。保留既有 CSS highlight、Zod 注释及大 chunk 警告 |
+| `pnpm lint` | 通过 |
+| `pnpm check:contrast` | 通过，仍报告 midnight 已登记基线缺口 |
+| `git diff --check` | 通过 |
+| `pnpm i18n:check` | 失败，已有 stale translations 阻断，本次 `tasks.*` 键未出现在报错中 |
+
+体积守护报告 `server/config.ts` 1268 行、`src/components/PluginsPanel.tsx` 1019 行、`src/state/store.tsx` 3362 行。这三个文件相对基线无改动。`server/index.ts` 与 `Sidebar.tsx` 均满足各自棘轮。
+
+后端恢复测试复制隔离数据，对 SQLite 使用一致性 backup，再在独立新进程读取任务、执行结果、计划状态和用量。过程中使用仓库 fake 引擎及临时目录。
+
+### 本机 Electron 操作
+
+运行仓库 Electron 主进程、Vite 前端及独立 fixture 后端，使用实际窗口完成以下操作。
+
+1. 通过侧栏打开任务中心，在界面创建看板与中文标题任务，分配 Bot 并保存说明。
+2. 点击立即执行，观察运行、待验收及实际输出，再在界面标记完成并添加评论。
+3. 保存 `0 9 * * *`、`Asia/Shanghai` 的 Cron 计划，检查下一次执行时间。
+4. 取消计划，修正并复核卡片回到待办。归档与恢复操作已执行。
+5. 打开统一用量，查看真实 fixture 调用记录，切换任务分组并核对任务归因。
+6. 最终版本在新 fixture 中再次执行任务、保存/取消 Cron，并复核待办状态及用量结果。
+
+最终截图使用纯隔离数据。
+
+- [任务中心与取消后的状态](evidence/m6/electron-final-board.png)
+- [统一用量与调用明细](evidence/m6/electron-final-usage.png)
+
+### M6 界面重排
+
+本次改动影响范围是任务中心前端模块。复用现有主题色，使用紧凑工具栏、可收起筛选、按需新建表单、横向看板和独立详情侧栏。执行计划默认收起，用量筛选与表格同步调整间距。
+
+验证预算为 5 轮，实际完成 4 轮。`pnpm typecheck`、`pnpm build`、`pnpm lint`、`pnpm check:contrast` 和 `git diff --check` 通过。定向执行 `pnpm exec vitest run server/tasks server/routes/boards.test.ts`，4 个文件、32 项测试通过。构建与对比度检查保留前文列出的既有警告。
+
+本机 Electron 连接独立 fixture，完成中文任务创建及 Enter 提交、详情打开与 Escape 关闭、来源筛选、筛选收起以及统一用量表格检查。窗口检查覆盖 1040 和 1512 逻辑像素宽度。此次未执行手机硬件或全量测试。
+
+- [重排后的看板](evidence/m6/electron-layout-board.png)
+- [任务详情侧栏](evidence/m6/electron-layout-details.png)
+- [重排后的用量页](evidence/m6/electron-layout-usage.png)
+
+分层提交后再次执行 `pnpm typecheck`、`pnpm lint` 与 `pnpm exec vitest run server/tasks server/plugins/kanban.test.ts server/routes/boards.test.ts server/usage-metering.test.ts shared/plugins/panel-frame.test.ts`。类型与静态检查通过，7 个文件、45 项定向测试通过。测试进程报告 exit listener 数量警告。全量测试尚未执行。
+
+### 验证边界与恢复
+
+未指定 Bot 的通用语音请求计量归入首个可见 Bot，TTS 请求携带 Bot 时按该 Bot 归因。
+
+本机 Electron 验证使用隔离 fake 引擎。真实模型/媒体供应商计费、真实视频调用、真实平台账户和手机硬件尚未验证。390×844 浏览器视口完成文档宽度检查，未据此声明手机实机验收。全量 `pnpm test` 未运行。
+
+停止验收 fixture 后，开发后端恢复使用原数据目录，Electron 恢复原有桌面配置。功能数据新增在运行时数据目录的 `tasks/kanban.json`，旧任务与旧账本行继续可读，新计量信息使用可选字段。回退代码前先停用新增任务计划并停止执行，保留任务文件及账本备份。

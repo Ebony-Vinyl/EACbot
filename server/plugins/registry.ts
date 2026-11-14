@@ -33,6 +33,7 @@ export class PluginRegistryError extends Error {
 }
 
 export interface PluginRegistryOptions {
+  recordCall?(context: { installationId: string; botId: string; threadId?: string; accountId?: string }): void;
   hostVersion: string;
   host: "server" | "desktop" | "web";
   platform: string;
@@ -378,6 +379,7 @@ export class PluginRegistry {
    */
   async callTool(installationId: string, toolId: string, context: {
     botId: string;
+    threadId?: string;
     principalId: string;
     audienceId: string;
     epoch: number;
@@ -411,6 +413,7 @@ export class PluginRegistry {
     if (!authorization.allowed) {
       throw new PluginRegistryError("invalid-state", `${authorization.code}: ${authorization.error}`);
     }
+    this.options.recordCall?.({ installationId, botId: context.botId, threadId: context.threadId, accountId: context.accountId });
     let result: unknown;
     try {
       result = await this.options.runtime.call(installationId, "tools/call", {

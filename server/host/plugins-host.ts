@@ -15,6 +15,7 @@ import { PlatformOutboxStore } from "../plugins/platform-outbox.ts";
 import type { PlatformInboundHost } from "./platform-inbound.ts";
 import { MemorySpaceStore } from "../memory-spaces/store.ts";
 import { DeviceRegistry } from "../plugins/device-registry.ts";
+import type { TaskRuntime } from "../tasks/runtime.ts";
 import { KanbanStore } from "../plugins/kanban.ts";
 import { createPluginConfigHost } from "../plugins/config-host.ts";
 import { createPluginUiRoutes } from "../routes/plugin-ui.ts";
@@ -36,6 +37,8 @@ export interface PluginsHostOptions {
   memory?: MemorySpaceStore;
   generatePanel?(botId: string, prompt: string): Promise<string | null>;
   grantTargets?(): PluginGrantTarget[];
+  tasks?: TaskRuntime;
+  recordPluginCall?: import("../plugins/registry.ts").PluginRegistryOptions["recordCall"];
 }
 
 /** The composed plugin registry, its HTTP surface, and the account store the inbound host shares. */
@@ -51,6 +54,7 @@ export function createPluginsHost(options: PluginsHostOptions): PluginsHost {
     ? new StdioPluginSupervisor({ dataDir: options.dataDir, onExit: (installationId, reason) => created.markRuntimeFailure(installationId, reason) })
     : undefined;
   const created = new PluginRegistry(new PluginInstallStore(options.dataDir), {
+    recordCall: options.recordPluginCall,
     hostVersion: options.hostVersion,
     host: options.host,
     platform: options.platform,
@@ -87,7 +91,9 @@ export function createPluginsHost(options: PluginsHostOptions): PluginsHost {
     mayManage: options.mayManage,
   });
   const boards = createBoardRoutes({
-    boards: new KanbanStore(options.dataDir),
+    boards: options.tasks?.boards ?? new KanbanStore(options.dataDir),
+    execution: options.tasks,
+    accountForBot: (botId) => options.bots.bindingOf(botId)?.accountId,
     mayManage: options.mayManage,
   });
   return {

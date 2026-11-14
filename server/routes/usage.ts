@@ -1,3 +1,5 @@
+import { meteredSummary, meteredCsv } from "../usage-metering.ts";
+import type { UsageGroupBy as MeterGroupBy } from "../../shared/plugins/usage.ts";
 import { redactSecretsInText } from "../../shared/redact.ts";
 import type { PriceList } from "../prices.ts";
 import type { RequestAuth } from "../request-auth.ts";
@@ -18,6 +20,7 @@ import { PASS, type RouteHandler } from "./table.ts";
 
 export interface UsageRouteDeps {
   dataDir: string;
+  taskForRun?(runId: string): string | undefined;
   prices(): PriceList | null;
   budget(): SpendState | null;
   currency(): string;
@@ -38,6 +41,27 @@ const whole = (raw: string | null, fallback: number, max: number): number | null
 export function createUsageRoutes(deps: UsageRouteDeps): RouteHandler {
   const traces = createTraceService({ dataDir: deps.dataDir, recorder: deps.recorder, messages: deps.messages, liveBot: deps.liveBot });
   return async ({ res, url, path, method, auth, json }) => {
+    if (method === "GET" && (path === "/api/usage/metering" || path === "/api/usage/metering.csv")) {
+      const range = parseUsageRange(url.searchParams.get("from"), url.searchParams.get("to"));
+      if (!range) return json(res, 400, { error: "Choose a valid date range of at most one year." });
+      const groupBy = url.searchParams.get("groupBy") ?? "bot";
+      if (!["bot", "kind", "plugin", "model", "day", "provider", "task", "account"].includes(groupBy)) return json(res, 400, { error: "Unknown usage grouping." });
+      await flushUsageLedger(deps.dataDir);
+      const readable = deps.canSee(auth);
+      const rows = readUsage(deps.dataDir, range).filter((row) => readable(row.threadId)).map((row) => ({ ...row,
+        taskId: row.taskId ?? (row.trigger.kind === "routine" && row.trigger.runId ? deps.taskForRun?.(row.trigger.runId) : undefined),
+      })).filter((row) => ["botId", "taskId", "accountId", "instanceId"].every((key) => !url.searchParams.has(key) || row[key as keyof typeof row] === url.searchParams.get(key)));
+      const result = meteredSummary(rows, groupBy as MeterGroupBy);
+      res.setHeader("cache-control", "no-store");
+      if (path.endsWith(".csv")) {
+        res.writeHead(200, { "content-type": "text/csv; charset=utf-8", "content-disposition": 'attachment; filename="usage.csv"' });
+        res.end(meteredCsv(result.entries));
+        return;
+      }
+      const offset = whole(url.searchParams.get("offset"), 0, 10_000_000);
+      if (offset === null) return json(res, 400, { error: "Invalid usage offset." });
+      return json(res, 200, { groups: result.groups, entries: result.entries.slice(offset, offset + 100), total: result.entries.length });
+    }
     if (method === "GET" && path === "/api/usage/traces") {
       const range = parseUsageRange(url.searchParams.get("from"), url.searchParams.get("to"));
       if (!range) return json(res, 400, { error: "from and to must be YYYY-MM-DD, from no later than to, at most a year apart" });
@@ -63,7 +87,7 @@ export function createUsageRoutes(deps: UsageRouteDeps): RouteHandler {
     const range = parseUsageRange(url.searchParams.get("from"), url.searchParams.get("to"));
     if (!range) return json(res, 400, { error: "from and to must be YYYY-MM-DD, from no later than to, at most a year apart" });
     await flushUsageLedger(deps.dataDir);
-    const rows = readUsage(deps.dataDir, range);
+    const rows = readUsage(deps.dataDir, range).filter((row) => deps.canSee(auth)(row.threadId));
     const prices = deps.prices();
     if (path === "/api/usage.csv") {
       const stamp = (date: Date) => date.toISOString().slice(0, 10);

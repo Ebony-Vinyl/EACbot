@@ -145,6 +145,7 @@ export function createPluginsMcp(deps: PluginsMcpDeps) {
       try {
         const result = await registry.callTool(tool.installationId, tool.toolId, {
           botId: capability.botId,
+          threadId: capability.threadId,
           ...identityOf(capability),
           epoch: 0,
           args,

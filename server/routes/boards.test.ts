@@ -24,7 +24,8 @@ async function serve() {
   const folder = mkdtempSync(join(tmpdir(), "eac-board-routes-"));
   folders.push(folder);
   const boards = new KanbanStore(folder);
-  const route = createBoardRoutes({ boards, mayManage: (auth) => auth.kind === "loopback" || auth.scopes.includes("admin") });
+  const accounts = new Map<string, string>();
+  const route = createBoardRoutes({ boards, accountForBot: (botId) => accounts.get(botId), mayManage: (auth) => auth.kind === "loopback" || auth.scopes.includes("admin") });
   let auth = owner;
   const server = createServer(async (req, res) => {
     const url = new URL(req.url ?? "/", "http://localhost");
@@ -34,7 +35,7 @@ async function serve() {
   servers.push(server);
   await new Promise<void>((ready) => server.listen(0, "127.0.0.1", ready));
   const base = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
-  return { base, setAuth: (next: RequestAuth) => { auth = next; } };
+  return { base, accounts, setAuth: (next: RequestAuth) => { auth = next; } };
 }
 
 async function call(base: string, method: string, path: string, body?: unknown) {
@@ -86,4 +87,19 @@ describe("/api/boards", () => {
     const { base } = await serve();
     expect(await (await fetch(`${base}/api/not-boards`)).json()).toEqual({ from: "next route" });
   });
+});
+
+it("derives task accounts from the assigned bot and filters each account without trusting a submitted account id", async () => {
+  const { base, accounts } = await serve();
+  const accountA = "00000000-0000-4000-a000-000000000001";
+  const accountB = "00000000-0000-4000-a000-000000000002";
+  accounts.set("bot-a", accountA); accounts.set("bot-b", accountB);
+  const boardId = ((await call(base, "POST", "/api/boards", { name: "Accounts" })).body.board as { boardId: string }).boardId;
+  const path = `/api/boards/${boardId}/tasks`;
+  const first = (await call(base, "POST", path, { title: "A", assigneeBotId: "bot-a", accountId: accountB })).body.task as { taskId: string; revision: number; accountId: string };
+  await call(base, "POST", path, { title: "B", assigneeBotId: "bot-b" });
+  expect(first.accountId).toBe(accountA);
+  expect((await call(base, "GET", `/api/boards/${boardId}?accountId=${accountA}`)).body.tasks).toHaveLength(1);
+  expect((await call(base, "GET", `/api/boards/tasks?accountId=${accountB}`)).body.tasks).toHaveLength(1);
+  expect((await call(base, "PATCH", path + "/" + first.taskId, { revision: first.revision, assigneeBotId: null })).body.task).not.toHaveProperty("accountId");
 });

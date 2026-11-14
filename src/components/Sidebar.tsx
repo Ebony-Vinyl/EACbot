@@ -65,8 +65,7 @@ import { useSidebarSections } from "./SidebarSections";
 import { departmentNames, moveBotsToSection } from "./bot-sections";
 import { sidebarSectionAttention } from "@/lib/sidebar-attention";
 import { botListItemPointerIntent } from "@/lib/sidebar-selection";
-import { SidebarFooter } from "./SidebarFooter";
-import { SidebarPhoneBar } from "./SidebarPhoneBar";
+import { SidebarFooterBar } from "./SidebarFooterBar";
 import { PhoneHero } from "./SidebarPhoneHero";
 import { SidebarProfileMenu } from "./SidebarProfileMenu";
 import { PHONE_LAYOUT, useMediaQuery } from "@/lib/use-media-query";
@@ -83,7 +82,7 @@ export { TeamMenuItems };
 import { SidebarResizeHandle, useSidebarWidth } from "./SidebarResizeHandle";
 import { PHONE_TOP_BUTTON, SIMPLE_CORNER_BUTTON, SIMPLE_ROW_FOCUS, SIMPLE_TOP_BUTTON, SidebarSearchPill, SidebarSearchToggle } from "./SidebarSimpleTop";
 import { isSidebarToggle } from "@/lib/keyboard-shortcuts";
-import { SidebarRailSeparator, SimpleRailFooter } from "./SidebarSimpleRail";
+import { SidebarRailSeparator } from "./SidebarSimpleRail";
 import { useShowThreads } from "@/lib/thread-preferences";
 import { useBotUnread } from "./unread-notice";
 import { attentionHasRunningWork, attentionJumpAction, attentionUnpinAction, crossBotAttentionThreads, crossBotPinnedThreads, runningRoutineRun, SidebarBotActivity, sidebarBotActivityTasks, sidebarBotStatus } from "./SidebarBotActivity";
@@ -96,7 +95,7 @@ import { AvatarActivityDot, RowDot, RowStatusText, rowSurface } from "./SidebarR
 import { SidebarAttentionPanel } from "./SidebarAttentionPanel";
 import { SidebarPinnedThreadsPanel } from "./SidebarPinnedThreadsPanel";
 import { useLiveMedia } from "@/lib/live-call-media";
-import { LiveCallPill, liveBadgeFor } from "./LiveCallPill";
+import { liveBadgeFor } from "./LiveCallPill";
 import { ShortcutHint } from "./ShortcutHint";
 import { usePopoverDismiss } from "@/hooks/use-popover-dismiss";
 import { useAdvancedMode } from "@/lib/interface-mode";
@@ -920,10 +919,11 @@ export const BotListItem = memo(function BotListItem(props: BotRowProps) {
   );
 });
 
-export function Sidebar({ open, onClose, collapseToIcons = false }: {
+export function Sidebar({ open, onClose, onOpenTasks, collapseToIcons = false }: {
   open: boolean;
   onClose: () => void;
   collapseToIcons?: boolean;
+  onOpenTasks?: () => void;
 }) {
   const { state, dispatch } = useStore();
   const now = useRelativeNow();
@@ -1505,18 +1505,11 @@ export function Sidebar({ open, onClose, collapseToIcons = false }: {
         {sections.announcement}
       </p>
 
-      <GlassBar edge="bottom">
-      <LiveCallPill
+      <SidebarFooterBar rail={rail} phone={phone} query={query} onQuery={setQuery} onOpenTasks={onOpenTasks}
         currentBotId={state.activeView === "chat" ? state.selectedId : null}
-        onOpen={(botId, threadId) => openThread(dispatch, { botId, threadId }, state, showThreads)}
-        iconOnly={density === "icons"}
-      />
-
-      {rail ? <SimpleRailFooter
-        owner={cloudOwner}
-        archived={archivedEntry}
-      /> : phone ? <SidebarPhoneBar query={query} onQuery={setQuery} /> : <SidebarFooter density={density} simple={simpleDesk} owner={cloudOwner} archived={archivedEntry} toolsCollapsed={sectionCollapsed(TOOLS_SECTION_ID)} onToggleTools={layoutInteractive ? () => toggleSection(TOOLS_SECTION_ID) : undefined} />}
-      </GlassBar>
+        onOpenChat={(botId, threadId) => openThread(dispatch, { botId, threadId }, state, showThreads)}
+        density={density} simple={simpleDesk} owner={cloudOwner} archived={archivedEntry}
+        toolsCollapsed={sectionCollapsed(TOOLS_SECTION_ID)} onToggleTools={layoutInteractive ? () => toggleSection(TOOLS_SECTION_ID) : undefined} />
       </GlassScrollFrame>
 
       <BotContextMenu

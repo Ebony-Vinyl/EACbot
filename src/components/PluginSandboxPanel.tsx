@@ -1,3 +1,4 @@
+import { readTaskPanelData } from "@/features/tasks/panel-data";
 import { useEffect, useRef } from "react";
 
 import { useStore } from "@/state/store";
@@ -26,7 +27,7 @@ export function PluginSandboxPanel({ spec, botId }: { spec: SandboxPanelSpec; bo
         callRpc: async (method, params) => panelFrameRpc(method, params, {
           nonce,
           active: () => active,
-          read: (source) => current.current.bots.filter((bot) => !botId || bot.id === botId).flatMap<Record<string, unknown>>((bot) => {
+          read: (source) => source !== "platforms" ? readTaskPanelData(source, botId) : current.current.bots.filter((bot) => !botId || bot.id === botId).flatMap<Record<string, unknown>>((bot) => {
             if (source === "platforms") return bot.platformBinding ? [{ botId: bot.id, name: bot.name, platform: bot.platformBinding.platform }] : [];
             return (bot.tasks ?? []).flatMap<Record<string, unknown>>((task) => {
               if (source === "usage") return task.usage ? [{ botId: bot.id, title: task.title, usage: task.usage }] : [];

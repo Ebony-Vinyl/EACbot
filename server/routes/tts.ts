@@ -1,3 +1,5 @@
+import { wavDuration } from "../tts/wav-duration.ts";
+import type { RequestAuth } from "../request-auth.ts";
 // The voice routes: whether a voice is ready, the provider's voices (searched, or one pasted by ID or link), adding an
 // ElevenLabs Voice Library voice to My Voices, speaking a line, and hearing speech. Scopes are keyed by path in server/request-auth.ts.
 import type { AppConfig } from "../config.ts";
@@ -14,10 +16,11 @@ export const TRANSCRIBE_MAX_BYTES = 12 * 1024 * 1024;
 
 export interface TtsRouteDeps {
   config(): AppConfig;
+  recordUsage?(auth: RequestAuth, input: { botId?: string; kind: "tts" | "stt"; provider: string; unit: "characters" | "seconds" | "requests"; quantity: number }): void;
 }
 
 export function createTtsRoutes(deps: TtsRouteDeps): RouteHandler {
-  return async ({ req, res, url, path, method, json, readBody }) => {
+  return async ({ req, res, url, path, method, json, readBody, auth }) => {
     if (!path.startsWith("/api/tts/")) return PASS;
     const cfg = deps.config();
     if (method === "POST" && path === "/api/tts/prepare") {
@@ -65,6 +68,7 @@ export function createTtsRoutes(deps: TtsRouteDeps): RouteHandler {
       res.on("close", cancel);
       try {
         const audio = await tts.speak(cfg, text, typeof body.voiceId === "string" ? body.voiceId : undefined, undefined, controller.signal);
+        deps.recordUsage?.(auth, { botId: typeof body.botId === "string" ? body.botId : undefined, kind: "tts", provider: tts.voiceProvider(cfg), unit: "characters", quantity: text.length });
         if (controller.signal.aborted) return;
         res.writeHead(200, {
           "content-type": audio.mime,
@@ -112,7 +116,10 @@ export function createTtsRoutes(deps: TtsRouteDeps): RouteHandler {
       });
       if (!audio) return json(res, 413, { error: `audio exceeds ${TRANSCRIBE_MAX_BYTES} bytes` });
       try {
-        return json(res, 200, { text: await fish.transcribe(audio, mime, key) });
+        const text = await fish.transcribe(audio, mime, key);
+        const duration = wavDuration(audio);
+        deps.recordUsage?.(auth, { kind: "stt", provider: "fish", unit: duration === null ? "requests" : "seconds", quantity: duration ?? 1 });
+        return json(res, 200, { text });
       } catch (e) {
         return json(res, 502, { error: e instanceof Error ? e.message : String(e), ...userErrorFields(e) });
       }

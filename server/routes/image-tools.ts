@@ -42,6 +42,7 @@ export interface ImageToolDeps {
   /** Images still being made, per turn key: they count toward the limit before they are attached. */
   inFlight: Map<string, number>;
   signal?: AbortSignal;
+  recordUsage?(image: { provider: string; model: string }): void;
 }
 
 type Outcome = { status: number; body: { text: string } | { error: string } };
@@ -80,6 +81,7 @@ export async function generateImageForTurn(raw: unknown, deps: ImageToolDeps): P
   try {
     const image = await generateImage(deps.cfg, { prompt, aspect }, { slot, fetchImpl: deps.fetchImpl, signal: deps.signal });
     made = true;
+    deps.recordUsage?.({ provider: image.provider, model: image.model });
     if (!turn.attach({ bytes: image.bytes, mime: image.mime })) return { status: 409, body: { error: IMAGE_MESSAGES.noTurn } };
     const backup = image.usedFallback ? `, the person's backup image provider${image.baseError ? `, because the base failed: ${image.baseError}` : ""}` : "";
     const by = `${imageProviderName(image.provider)} (${image.model})${backup}`;
@@ -130,7 +132,7 @@ export function imageTurn(store: ImageTurnStore, threadId: string, requireActive
   };
 }
 
-export function createImageToolRoutes(deps: ImageTurnStore & { config: () => ImageCredentials; dataDir: string; fetchImpl?: typeof fetch }) {
+export function createImageToolRoutes(deps: ImageTurnStore & { config: () => ImageCredentials; dataDir: string; fetchImpl?: typeof fetch; recordUsage?(threadId: string, image: { provider: string; model: string }): void }) {
   const inFlight = new Map<string, number>();
   const daily = createImageDailyCap(deps.dataDir);
   return {
@@ -139,7 +141,7 @@ export function createImageToolRoutes(deps: ImageTurnStore & { config: () => Ima
       const turn = imageTurn(deps, ctx.threadId, ctx.requireActive);
       const call = new AbortController();
       ctx.res.once("close", () => { if (!ctx.res.writableEnded) call.abort(); });
-      const outcome = await generateImageForTurn(await ctx.readBody(), { cfg: deps.config(), personTurn: ctx.personTurn, daily, fetchImpl: deps.fetchImpl, turn, inFlight, signal: call.signal });
+      const outcome = await generateImageForTurn(await ctx.readBody(), { cfg: deps.config(), personTurn: ctx.personTurn, daily, fetchImpl: deps.fetchImpl, turn, inFlight, signal: call.signal, recordUsage: (image) => deps.recordUsage?.(ctx.threadId, image) });
       ctx.json(ctx.res, outcome.status, outcome.body);
     },
   };
