@@ -231,7 +231,13 @@ export function fromOwnPage(req: IncomingMessage): boolean {
 /** Unlike isSameOrigin, a request with neither Origin nor Sec-Fetch-Site fails. */
 export function provesSameOrigin(req: IncomingMessage): boolean {
   if (headerValue(req.headers.origin)) return isSameOrigin(req);
-  return headerValue(req.headers["sec-fetch-site"])?.trim().toLowerCase() === "same-origin";
+  const site = headerValue(req.headers["sec-fetch-site"])?.trim().toLowerCase();
+  if (site === "same-origin") return true;
+  // A person typing this server's address, following a bookmark or an outside link sends no Origin and reports
+  // "none". Accept that only for a top-level document navigation, which no other page can forge for itself.
+  const mode = headerValue(req.headers["sec-fetch-mode"])?.trim().toLowerCase();
+  const dest = headerValue(req.headers["sec-fetch-dest"])?.trim().toLowerCase();
+  return site === "none" && mode === "navigate" && dest === "document";
 }
 
 /** Remote clients arrive through a local proxy whose X-Forwarded-For names the source (Caddy overwrites the client's). */

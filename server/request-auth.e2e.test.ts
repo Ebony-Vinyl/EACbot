@@ -45,7 +45,9 @@ describe("a browser on a self-hosted server's own machine", () => {
         expect(JSON.parse(proxied.body).error, JSON.stringify(headers)).toMatch(/came through a proxy/);
       }
 
-      for (const headers of [otherPage, otherPort, navigation]) {
+      // A person typing this server's address navigates with no Origin; that is this server's own page.
+      expect((await raw(url, "/api/bots", navigation)).status, "typing the address is this server's own page").toBe(200);
+      for (const headers of [otherPage, otherPort]) {
         for (const [method, path] of [["GET", "/api/bots"], ["GET", "/api/config"], ["GET", "/api/auth/session"], ["PATCH", "/api/config"]]) {
           const refused = await raw(url, path!, { ...headers, "content-type": "application/json" }, method, method === "PATCH" ? "{}" : undefined);
           expect(refused.status, `${method} ${path}`).toBe(401);

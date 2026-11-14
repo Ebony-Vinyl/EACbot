@@ -515,6 +515,12 @@ describe("resolveRequestAuth", () => {
     expect(provesSameOrigin(request({ host: "a.example", origin: "http://a.example" }))).toBe(true);
     expect(provesSameOrigin(request({ host: "a.example" }))).toBe(false);
     expect(provesSameOrigin(request({ host: "a.example", origin: "https://evil.example", "sec-fetch-site": "same-origin" }))).toBe(false);
+    // Typing the loopback address sends no Origin and reports these three: this server's own page, opened by the person.
+    expect(provesSameOrigin(request({ host: "a.example", "sec-fetch-site": "none", "sec-fetch-mode": "navigate", "sec-fetch-dest": "document" }))).toBe(true);
+    // "none" without the top-level document markers is not a person opening the page.
+    expect(provesSameOrigin(request({ host: "a.example", "sec-fetch-site": "none" }))).toBe(false);
+    expect(provesSameOrigin(request({ host: "a.example", "sec-fetch-site": "none", "sec-fetch-mode": "cors", "sec-fetch-dest": "empty" }))).toBe(false);
+    expect(provesSameOrigin(request({ host: "a.example", "sec-fetch-site": "cross-site", "sec-fetch-mode": "navigate", "sec-fetch-dest": "document" }))).toBe(false);
   });
 
   it("accepts a stream ticket on the event stream only, once", () => {
@@ -804,7 +810,9 @@ describe("a browser is the owner only as this server's own page", () => {
       }
     }
     expect(check(ownSocket, "/api/desktop-viewer/local/shared/websockify", "GET").auth?.kind).toBe("loopback");
-    for (const headers of [page, navigation, socket]) {
+    // A person who types this server's address navigates with no Origin; that is this server's own page.
+    expect(check(navigation, "/api/bots").auth).toEqual({ kind: "loopback", scopes: ["admin", "client"] });
+    for (const headers of [page, socket]) {
       for (const [method, path] of [["GET", "/api/bots"], ["GET", "/api/config"], ["GET", "/api/auth/session"], ["POST", "/api/auth/pairing"], ["GET", "/api/desktop-viewer/local/shared/websockify"]]) {
         const refused = check(headers, path, method);
         expect(refused.auth, `${method} ${path} ${JSON.stringify(headers)}`).toBeNull();
@@ -819,7 +827,7 @@ describe("a browser is the owner only as this server's own page", () => {
     const otherPort = { ...ownUi, origin: "http://127.0.0.1:3000", "sec-fetch-site": "same-site" };
     const otherScheme = { ...ownUi, origin: "https://127.0.0.1:8799" };
     const noProof = { host: "127.0.0.1:8799", "sec-fetch-dest": "empty" };
-    for (const headers of [otherPort, otherScheme, noProof, navigation, page]) {
+    for (const headers of [otherPort, otherScheme, noProof, page]) {
       const refused = check(headers, "/api/bots");
       expect(refused.auth, JSON.stringify(headers)).toBeNull();
       expect(refused.status).toBe(401);
