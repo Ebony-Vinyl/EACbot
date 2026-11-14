@@ -14,6 +14,11 @@ const RETIRED: ReadonlyArray<readonly [string, RegExp, string]> = [
   ["EACbot Pro", /EACbot Pro\b/, "EACbot Cloud"],
   // \b before "_" fails, so environment names such as EAC_PUBLIC_IPV4 pass.
   ["OMB", /\bOMB\b/, "EACbot"],
+  // The upstream project's product names, which this build never shows. The trademark holder's own name ("Supamaus")
+  // is attribution and stays, so only the product spellings are retired here.
+  ["OpenMausBot", /OpenMausBot|\bOpenMaus\b|openmausbot/i, "EACbot"],
+  ["Mausbot", /\bmausbot\b/i, "EACbot"],
+  ["Maus", /\bMaus\b/, "EACbot"],
   ["Cloud box", /Cloud box/i, "cloud desktop"],
   ["Hosted desktop", /Hosted desktop/i, "cloud desktop"],
   ["Cloud VM", /Cloud VM/i, "cloud desktop"],
