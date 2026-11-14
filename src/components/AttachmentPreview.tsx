@@ -14,7 +14,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Download,
-  ExternalLink,
   Eye,
   FileText,
   FolderOpen,
@@ -36,6 +35,23 @@ import { t } from "@/lib/i18n";
 import { FilePreviewButton } from "./FilePreviewButton";
 import { chipNameAction, SaveIconButton, useHtmlPreview } from "./HtmlFilePreview";
 import { ImageLoading } from "./ImageLoading";
+
+/**
+ * Where the picture starts when it grows out of its thumbnail: the offset from the middle of the screen to the middle
+ * of that box, and the scale that box is of the finished picture. Motion animates from this to `{x:0, y:0, scale:1}`,
+ * which is the whole "it flew out of where I clicked" effect.
+ */
+function flipFrom(from: DOMRect): { x: number; y: number; scale: number; opacity: number } {
+  const centreX = from.left + from.width / 2;
+  const centreY = from.top + from.height / 2;
+  const scale = Math.max(0.05, Math.min(from.width / Math.max(1, window.innerWidth * 0.6), from.height / Math.max(1, window.innerHeight * 0.6)));
+  return {
+    x: centreX - window.innerWidth / 2,
+    y: centreY - window.innerHeight / 2,
+    scale,
+    opacity: 0.4,
+  };
+}
 
 export interface PreviewImage {
   src: string;
@@ -73,7 +89,9 @@ export function previewKeyAction(key: string, count: number): PreviewKeyAction {
 }
 
 export function imageGalleryLayout(count: number): string {
-  if (count <= 1) return "w-[min(32rem,70vw)] grid-cols-1";
+  // One picture sizes itself to its own aspect and stops at a readable width; a set of them shares a fixed grid so the
+  // tiles line up. A single tile in a fixed-width grid leaves the grey canvas showing beside a square picture.
+  if (count <= 1) return "w-fit max-w-[min(32rem,70vw)] grid-cols-1";
   if (count === 2) return "w-[min(36rem,70vw)] grid-cols-2";
   return "w-[min(38rem,70vw)] grid-cols-2 sm:grid-cols-3";
 }
@@ -460,20 +478,71 @@ export function AttachmentPreviewDialog({
   images,
   initialIndex = 0,
   onClose,
+  from,
 }: {
   image: PreviewImage;
   images?: PreviewImage[];
   initialIndex?: number;
   onClose: () => void;
+  /** The thumbnail's box: the picture grows out of it and shrinks back into it. Absent, it fades in place. */
+  from?: DOMRect;
 }) {
   const items = images?.length ? images : [image];
   const [index, setIndex] = useState(() => Math.min(Math.max(initialIndex, 0), items.length - 1));
   const current = items[index] ?? image;
   const dialogRef = useRef<HTMLDivElement>(null);
+  const veilRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef(onClose);
   const [loadedSources, setLoadedSources] = useState<Set<string>>(() => new Set());
   const [failedSource, setFailedSource] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
+  // Closing plays the exit and only then tells the caller: the caller unmounts on its own flag, so without this the
+  // dialog would vanish mid-gesture instead of shrinking away.
+  const [leaving, setLeaving] = useState(false);
+
+  const requestClose = useCallback(() => {
+    setLeaving(true);
+  }, []);
+
+  // The picture's own flight, as a Web Animation: it starts at the thumbnail's box and scale, lands in the middle at
+  // full size, and runs backwards to go home. The easing overshoots slightly, so the arrival has weight without a
+  // library. Reduced motion lands it at once.
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    const veil = veilRef.current;
+    if (!dialog || !veil) return;
+    const reduced = globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
+    const easing = "cubic-bezier(0.22, 1, 0.36, 1)";
+    const start = from ? flipFrom(from) : { x: 0, y: 0, scale: 0.94, opacity: 0 };
+    const home = { x: 0, y: 0, scale: 1, opacity: 1 };
+
+    const flight = dialog.animate(
+      [
+        { transform: `translate3d(${start.x}px, ${start.y}px, 0) scale(${start.scale})`, opacity: String(start.opacity) },
+        { transform: `translate3d(${home.x}px, ${home.y}px, 0) scale(${home.scale})`, opacity: String(home.opacity) },
+      ],
+      { duration: reduced ? 0 : (leaving ? 220 : 380), easing, fill: "both", direction: leaving ? "reverse" : "normal" },
+    );
+    const veilFade = veil.animate(
+      [{ opacity: 0 }, { opacity: 1 }],
+      { duration: reduced ? 0 : (leaving ? 200 : 260), easing, fill: "both", direction: leaving ? "reverse" : "normal" },
+    );
+
+    if (leaving) {
+      flight.onfinish = () => closeRef.current();
+      // If the animation is cancelled (a background tab, a second close), the dialog must still go.
+      const timer = window.setTimeout(() => closeRef.current(), 400);
+      return () => {
+        window.clearTimeout(timer);
+        flight.cancel();
+        veilFade.cancel();
+      };
+    }
+    return () => {
+      flight.cancel();
+      veilFade.cancel();
+    };
+  }, [leaving, from]);
 
   useLayoutEffect(() => {
     closeRef.current = onClose;
@@ -492,7 +561,7 @@ export function AttachmentPreviewDialog({
       if (action) {
         event.preventDefault();
         event.stopPropagation();
-        if (action === "close") closeRef.current();
+        if (action === "close") requestClose();
         else navigate(action === "previous" ? -1 : 1);
         return;
       }
@@ -522,7 +591,7 @@ export function AttachmentPreviewDialog({
       window.removeEventListener("keydown", onKey);
       previousFocus?.focus();
     };
-  }, [items.length, navigate]);
+  }, [items.length, navigate, requestClose]);
 
   const loaded = loadedSources.has(current.src);
   const failed = failedSource === current.src;
@@ -538,102 +607,82 @@ export function AttachmentPreviewDialog({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-3 backdrop-blur-sm sm:p-6"
-      onMouseDown={(event) => event.target === event.currentTarget && onClose()}
+      ref={veilRef}
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/82 p-3 backdrop-blur-[16px] sm:p-6"
+      onMouseDown={(event) => event.target === event.currentTarget && requestClose()}
     >
+      {/* The picture itself is the only surface: no frame, no header bar. It grows out of the thumbnail it was clicked
+          from, settles in the middle, and shrinks back into that same box on close. The controls float over it. */}
       <div
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label={t("attach.previewAria", { name: current.name })}
         tabIndex={-1}
-        className="animate-pop-in flex h-full max-h-[900px] w-full max-w-[1200px] flex-col overflow-hidden rounded-2xl border border-white/15 bg-black/70 shadow-2xl outline-none"
+        className="relative flex max-h-full max-w-full items-center justify-center outline-none"
       >
-        <header className="flex shrink-0 items-center justify-between gap-4 border-b border-white/10 bg-black/45 px-4 py-3">
-          <div className="min-w-0">
-            <div className="truncate text-[13px] font-medium text-white">{current.name}</div>
-            <div className="text-[11px] text-white/50">
-              {items.length > 1
-                ? t("attach.position", { index: index + 1, count: items.length })
-                : t("attach.imagePreview")}
-            </div>
-          </div>
-          <div className="flex shrink-0 items-center gap-1">
-            {current.downloadUrl && (
-              <a
-                href={current.downloadUrl}
-                download={current.downloadName ?? canonicalDownloadFilename({
-                  fallback: current.name,
-                  source: current.downloadUrl,
-                })}
-                className="flex size-9 items-center justify-center rounded-lg text-white/65 hover:bg-white/10 hover:text-white"
-                aria-label={t("attach.downloadAria", { name: current.name })}
-                title={t("attach.download")}
-              >
-                <Download size={17} />
-              </a>
+        <div className="relative max-h-full max-w-full">
+          <img
+            key={`${current.src}:${attempt}`}
+            src={current.src}
+            alt={current.name}
+            draggable={false}
+            onLoad={() => setLoadedSources((sources) => new Set(sources).add(current.src))}
+            onError={() => setFailedSource(current.src)}
+            className={cn(
+              "block max-h-[calc(100vh-3rem)] max-w-[calc(100vw-3rem)] rounded-xl object-contain shadow-2xl transition-opacity duration-200",
+              loaded ? "opacity-100" : "opacity-0",
             )}
-            {current.openUrl && (
-              <a
-                href={current.openUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="flex size-9 items-center justify-center rounded-lg text-white/65 hover:bg-white/10 hover:text-white"
-                aria-label={t("attach.openOriginalAria", { name: current.name })}
-                title={t("attach.openOriginal")}
-              >
-                <ExternalLink size={17} />
-              </a>
-            )}
-            <button
-              onClick={onClose}
-              className="flex size-9 items-center justify-center rounded-lg text-white/65 hover:bg-white/10 hover:text-white"
-              aria-label={t("attach.close")}
-            >
-              <X size={19} />
-            </button>
-          </div>
-        </header>
-        <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden p-4 sm:p-8">
+          />
           {!loaded && !failed && (
-            <div className="absolute inset-4 flex animate-pulse items-center justify-center rounded-xl bg-white/[0.055] sm:inset-8" role="status">
-              <span className="flex items-center gap-2 text-[13px] text-white/55">
-                <LoaderCircle size={17} className="animate-spin" /> {t("attach.imageLoading")}
-              </span>
+            <div className="absolute inset-0 flex min-h-32 min-w-32 items-center justify-center rounded-xl bg-raised/70">
+              <LoaderCircle size={20} className="animate-spin text-ink-tertiary" />
             </div>
           )}
-          {failed ? (
-            <div className="flex flex-col items-center gap-3 text-white/60" role="alert">
-              <ImageOff size={34} />
-              <span className="text-[13px]">{t("attach.imageFailed")}</span>
+
+          {failed && (
+            <div className="flex min-h-32 min-w-32 flex-col items-center justify-center gap-2 rounded-xl bg-raised/70 p-4 text-center">
+              <ImageOff size={22} className="text-ink-tertiary" />
+              <span className="text-[12px] text-ink-secondary">{t("attach.imageUnavailable")}</span>
               <button
                 type="button"
                 onClick={retry}
-                className="flex items-center gap-1.5 rounded-lg border border-white/15 bg-white/10 px-3 py-1.5 text-[12px] text-white hover:bg-white/15"
+                className="flex items-center gap-1 rounded-md border border-hairline/50 bg-panel px-2 py-1 text-[11px] text-ink hover:bg-raised"
               >
-                <RotateCcw size={13} /> {t("chat.retry")}
+                <RotateCcw size={11} /> {t("chat.retry")}
               </button>
             </div>
-          ) : (
-            <img
-              key={`${current.src}:${attempt}`}
-              src={current.src}
-              alt={current.name}
-              onLoad={() => setLoadedSources((sources) => new Set(sources).add(current.src))}
-              onError={() => setFailedSource(current.src)}
-              className={cn(
-                "block max-h-full max-w-full rounded-lg object-contain shadow-2xl transition-opacity duration-150",
-                loaded ? "opacity-100" : "opacity-0",
-              )}
-            />
           )}
+
+          {/* The controls sit on the picture, not in a bar: a dark pill each, so they stay readable over any image. */}
+          <div className="absolute right-2 top-2 flex items-center gap-1.5">
+            {current.downloadUrl && (
+              <a
+                href={current.downloadUrl}
+                download={current.downloadName ?? canonicalDownloadFilename({ fallback: current.name, source: current.src })}
+                aria-label={t("attach.download")}
+                className="flex size-9 items-center justify-center rounded-full bg-black/55 text-white/85 backdrop-blur-md transition-colors hover:bg-black/80 hover:text-white"
+              >
+                <Download size={16} />
+              </a>
+            )}
+            <button
+              type="button"
+              onClick={requestClose}
+              aria-label={t("attach.close")}
+              className="flex size-9 items-center justify-center rounded-full bg-black/55 text-white/85 backdrop-blur-md transition-colors hover:bg-black/80 hover:text-white"
+            >
+              <X size={17} />
+            </button>
+          </div>
+
           {items.length > 1 && (
             <>
               <button
                 type="button"
                 onClick={() => navigate(-1)}
                 aria-label={t("attach.previous")}
-                className="absolute left-2 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/55 text-white/80 backdrop-blur-sm hover:bg-black/75 hover:text-white sm:left-4"
+                className="absolute left-2 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/55 text-white/80 backdrop-blur-md transition-colors hover:bg-black/80 hover:text-white"
               >
                 <ChevronLeft size={21} />
               </button>
@@ -641,12 +690,20 @@ export function AttachmentPreviewDialog({
                 type="button"
                 onClick={() => navigate(1)}
                 aria-label={t("attach.next")}
-                className="absolute right-2 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/55 text-white/80 backdrop-blur-sm hover:bg-black/75 hover:text-white sm:right-4"
+                className="absolute right-2 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/55 text-white/80 backdrop-blur-md transition-colors hover:bg-black/80 hover:text-white"
               >
                 <ChevronRight size={21} />
               </button>
             </>
           )}
+
+          {/* The name, quiet, under the picture rather than above it. */}
+          <div className="pointer-events-none absolute -bottom-8 inset-x-0 flex justify-center">
+            <span className="max-w-full truncate rounded-full bg-black/45 px-3 py-1 text-[11px] text-white/70 backdrop-blur-md">
+              {current.name}
+              {items.length > 1 && ` · ${t("attach.position", { index: index + 1, count: items.length })}`}
+            </span>
+          </div>
         </div>
       </div>
     </div>,
@@ -662,7 +719,8 @@ export function AttachmentThumbnail({
   explainRefusal = false,
 }: {
   image: PreviewImage;
-  onPreview: () => void;
+  /** Receives the thumbnail's on-screen box, so the viewer can grow from it and shrink back into it. */
+  onPreview: (from: DOMRect | undefined) => void;
   className?: string;
   eager?: boolean;
   explainRefusal?: boolean;
@@ -676,8 +734,10 @@ export function AttachmentThumbnail({
 
   return (
     <span
-      style={ratio ? { aspectRatio: String(ratio) } : undefined}
-      className={cn("group/image relative block aspect-[4/3] min-w-0 overflow-hidden rounded-xl border border-hairline/40 bg-inset", className)}
+      // A lone picture takes its own aspect at a sensible width; a set of them share equal cells so the tiles line up.
+      // Sizing the box (not just the picture) is what stops the grey canvas showing beside a square picture.
+      style={ratio ? { aspectRatio: String(ratio), width: `min(${ratio >= 1 ? "32rem" : `${32 * ratio}rem`}, 100%)` } : { aspectRatio: "4 / 3", width: "min(32rem, 100%)" }}
+      className={cn("group/image relative block min-w-0 overflow-hidden rounded-xl border border-hairline/40 bg-inset", className)}
     >
       {state === "loading" && <ImageLoading name={image.name} className="absolute inset-0 bg-raised/65" />}
       {state === "failed" ? (
@@ -718,12 +778,12 @@ export function AttachmentThumbnail({
           onClick={(event) => {
             event.preventDefault();
             event.stopPropagation();
-            if (state === "ready") onPreview();
+            if (state === "ready") onPreview(event.currentTarget.querySelector("img")?.getBoundingClientRect());
           }}
           onKeyDown={(event) => {
             if (state === "ready" && (event.key === "Enter" || event.key === " ")) {
               event.preventDefault();
-              onPreview();
+              onPreview(event.currentTarget.querySelector("img")?.getBoundingClientRect());
             }
           }}
           className="absolute inset-0 block size-full cursor-pointer text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/60 aria-disabled:cursor-default"
@@ -776,12 +836,16 @@ export function AttachedImageGallery({
     return image ? [image] : [];
   }), [paths]);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const [selectedFrom, setSelectedFrom] = useState<DOMRect | undefined>(undefined);
   if (images.length === 0) return null;
   return (
     <>
       <div className={cn("mb-2 grid max-w-full gap-2", imageGalleryLayout(images.length), className)}>
         {images.map((image, index) => (
-          <AttachmentThumbnail key={`${image.src}:${index}`} image={image} onPreview={() => setSelectedIndex(index)} eager={eager} />
+          <AttachmentThumbnail key={`${image.src}:${index}`} image={image} eager={eager} onPreview={(from) => {
+            setSelectedFrom(from);
+            setSelectedIndex(index);
+          }} />
         ))}
       </div>
       {selectedIndex !== null && images[selectedIndex] && (
@@ -789,6 +853,7 @@ export function AttachedImageGallery({
           image={images[selectedIndex]}
           images={images}
           initialIndex={selectedIndex}
+          from={selectedFrom}
           onClose={() => setSelectedIndex(null)}
         />
       )}
@@ -812,6 +877,7 @@ export function MarkdownImagePreview({
   sourceOffset?: number;
 }) {
   const [open, setOpen] = useState(false);
+  const [from, setFrom] = useState<DOMRect | undefined>(undefined);
   const containerRef = useRef<HTMLSpanElement>(null);
   const threadId = message?.threadId;
   const messageId = message?.messageId;
@@ -875,7 +941,10 @@ export function MarkdownImagePreview({
             <ImageOff size={17} /> {t("attach.oldImage")}
           </span>
         ) : visibleSource ? (
-          <AttachmentThumbnail key={image.src} image={image} onPreview={() => setOpen(true)} className="max-h-96" eager explainRefusal={localMessageImage} />
+          <AttachmentThumbnail key={image.src} image={image} className="max-h-96" eager explainRefusal={localMessageImage} onPreview={(from) => {
+            setFrom(from);
+            setOpen(true);
+          }} />
         ) : (
           <ImageLoading name={name} className="aspect-[4/3] max-h-96 rounded-xl border border-hairline/40 bg-inset" />
         )}
@@ -885,7 +954,7 @@ export function MarkdownImagePreview({
           </a>
         )}
       </span>
-      {open && visibleSource && <AttachmentPreviewDialog image={image} onClose={() => setOpen(false)} />}
+      {open && visibleSource && <AttachmentPreviewDialog image={image} from={from} onClose={() => setOpen(false)} />}
     </>
   );
 }

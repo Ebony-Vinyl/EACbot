@@ -400,6 +400,93 @@ function stopBridge() {
   status.connected = false;
 }
 
+// The board: the bridge's own numbers, in the shared contract's shape. A conversation it cannot carry says so
+// instead of looking healthy, and an empty allow list is reported as the safe state it is.
+function buildBoard() {
+  const configured = existsSync(CONFIG);
+  const allow = config?.allow ?? [];
+  const carries = Array.isArray(allow) && allow.length > 0;
+  return {
+    schemaVersion: 1,
+    platform: "qq",
+    generatedAt: new Date().toISOString(),
+    account: config?.accountId
+      ? {
+        id: String(config.accountId),
+        displayName: String(config.selfName ?? "") || "QQ 账户",
+        status: status.connected ? "connected" : "unavailable",
+        autoMode: carries ? "auto" : "off",
+        ...(status.lastInboundAt ? { lastSyncAt: status.lastInboundAt } : {}),
+      }
+      : null,
+    headline: [
+      { key: "delivered", label: "已投递", value: String(status.inboundDelivered) },
+      { key: "refused", label: "被拒", value: String(status.inboundRefused), tone: status.inboundRefused > 0 ? "warning" : "normal" },
+      { key: "sent", label: "已回复", value: String(status.outboundSent) },
+      { key: "pending", label: "待发送", value: String(status.outboundPending), tone: status.outboundPending > 0 ? "warning" : "normal" },
+      { key: "queued", label: "待投递", value: String(status.inboundQueued), tone: status.inboundQueued > 0 ? "warning" : "normal" },
+    ],
+    sections: [
+      {
+        id: "connection",
+        kind: "notice",
+        title: "OneBot 连接",
+        notices: [{
+          tone: status.connected ? "info" : "warning",
+          text: status.connected
+            ? `已连接 OneBot（${String(config?.onebotUrl ?? "")}）。`
+            : configured
+              ? `未连接：${status.lastError ?? "尚无连接记录"}。`
+              : "尚未配置：需要在插件配置里填入 OneBot 地址与账户 id。",
+        }],
+      },
+      {
+        id: "allow",
+        kind: "table",
+        title: "接入的会话",
+        columns: [{ key: "kind", label: "类型" }, { key: "id", label: "会话 id" }],
+        rows: allow.map((entry, index) => ({
+          id: `allow-${index}`,
+          cells: {
+            kind: { kind: "text", value: entry.kind === "group" ? "群聊" : "私聊" },
+            id: { kind: "text", value: String(entry.id) },
+          },
+        })),
+        empty: "未接入任何会话：这是真实账号的安全默认值，填入群号或 QQ 号后才会转达消息。",
+      },
+      {
+        id: "capability",
+        kind: "table",
+        title: "能力矩阵",
+        columns: [{ key: "name", label: "能力" }, { key: "state", label: "状态" }, { key: "why", label: "说明" }],
+        rows: [
+          ["接收群聊/私聊并交给 Bot", status.connected ? "可用" : "待连接", status.connected ? "OneBot 已连接。" : "需要 OneBot 地址与账户 id。"],
+          ["发送文本回复", status.connected ? "可用" : "待连接", status.connected ? "未确认送达的回复会保留在 outbox。" : "需要 OneBot 连接。"],
+          ["图片 / 语音 / 文件消息", "未开放", "OneBot 段落类型未实现，不假装支持。"],
+          ["频道与评论", "未开放", "未实现。"],
+          ["反向 WS", "未开放", "当前只作为客户端连接。"],
+        ].map(([name, state, why], index) => ({
+          id: `cap-${index}`,
+          cells: {
+            name: { kind: "text", value: name },
+            state: { kind: "status", value: state, tone: state === "可用" ? "accent" : state === "未开放" ? "warning" : "muted" },
+            why: { kind: "text", value: why, tone: "muted" },
+          },
+        })),
+      },
+    ],
+    actions: [{ id: "refresh", label: "刷新状态", effect: "read", mode: "manual", available: true }],
+    limits: [],
+    capability: [
+      { id: "inbound", label: "接收消息", state: status.connected ? "production" : "experimental", reason: status.connected ? undefined : "OneBot 尚未连接。" },
+      { id: "outbound", label: "发送文本回复", state: status.connected ? "production" : "experimental", reason: status.connected ? undefined : "OneBot 尚未连接。" },
+      { id: "media", label: "图片 / 语音 / 文件", state: "unavailable", reason: "段落类型未实现。" },
+      { id: "channel", label: "频道与评论", state: "unavailable", reason: "未实现。" },
+      { id: "reverse", label: "反向 WS", state: "unavailable", reason: "当前只作为客户端连接。" },
+    ],
+  };
+}
+
 const TOOLS = {
   "qq-bridge-status": async () => {
     const configured = existsSync(CONFIG);
@@ -514,6 +601,20 @@ lines.on("line", (text) => {
     answer(frame.id, { ok: true });
     process.exit(0);
   }
+  if (frame.method === "board") {
+    try {
+      answer(frame.id, buildBoard());
+    } catch (error) {
+      answer(frame.id, { error: { code: -32000, message: String(error instanceof Error ? error.message : error) } });
+    }
+    return;
+  }
+  if (frame.method === "operate") {
+    if (String(frame.params?.action ?? "") === "refresh") answer(frame.id, { ok: true });
+    else answer(frame.id, { error: { code: -32000, message: "this platform has no board actions beyond refresh" } });
+    return;
+  }
+  if (frame.method === "audit") { answer(frame.id, []); return; }
   if (frame.method === "status") {
     // A host method, not a tool: reading whether the bridge is connected needs no grant, so a broken bridge stays
     // diagnosable without authorising a bot to look at it. Secrets are never part of this answer.

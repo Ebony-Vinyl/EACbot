@@ -7,8 +7,8 @@
 | 插件 | 已实现（状态） | 明确未实现 |
 | --- | --- | --- |
 | `eac.qq` | OneBot v11 桥：QQ 群聊/私聊 → 绑定 Bot 的会话，回复回 QQ；去重/回声/身份由宿主判定（production，需自备 OneBot） | 官方 QQ 开放平台协议、图片/语音/文件消息、频道与评论、反向 WS |
-| `eac.health` | 记录/查询/趋势/摘要/删除（production，全本地） | 手环/手机自动导入 |
-| `eac.home-assistant` | HA REST 实体读取、服务调用（production） | WebSocket 实时订阅 |
+| `eac.health` | 记录/查询/趋势/摘要/删除（production，全本地） | 手环/手机自动导入（核心已提供 `server/health/` 域：CSV/JSON/Apple Health 导入、SQLite 时序、受众隔离；见 [健康与家居](../../docs/verification/health-and-home.md)） |
+| `eac.home-assistant` | HA REST 实体读取、服务调用（production） | WebSocket 实时订阅（核心 `server/home/` 域已提供设备注册表、策略、审计与敏感操作确认） |
 | `eac.bilibili` | 搜索/视频信息/热门榜（production）；点赞/评论（experimental，需 Cookie+grant） | 弹幕/投币/收藏/关注、字幕抓取总结 |
 | `eac.muse` | 酷狗公开搜索（production）；队列与播放状态机（production）；控制请求（production，回执需播放端） | 登录账号/歌单/收藏、真实出声（需 KugouMusic.NET 桥或面板） |
 | `eac.tieba` | 回帖草稿（production，本地）；帖子列表/摘要（experimental，HTML 解析）；回帖（experimental，需 Cookie+TBS+grant） | 无 |

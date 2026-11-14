@@ -229,6 +229,75 @@ const browserProfilesSchema = z.array(browserProfileSchema).max(20).superRefine(
     });
   });
 });
+/** The app a person registered with a cloud health provider. Write-only: a save never echoes it back. */
+const healthCloudAppSchema = z.object({
+  clientId: z.string().trim().min(1).max(200),
+  clientSecret: z.string().trim().min(1).max(500).optional(),
+  /**
+   * Override the provider's endpoints. A self-hosted gateway, or a fixture that must not reach the internet; the
+   * production addresses are the default.
+   */
+  endpoints: z.object({
+    authorizeUrl: z.string().trim().url().max(500),
+    tokenUrl: z.string().trim().url().max(500),
+    revokeUrl: z.string().trim().url().max(500).optional(),
+    scope: z.string().trim().max(500),
+  }).strict().optional(),
+}).strict();
+
+/** A health source the person connected: the adapter's own id and where its credential lives. */
+const healthSourceConfigSchema = z.object({
+  /** `cloud:withings`, `file:apple-health`; a stable id the samples carry. */
+  sourceId: z.string().trim().min(1).max(120),
+  kind: z.enum(["manual", "file", "cloud", "device"]),
+  label: z.string().trim().min(1).max(120).optional(),
+  /** An opaque key in the credential store; never the token itself. */
+  credentialRef: z.string().regex(/^[a-z0-9][a-z0-9._-]{1,119}$/).optional(),
+  /** Which cloud provider reads this source; required for `cloud`, refused otherwise. */
+  provider: z.enum(["withings", "oura", "polar", "fitbit"]).optional(),
+  /** The app registered with that provider. The sign-in's tokens live in health-cloud.json, never here. */
+  app: healthCloudAppSchema.optional(),
+}).strict().refine((source) => source.kind !== "cloud" || (source.provider !== undefined && source.app !== undefined), {
+  message: "a cloud source needs both provider and app: e.g. { \"kind\": \"cloud\", \"provider\": \"withings\", \"app\": { \"clientId\": \"…\" } }",
+  path: ["provider"],
+});
+
+/** Health readings: which sources exist and whether a summary may leave this machine. */
+const healthConfigSchema = z.object({
+  /** Off (the default) keeps a health summary out of model calls, shared memory and platform replies. */
+  shareWithModels: z.boolean().optional(),
+  sources: z.array(healthSourceConfigSchema).max(32).optional(),
+}).strict();
+
+/** One home adapter, as config.json names it. A kind this build does not have is skipped with a reason. */
+const homeAdapterConfigSchema = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("home-assistant"),
+    baseUrl: z.string().trim().url().max(300),
+    token: z.string().trim().min(1).max(500),
+    label: z.string().trim().min(1).max(120).optional(),
+    /** Entity ids, or `domain.` prefixes, to leave out of the home entirely. */
+    exclude: z.array(z.string().trim().min(1).max(200)).max(200).optional(),
+  }).strict(),
+  z.object({
+    kind: z.literal("matter"),
+    label: z.string().trim().min(1).max(120).optional(),
+    /** Devices already paired, by operational node id, with the name and zone a person wants to see. */
+    nodes: z.array(z.object({
+      nodeId: z.string().trim().min(1).max(64),
+      name: z.string().trim().min(1).max(120).optional(),
+      zone: z.string().trim().min(1).max(64).optional(),
+    }).strict()).max(256).optional(),
+  }).strict(),
+]);
+
+/** The home: its adapters, and the default a bot gets when it sets none of its own. */
+const homeConfigSchema = z.object({
+  adapters: z.array(homeAdapterConfigSchema).max(16).optional(),
+  /** `read` unless set: a new bot looks at the home but changes nothing until the person says so. */
+  botAccess: z.enum(["off", "read", "control", "full"]).optional(),
+}).strict();
+
 // Not strict: a stale client's unknown flag must be dropped, not fail the whole config.
 const featureConfigSchema = z.object({
   /** Bots may draft skills for your review. On unless false. */
@@ -424,6 +493,13 @@ const appConfigSchema = z.object({
   threads: threadsConfigSchema.optional(),
   /** Minimum days of decision-log month files kept; EAC_DECISION_RETENTION_DAYS wins. */
   decisions: z.object({ retentionDays: z.number().int().min(1).max(3650).optional() }).strict().optional(),
+  /**
+   * Health readings, kept on this machine. `shareWithModels` off (the default) keeps a summary out of a model
+   * call, a shared memory and a platform reply; the tools still answer the person's own turns.
+   */
+  health: healthConfigSchema.optional(),
+  /** The home's adapters and what a bot may do with them. No adapter configured means the home is not offered. */
+  home: homeConfigSchema.optional(),
   loopGuard: loopGuardConfigSchema.optional(),
   safetyFloor: z.object({ enabled: z.boolean().optional() }).strict().optional(), // off by default: safetyFloorEnabled in server/safety-floor-gate.ts
   localVm: localVmConfigSchema.optional(),
@@ -482,6 +558,30 @@ export interface AppConfig extends HelperConfig {
   openrouter?: { key?: string };
   budgets?: { monthlyUsd?: number; warnAtPercent?: number };
   decisions?: { retentionDays?: number };
+  /** Health readings kept on this machine; `shareWithModels` off keeps a summary out of every model call. */
+  health?: {
+    shareWithModels?: boolean;
+    sources?: Array<{
+      sourceId: string;
+      kind: "manual" | "file" | "cloud" | "device";
+      label?: string;
+      credentialRef?: string;
+      provider?: "withings" | "oura" | "polar" | "fitbit";
+      app?: {
+        clientId: string;
+        clientSecret?: string;
+        endpoints?: { authorizeUrl: string; tokenUrl: string; revokeUrl?: string; scope: string };
+      };
+    }>;
+  };
+  /** The home's adapters and the default access a bot gets; no adapter means the home is not offered. */
+  home?: {
+    adapters?: Array<
+      | { kind: "home-assistant"; baseUrl: string; token: string; label?: string; exclude?: string[] }
+      | { kind: "matter"; label?: string; nodes?: Array<{ nodeId: string; name?: string; zone?: string }> }
+    >;
+    botAccess?: "off" | "read" | "control" | "full";
+  };
   loopGuard?: LoopGuardConfig;
   safetyFloor?: { enabled?: boolean };
   billing?: { currency?: string; prices?: Record<string, { inputPerMillion: number; outputPerMillion: number; cachedInputPerMillion?: number }> };

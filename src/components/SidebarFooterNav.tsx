@@ -1,4 +1,4 @@
-import { FolderOpen, Globe, Puzzle, UsersRound, Zap } from "lucide-react";
+import { FolderOpen, Globe, Puzzle } from "lucide-react";
 import { useMemo, type ReactNode } from "react";
 
 import { useAppTriggers } from "@/lib/app-triggers";
@@ -125,16 +125,6 @@ export function SidebarFooterNav({
   const iconSize = iconsOnly && !rail ? 20 : 18;
   const tone = (active: boolean) => (active ? "text-accent" : "text-ink-secondary");
   const automationsNeedYou = useAutomationsNeedYou();
-  const automationsRow = <NavRow
-    id="automations"
-    label={t("sidebar.nav.automations")}
-    tourId="nav-automations"
-    iconsOnly={iconsOnly || toolbar}
-    active={state.activeView === "routines"}
-    attention={automationsNeedYou}
-    icon={(active) => <Zap size={iconSize} className={tone(active)} />}
-    onClick={() => dispatch({ type: "showRoutines", view: "list" })}
-  />;
   const filesRow = useCloudFilesReady() && <NavRow
     id="files"
     label={t("sidebar.nav.files")}
@@ -159,19 +149,7 @@ export function SidebarFooterNav({
 
   const rows = (
     <>
-      {automationsRow}
       {appsRow}
-      {(advanced || iconsOnly) && (
-        <NavRow
-          id="team-map"
-          label={t("sidebar.nav.teamMap")}
-          tourId="team-tools"
-          iconsOnly={iconsOnly || toolbar}
-          active={state.activeView === "team-map"}
-          icon={(active) => <UsersRound size={iconSize} className={tone(active)} />}
-          onClick={() => dispatch({ type: "showTeamMap" })}
-        />
-      )}
       {filesRow}
       {advanced && webPanels.map((panel) => (
         <NavRow

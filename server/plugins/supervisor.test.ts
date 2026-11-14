@@ -146,6 +146,31 @@ describe("stdio plugin supervisor", () => {
     expect(await runtime.start(exits)).toMatchObject({ ok: false, error: expect.stringMatching(/exited|closed/) });
   });
 
+  it("passes a plugin's own error text through, so a board can say what failed", async () => {
+    const { record } = recordScript(`
+      process.stdin.setEncoding("utf8");
+      let buffer = "";
+      const send = (id, payload) => process.stdout.write(JSON.stringify({ jsonrpc: "2.0", id, ...payload }) + "\\n");
+      process.stdin.on("data", (chunk) => {
+        buffer += chunk;
+        for (;;) {
+          const newline = buffer.indexOf("\\n");
+          if (newline < 0) break;
+          const line = buffer.slice(0, newline);
+          buffer = buffer.slice(newline + 1);
+          const message = JSON.parse(line);
+          if (message.method === "initialize") send(message.id, { result: { ok: true } });
+          else if (message.method === "shutdown") { send(message.id, { result: { ok: true } }); process.exit(0); }
+          else send(message.id, { error: { code: -32000, message: "no transport line is running" } });
+        }
+      });
+    `);
+    const runtime = supervisor();
+    expect(await runtime.start(record)).toEqual({ ok: true });
+    await expect(runtime.call!(record.installationId, "operate", {})).rejects.toThrow(/no transport line is running/);
+    await runtime.stop(record);
+  });
+
   it("refuses required isolation, a missing package directory and a non-process runtime", async () => {
     const runtime = supervisor();
     const { record } = recordScript(APPROVED);

@@ -270,6 +270,22 @@ export function createBotPatchRoutes(deps: BotPatchRouteDeps): RouteHandler {
         if (typeof body.composio !== "boolean") return json(res, 400, { error: "composio must be true or false" });
         patch.composio = body.composio;
       }
+      if (body.healthTools !== undefined) {
+        if (typeof body.healthTools !== "boolean") return json(res, 400, { error: "healthTools must be true or false" });
+        patch.healthTools = body.healthTools;
+      }
+      if (body.homeAccess !== undefined) {
+        if (body.homeAccess === null) patch.homeAccess = undefined;
+        else if (typeof body.homeAccess !== "string" || !["off", "read", "control", "full"].includes(body.homeAccess)) {
+          return json(res, 400, { error: "homeAccess must be off, read, control, full or null" });
+        } else patch.homeAccess = body.homeAccess as "off" | "read" | "control" | "full";
+      }
+      if (body.homeZones !== undefined) {
+        if (body.homeZones === null) patch.homeZones = undefined;
+        else if (!Array.isArray(body.homeZones) || body.homeZones.length > 64 || body.homeZones.some((zone: unknown) => typeof zone !== "string" || !/^[a-z][a-z0-9_-]{0,63}$/.test(zone))) {
+          return json(res, 400, { error: "homeZones must be a list of up to 64 zone ids, e.g. [\"living-room\"]" });
+        } else patch.homeZones = body.homeZones as string[];
+      }
       // An admin decision, so not on the client-writable profile surface.
       if (body.voiceNotes !== undefined) {
         if (typeof body.voiceNotes !== "boolean") return json(res, 400, { error: "voiceNotes must be true or false" });

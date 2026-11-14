@@ -1,11 +1,45 @@
 {
   "type": "object",
   "properties": {
+    "transport": {
+      "type": "string",
+      "enum": ["auto", "protocol", "web"],
+      "default": "auto",
+      "description": "线路：protocol 直连消息网关（快，需 Cookie）；web 驱动已登录的网页（不需要 Cookie）；auto 优先 protocol，断线时切到 web"
+    },
+    "accountId": {
+      "type": "string",
+      "description": "平台账户连接 id（在「平台」页面创建账户后填入）"
+    },
     "cookie": {
       "type": "string",
-      "description": "可选：已登录 goofish.com 的完整 Cookie（含 _m_h5_tk 与 unb），仅供商品搜索；知识库功能无需配置",
-      "secret": true
+      "secret": true,
+      "description": "已登录 goofish.com 的完整 Cookie（需含 _m_h5_tk 与 unb）；protocol 线路与商品搜索需要"
+    },
+    "cdpUrl": {
+      "type": "string",
+      "description": "web 线路使用的 DevTools 地址，例如 http://127.0.0.1:9222；需指向一个你已登录闲鱼的 Chrome"
+    },
+    "serverUrl": {
+      "type": "string",
+      "default": "http://127.0.0.1:8799",
+      "description": "本应用的服务地址：插件把消息投递到这里，并从这里的 outbox 取回复"
+    },
+    "serverToken": {
+      "type": "string",
+      "secret": true,
+      "description": "访问上面地址所需的令牌（本应用生成）"
+    },
+    "selfName": {
+      "type": "string",
+      "description": "账户在闲鱼上的显示名，用于看板标识"
+    },
+    "pollMs": {
+      "type": "number",
+      "default": 20000,
+      "description": "轮询间隔（毫秒）：检查配置变化、投递入站消息、取回复"
     }
   },
+  "required": ["transport", "accountId"],
   "additionalProperties": false
 }

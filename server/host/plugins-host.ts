@@ -18,6 +18,8 @@ import { DeviceRegistry } from "../plugins/device-registry.ts";
 import { KanbanStore } from "../plugins/kanban.ts";
 import { createPluginConfigHost } from "../plugins/config-host.ts";
 import { createPluginUiRoutes } from "../routes/plugin-ui.ts";
+import { createPlatformBoardHost, type PlatformBoardHost } from "../plugins/platform-boards.ts";
+import { createPlatformBoardRoutes } from "../routes/platform-boards.ts";
 import type { PluginGrantTarget } from "../../shared/plugins/permissions.ts";
 
 export interface PluginsHostOptions {
@@ -43,6 +45,7 @@ export interface PluginsHost {
   route: RouteHandler;
   registry: PluginRegistry;
   accounts: PlatformAccountStore;
+  boards: PlatformBoardHost;
 }
 
 /** Composition for the plugin registry and its HTTP surface; server/index.ts only mounts the returned route. */
@@ -90,10 +93,17 @@ export function createPluginsHost(options: PluginsHostOptions): PluginsHost {
     boards: new KanbanStore(options.dataDir),
     mayManage: options.mayManage,
   });
+  const platformBoards = createPlatformBoardHost({
+    registry: created,
+    ...(runtime?.call ? { call: (installationId, method, params, timeoutMs) => runtime.call!(installationId, method, params, timeoutMs) } : {}),
+  });
+  const platformBoardRoutes = createPlatformBoardRoutes({ boards: platformBoards, mayManage: options.mayManage });
   return {
     route: async (context) => {
       const uiAnswer = await ui(context);
       if (uiAnswer !== PASS) return uiAnswer;
+      const platformBoardAnswer = await platformBoardRoutes(context);
+      if (platformBoardAnswer !== PASS) return platformBoardAnswer;
       const answered = await plugins(context);
       if (answered !== PASS) return answered;
       const platformAnswer = await platforms(context);
@@ -104,5 +114,6 @@ export function createPluginsHost(options: PluginsHostOptions): PluginsHost {
     },
     registry,
     accounts: platformAccounts,
+    boards: platformBoards,
   };
 }

@@ -386,6 +386,12 @@ export interface WireBot extends DefaultBotFields, BotAccessFields {
   outbound?: { policy: "ask" | "allow" };
   /** Which of a paired phone's apps this bot may use; absent: every bot may use what the phone allows (shared/phone-apps.ts). */
   phoneApps?: import("./phone-apps.ts").PhoneApps;
+  /** Whether this bot may read and record health readings. Absent: yes, for the person whose health this server holds. */
+  healthTools?: boolean;
+  /** What this bot may do with the home's devices; absent follows the workspace's `home.botAccess`. */
+  homeAccess?: "off" | "read" | "control" | "full";
+  /** Zones this bot may touch; absent: every zone. */
+  homeZones?: string[];
   /** Ordered backups used only by opt-in, pre-prompt startup recovery. */
   fallback?: Array<{ instanceId: string; model: string }>;
   /** Whether this bot gets the app's built-in browser. */

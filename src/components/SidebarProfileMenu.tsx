@@ -10,8 +10,11 @@ import {
   FolderOpen,
   Gauge,
   Info,
+  HeartPulse,
   HelpCircle,
+  House,
   Keyboard,
+  LayoutGrid,
   Laptop,
   LifeBuoy,
   Loader2,
@@ -331,19 +334,25 @@ export function phoneMenuItems({
   ];
 }
 
-export function toolMenuItems({ activeView, automationsNeedYou, onAutomations, onTeamMap, onFiles, archived }: {
+export function toolMenuItems({ activeView, automationsNeedYou, onAutomations, onTeamMap, onFiles, onHealth, onHome, onPlatforms, archived }: {
   activeView: string;
   automationsNeedYou: boolean;
   onAutomations: () => void;
   onTeamMap: () => void;
   /** set once My Cloud's files are ready to open */
   onFiles?: () => void;
+  onHealth?: () => void;
+  onHome?: () => void;
+  onPlatforms?: () => void;
   archived?: ArchivedBots;
 }): SidebarMenuItem[] {
   return [
     { key: "automations", label: t("sidebar.nav.automations"), icon: <Zap size={16} />, active: activeView === "routines", attention: automationsNeedYou, onSelect: onAutomations },
     { key: "team-map", label: t("sidebar.nav.teamMap"), icon: <UsersRound size={16} />, active: activeView === "team-map", onSelect: onTeamMap },
     ...(onFiles ? [{ key: "files", label: t("sidebar.nav.files"), icon: <FolderOpen size={16} />, active: activeView === "files", onSelect: onFiles }] : []),
+    ...(onHealth ? [{ key: "health", label: t("nav.health"), icon: <HeartPulse size={16} />, active: activeView === "health", onSelect: onHealth }] : []),
+    ...(onHome ? [{ key: "home", label: t("nav.home"), icon: <House size={16} />, active: activeView === "home", onSelect: onHome }] : []),
+    ...(onPlatforms ? [{ key: "platforms", label: t("nav.platforms"), icon: <LayoutGrid size={16} />, active: activeView === "platforms" || activeView === "platform", onSelect: onPlatforms }] : []),
     ...(archived?.count ? [{ key: "archived", label: t("sidebar.archived.title"), icon: <Archive size={16} />, value: String(archived.count), onSelect: archived.open }] : []),
   ];
 }
@@ -612,6 +621,9 @@ export function SidebarProfileMenu({ iconOnly = false, rail = false, circle = fa
         onAutomations: () => dispatch({ type: "showRoutines", view: "list" }),
         onTeamMap: () => dispatch({ type: "showTeamMap" }),
         onFiles: filesReady ? () => dispatch({ type: "showFiles" }) : undefined,
+        onHealth: () => dispatch({ type: "showHealth" }),
+        onHome: () => dispatch({ type: "showHome" }),
+        onPlatforms: () => dispatch({ type: "showPlatforms" }),
         archived: account.archived,
       }),
       places: placeMenuItems(account.place, { owner: account.owner, name: state.config?.team?.name, besideRail, onCloudSettings: openCloudAccount }),
