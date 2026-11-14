@@ -68,7 +68,7 @@ describe("eacbot command line", () => {
     expect(parseArgs(["service", "install", "--sentinel"], {})).toMatchObject({ command: "service", serviceAction: "install", sentinel: true });
     expect(parseArgs(["serve", "--sentinel"], {})).toEqual({ error: expect.stringContaining("--sentinel") });
     expect(parseArgs(["service"], {})).toEqual({ error: expect.stringContaining("service needs one of") });
-    expect(parseArgs(["serve", "--domain", "Mascot.Example.com"], {})).toMatchObject({ command: "serve", domain: "eacbot.example.com" });
+    expect(parseArgs(["serve", "--domain", "Eacbot.Example.com"], {})).toMatchObject({ command: "serve", domain: "eacbot.example.com" });
     expect(parseArgs(["serve", "--domain", "localhost"], {})).toEqual({ error: expect.stringContaining("bare hostname") });
     expect(parseArgs(["serve", "--domain", "eacbot.example.com", "--tunnel"], {})).toEqual({ error: expect.stringContaining("--domain already gives") });
   });

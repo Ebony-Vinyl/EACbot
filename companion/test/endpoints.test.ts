@@ -10,7 +10,7 @@ import { lanAddresses } from "../src/listener.ts";
 
 describe("hostedCompanionUrl", () => {
   it("normalizes one explicit HTTPS origin", () => {
-    expect(hostedCompanionUrl("  https://Mascot.Example/  ")).toBe("https://eacbot.example");
+    expect(hostedCompanionUrl("  https://Eacbot.Example/  ")).toBe("https://eacbot.example");
     expect(hostedCompanionUrl(undefined)).toBeNull();
     expect(hostedCompanionUrl("  ")).toBeNull();
   });

@@ -163,7 +163,7 @@ describe("doctor --host", () => {
     const watching = probe({ freeBytes: (path) => { seen.push(path); return 412 * GB; } });
     const ctx = (flags: Record<string, string | boolean>, env: NodeJS.ProcessEnv = {}) => ({ flags, env }) as unknown as VerbContext;
     await hostDoctor(ctx({ host: true }, { EAC_DATA_DIR: "/srv/from-env" }), watching);
-    const flagged = await hostDoctor(ctx({ host: true, "data-dir": "/srv/eacbot", port: "9000", domain: "Mascot.Example.com" }), probe({
+    const flagged = await hostDoctor(ctx({ host: true, "data-dir": "/srv/eacbot", port: "9000", domain: "Eacbot.Example.com" }), probe({
       freeBytes: (path) => { seen.push(path); return 412 * GB; }, files: { "/proc/net/tcp": tcp(443, 9000) } }));
     expect(seen).toEqual(["/srv/from-env", "/srv/eacbot"]);
     expect((flagged.result as { checks: HostCheck[] }).checks.filter((check) => check.status === "FAIL").map((check) => check.message))

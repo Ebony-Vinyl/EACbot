@@ -43,3 +43,20 @@ export function adoptEarlierEnvNames(env: NodeJS.ProcessEnv = process.env): stri
   }
   return adopted;
 }
+
+/** A setting from an environment object handed to a function rather than the process: the current name, else the
+ * earlier one. Callers that receive `env` as an argument use this, because {@link adoptEarlierEnvNames} only rewrites
+ * the process's own environment. */
+export function envSetting(
+  env: NodeJS.ProcessEnv | Record<string, string | undefined>,
+  current: string,
+): string | undefined {
+  const value = env[current];
+  if (value !== undefined && value !== "") return value;
+  for (const [earlier, name] of Object.entries(EARLIER)) {
+    if (name !== current) continue;
+    const fallback = env[earlier];
+    if (fallback !== undefined && fallback !== "") return fallback;
+  }
+  return undefined;
+}

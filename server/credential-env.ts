@@ -44,16 +44,21 @@ export const WORKSPACE_CREDENTIAL_ENV = [
 export const CONTROL_PLANE_ENV = ["EAC_LICENSE_KEY", "EAC_INSTALLATION_CREDENTIAL"] as const;
 export const CONTROL_PLANE_ENV_PREFIX = "EAC_CLOUD_";
 
-/** Names earlier releases read for the settings above: a shell must not inherit them either. */
-const EARLIER_NAMES = ["EACBOT_TOKEN", "EACBOT_COMPANY_API_KEY", "EACBOT_CHATGPT_TOKEN", "EACBOT_TOKEN", "EACBOT_COMPANY_API_KEY", "EACBOT_CHATGPT_TOKEN"] as const;
-const EARLIER_PREFIXES = ["EACBOT_", "EAC_", "EACBOT_"] as const;
+/** Credential names earlier releases used: a shell must not inherit them either. */
+const EARLIER_CREDENTIAL_NAMES = [
+  "OPENMAUSBOT_TOKEN", "OPENMAUSBOT_COMPANY_API_KEY", "OPENMAUSBOT_CHATGPT_TOKEN",
+  "MAUSBOT_TOKEN", "MAUSBOT_COMPANY_API_KEY", "MAUSBOT_CHATGPT_TOKEN",
+] as const;
+/** Earlier credential prefixes only: EACBOT_ also names settings a child legitimately reads. */
+const EARLIER_CREDENTIAL_PREFIXES = ["OPENMAUSBOT_", "OPENMAUS_", "MAUSBOT_"] as const;
 
 /** Names compare case-insensitively because Windows environments do. */
 export function stripControlPlaneEnv(env: Record<string, string | undefined>): void {
   for (const key of Object.keys(env)) {
     const name = key.toUpperCase();
     if (name.startsWith(CONTROL_PLANE_ENV_PREFIX) || (CONTROL_PLANE_ENV as readonly string[]).includes(name)
-      || (EARLIER_NAMES as readonly string[]).includes(name) || EARLIER_PREFIXES.some((prefix) => name.startsWith(prefix))) {
+      || (EARLIER_CREDENTIAL_NAMES as readonly string[]).includes(name)
+      || EARLIER_CREDENTIAL_PREFIXES.some((prefix) => name.startsWith(prefix))) {
       delete env[key];
     }
   }

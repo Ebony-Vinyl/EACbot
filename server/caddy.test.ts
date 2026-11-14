@@ -47,7 +47,7 @@ describe("the managed Caddy", () => {
   });
 
   it("takes a bare public hostname for --domain", () => {
-    expect(normalizeDomainOption(" HTTPS://Mascot.Example.com/ ")).toBe("eacbot.example.com");
+    expect(normalizeDomainOption(" HTTPS://Eacbot.Example.com/ ")).toBe("eacbot.example.com");
     expect(normalizeDomainOption("eacbot.example.com:443")).toEqual({ error: expect.stringContaining("bare hostname") });
     expect(normalizeDomainOption("localhost")).toEqual({ error: expect.stringContaining("bare hostname") });
     expect(normalizeDomainOption("box.internal")).toEqual({ error: expect.stringContaining("public domain") });
