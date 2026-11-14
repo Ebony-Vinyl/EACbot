@@ -1,4 +1,5 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
+import { isIP } from "node:net";
 import { z } from "zod";
 
 import { parseJson, type JsonValue } from "./schema.ts";
@@ -154,6 +155,14 @@ export function createWebhookIngressHandler(manager: WebhookManager, claimReques
   };
 }
 
+/** Plain http is only for a local test; a public address would put the URL's secret in proxy and app logs. */
+function loopbackHostname(hostname: string): boolean {
+  const host = hostname.trim().toLowerCase().replace(/^\[/, "").replace(/\]$/, "");
+  if (host === "localhost" || host.endsWith(".localhost")) return true;
+  const version = isIP(host);
+  return version === 4 ? host.startsWith("127.") : version === 6 && host === "::1";
+}
+
 export function advertisedWebhookBase(raw: string): string {
   let parsed: URL | undefined;
   try {
@@ -164,6 +173,11 @@ export function advertisedWebhookBase(raw: string): string {
   if (!parsed || (parsed.protocol !== "http:" && parsed.protocol !== "https:")) {
     throw new Error(
       `webhook public base URL must be an absolute http(s) URL such as https://bots.example.com, got "${raw}"`,
+    );
+  }
+  if (parsed.protocol === "http:" && !loopbackHostname(parsed.hostname)) {
+    throw new Error(
+      `webhook public base URL must use https unless it is a loopback address such as http://127.0.0.1:8800, got "${raw}"`,
     );
   }
   return raw.replace(/\/+$/, "");
