@@ -24,6 +24,7 @@ const feedSchema = z.object({
   announcements: z.array(z.unknown()).max(MAX_ANNOUNCEMENTS),
 });
 
+/** An empty url means announcements are off: no timer is scheduled and nothing is fetched. */
 export interface AnnouncementFeedOptions {
   url: string;
   fetch?: typeof fetch;
