@@ -81,6 +81,42 @@ function store(token: string, brokerUrl = BROKER, extra: Record<string, unknown>
 }
 
 describe("a Cloud home's connected-apps installation", () => {
+  it("sends nothing until Connected Apps is used, then registers once", async () => {
+    const broker = fakeBroker({ "POST /v1/installations": [registered(NEW, "install-new")] });
+    const apps = start(broker.fetchImpl, { autoStart: false });
+    await apps.settled();
+
+    expect(broker.calls).toEqual([]);
+    expect(applied).toEqual([null]);
+    expect(connectionMode({})).toBe("unavailable");
+
+    apps.activate();
+    await apps.settled();
+    apps.activate();
+    await apps.settled();
+
+    expect(broker.registrations()).toBe(1);
+    expect(stored().token).toBe(NEW);
+    expect(connectionMode({})).toBe("managed");
+  });
+
+  it("checks an installation already on the volume once, however often the feature is opened", async () => {
+    store(OLD);
+    const broker = fakeBroker({ "GET /v1/me": [json(200, { installationId: "install-old" })] });
+    const apps = start(broker.fetchImpl, { autoStart: false });
+    // A stored installation serves locally before any request, so a Cloud's apps keep working across the change.
+    expect(connectionMode({})).toBe("managed");
+    expect(broker.calls).toEqual([]);
+
+    apps.activate();
+    await apps.settled();
+    apps.activate();
+    await apps.settled();
+
+    expect(broker.calls).toEqual([{ method: "GET", path: "/v1/me", authorization: `Bearer ${OLD}` }]);
+    expect(broker.registrations()).toBe(0);
+  });
+
   it("registers once when it has none, keeps the token in a private file and turns connected apps on", async () => {
     const broker = fakeBroker({ "POST /v1/installations": [registered(NEW, "install-new")] });
     expect(connectionMode({})).toBe("unavailable");

@@ -5,12 +5,21 @@ import {
   managedComposioAccess,
   managedComposioBrokerUrl,
   managedComposioChildEnvironment,
+  managedComposioRegistrationEnabled,
   normalizeManagedComposioBrokerUrl,
 } from "./managed-composio.mjs";
 
 const TOKEN = "a".repeat(64);
 
 describe("managed Composio desktop registration", () => {
+  it("lets an explicit switch stop every registration", () => {
+    expect(managedComposioRegistrationEnabled({})).toBe(true);
+    expect(managedComposioRegistrationEnabled({ EAC_CONNECTED_APPS_REGISTER: "1" })).toBe(true);
+    for (const value of ["0", "off", "false", "no", " OFF "]) {
+      expect(managedComposioRegistrationEnabled({ EAC_CONNECTED_APPS_REGISTER: value }), value).toBe(false);
+    }
+  });
+
   it("publishes only a complete broker credential", () => {
     expect(managedComposioAccess("https://broker.example/", { composioBrokerToken: TOKEN })).toEqual({
       url: "https://broker.example",
@@ -96,6 +105,33 @@ describe("managed Composio desktop registration", () => {
       composioInstallationId: "installation-test",
     });
     expect(saveCredentials).toHaveBeenCalledWith(credentials);
+  });
+
+  it("does not reach the service at all when registration is switched off", async () => {
+    const previous = process.env.EAC_CONNECTED_APPS_REGISTER;
+    process.env.EAC_CONNECTED_APPS_REGISTER = "0";
+    try {
+      const credentials = {};
+      const fetchImpl = vi.fn();
+      const saveCredentials = vi.fn();
+      const log = vi.fn();
+
+      await ensureManagedComposioCredentials({
+        brokerUrl: "https://broker.example",
+        credentials,
+        fetchImpl,
+        saveCredentials,
+        log,
+      });
+
+      expect(fetchImpl).not.toHaveBeenCalled();
+      expect(saveCredentials).not.toHaveBeenCalled();
+      expect(credentials).toEqual({});
+      expect(log).toHaveBeenCalledWith("connected-apps registration is switched off");
+    } finally {
+      if (previous === undefined) delete process.env.EAC_CONNECTED_APPS_REGISTER;
+      else process.env.EAC_CONNECTED_APPS_REGISTER = previous;
+    }
   });
 
   it("settles a stalled optional registration without storing partial credentials", async () => {
