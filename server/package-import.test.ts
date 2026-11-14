@@ -199,7 +199,7 @@ describe("importing a whole team", () => {
     expect(result.skipped).toContainEqual({ part: "routines[daily-digest].timeoutMinutes", reason: "run_limit_adjusted" });
   });
 
-  it("switches skills on and stamps provenance only for the organization channel, once", async () => {
+  it("leaves organization skills off for review and stamps provenance only for the organization channel, once", async () => {
     const app = await installation();
     const document = app.parsePackageDocument({ ...fixture("full-team.v2.json") }, { trust: "org" });
     document.package.publisher = { organization: "acme", name: "Acme Partners" };
@@ -212,8 +212,8 @@ describe("importing a whole team", () => {
     if (result.alreadyAdded) throw new Error("unexpected");
     const scout = result.bots.find((bot) => bot.installedPackage?.agentKey === "scout")!;
     expect(app.skills.listSkills(scout.id)).toEqual([
-      expect.objectContaining({ name: "pricing-policy", enabled: true, source: "org:acme/sales-desk@1.3.0" }),
-      expect.objectContaining({ name: "research-brief", enabled: true }),
+      expect.objectContaining({ name: "pricing-policy", enabled: false, source: "org:acme/sales-desk@1.3.0" }),
+      expect.objectContaining({ name: "research-brief", enabled: false }),
     ]);
     expect(scout.installedPackage).toMatchObject({ source: "org", installId: org.installId, ref: "acme/sales-desk", sha256: org.sha256, publisher: org.publisher });
     expect(result.routines.every((routine) => !routine.enabled)).toBe(true);

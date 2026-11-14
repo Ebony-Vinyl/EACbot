@@ -5388,6 +5388,23 @@ const skillReview = createSkillReview({
     const applied = applyOwnStagedSkill(bot, threadId, staged, direct);
     return "error" in applied ? { ok: false, error: applied.error } : { ok: true };
   },
+  defer: (botId, threadId, change) => {
+    const bot = store.bot(botId);
+    if (!bot) return { ok: false, error: "unknown bot" };
+    if (change.action === "update" && skillsHost.editable(botId, change.name)) {
+      return { ok: false, error: "shared skill updates need a conversation that can apply changes" };
+    }
+    const staged = stageSkillWrite(botId, {
+      action: change.action,
+      targetName: change.action === "update" ? change.name : undefined,
+      files: [{ path: "SKILL.md", content: change.skillMd }],
+      gist: change.gist || undefined,
+      source: learnSource("automatic review of this conversation"),
+    });
+    if ("error" in staged) return { ok: false, error: staged.error };
+    appendSkillRequestCard({ botId, threadId, staged });
+    return { ok: true };
+  },
   statePath: join(DATA_DIR, "skill-review.json"),
   log: (line) => console.log(line),
 });

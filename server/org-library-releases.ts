@@ -178,11 +178,12 @@ class InstallUpdate {
         const added = this.deps.skills.installOrg(bot.id, source, skill.instructions, stamp);
         if ("error" in added) {
           // Put the skill back as it was, so it is never mistaken later for one the person took off.
-          this.deps.skills.installOrg(bot.id, was, text, have.stamp);
-          if (!have.enabled) this.deps.skills.setEnabled(bot.id, name, false);
+          const restored = this.deps.skills.installOrg(bot.id, was, text, have.stamp);
+          if (!("error" in restored) && have.enabled) this.deps.skills.setEnabled(bot.id, name, true);
           throw new Error(`skill ${name} could not be updated: ${added.error}`);
         }
-        if (!have.enabled) this.deps.skills.setEnabled(bot.id, name, false);
+        // A release never changes the owner's on/off choice.
+        if (have.enabled !== added.enabled) this.deps.skills.setEnabled(bot.id, name, have.enabled);
         changed = true;
       } else if (before && !before.includes(name) && !this.deps.skills.list(bot.id).some((listed) => listed.name === name)) {
         const added = this.deps.skills.installOrg(bot.id, source, skill.instructions, stamp);

@@ -9,6 +9,7 @@ import { json, readBody } from "../harness/http.ts";
 import type { RequestAuth } from "../request-auth.ts";
 import type { Store } from "../store.ts";
 import { fakeGitHub } from "../testing/fake-github.ts";
+import { MAX_SKILLS_PER_IMPORT } from "../skill-fetch.ts";
 import { workspaceDir } from "../workspace.ts";
 import { createBotSkillsRoutes } from "./bot-skills.ts";
 import { dispatchRoutes } from "./table.ts";
@@ -74,5 +75,27 @@ describe("importing a skill from GitHub into a bot", () => {
     expect(readFileSync(join(folder, "references", "fields.md"), "utf8")).toBe("# Fields\n");
     expect(readFileSync(join(folder, "assets", "form.pdf"))).toEqual(Buffer.from("%PDF-1.7\n\u0000ÿ"));
     expect(existsSync(join(folder, "shortcut.md"))).toBe(false);
+  });
+
+  it("warns when a broad import stops before it can search every skill folder", async () => {
+    const botId = `route-bot-${Math.random().toString(36).slice(2, 10)}`;
+    const base = await serve(botId);
+    const repo: Record<string, string> = {};
+    for (let i = 0; i <= MAX_SKILLS_PER_IMPORT; i++) {
+      repo[`skills/skill-${i}/SKILL.md`] = `---\nname: skill-${i}\ndescription: Skill ${i}.\n---\n\n# Skill ${i}\n`;
+    }
+    const github = fakeGitHub({ "acme/many-skills": repo }, { passThrough: fetch });
+    vi.stubGlobal("fetch", github.fetch);
+
+    const response = await fetch(`${base}/api/bots/${botId}/skills`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ source: "https://github.com/acme/many-skills/tree/main/skills" }),
+    });
+    expect(response.status).toBe(201);
+    const body = await response.json() as { installed: unknown[]; warning?: string };
+    expect(body.installed.length).toBeGreaterThan(0);
+    expect(body.installed.length).toBeLessThan(MAX_SKILLS_PER_IMPORT + 1);
+    expect(body.warning).toContain("too large to search completely");
   });
 });
