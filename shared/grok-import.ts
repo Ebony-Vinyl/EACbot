@@ -459,7 +459,7 @@ export function grokMovePlan(bot: GrokBot, options: { timeZone?: string; takenSe
       name: jobName,
       agent: agentKey,
       prompt: `${routine.instruction}${usesSkills.length ? `\n\nUse these skills: ${usesSkills.join(", ")}.` : ""}`.slice(0, 20_000),
-      runOn: "eacbot",
+      runOn: "maus",
       schedule,
       durationMinutes: 30,
       enabledAfterInstall: false,

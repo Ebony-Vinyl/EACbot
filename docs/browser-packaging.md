@@ -183,7 +183,7 @@ same rules hold on the desktop, a server and Cloud:
   read from `/proc`, so an image without `ps` works the same.
 - **Unused browsers close.** A browser nothing has used for
   `browserEngine.idleTimeoutMinutes` in `config.json` (1 to 60; 10 when
-  unset, 3 on a EACbot Cloud home, whose 4 GB fits few browsers) is closed: no bot call (a tool listing counts, and so do a call
+  unset, 3 on an EACbot Cloud home, whose 4 GB fits few browsers) is closed: no bot call (a tool listing counts, and so do a call
   waiting behind another, its page-health reads and recorded step, and
   fill_login's typing; a preview frame only holds off a close while it is
   taken), no turn that has used it and is still running, and no person
@@ -200,7 +200,7 @@ same rules hold on the desktop, a server and Cloud:
 - **Leftovers are swept.** A crash or a kill closes nothing, so the server
   sweeps when it starts, every minute, and at shutdown. It closes only this
   data dir's browsers: each bot's own, each built-in profile's, and its
-  temporary browsers, whose names carry a tag of the data dir. On a EACbot
+  temporary browsers, whose names carry a tag of the data dir. On an EACbot
   Cloud home, whose HOME is the server's alone, it also closes the browser
   of any bot that no longer exists (a `bot-` session), within a minute.
   Deleting a bot or profile closes its browser and erases its saved

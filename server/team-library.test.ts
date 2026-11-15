@@ -13,7 +13,7 @@ import {
 } from "./team-library.ts";
 
 const manifest = {
-  format: "eacbot.team",
+  format: "openmaus.team",
   version: 2,
   team: {
     name: "Engineering",
@@ -74,7 +74,7 @@ describe("team library", () => {
     }) as unknown as typeof fetch;
 
     const loaded = await fetchLibraryTeam("engineering", fetcher);
-    if (loaded.format !== "eacbot.team") throw new Error("expected a legacy team");
+    if (loaded.format !== "openmaus.team") throw new Error("expected a legacy team");
     expect(loaded.team.name).toBe("Engineering");
     expect(fetcher).toHaveBeenCalledTimes(2);
   });
@@ -106,7 +106,7 @@ describe("team library", () => {
     ) as unknown as typeof fetch;
 
     const loaded = await fetchGithubTeam("https://github.com/acme/team", fetcher);
-    if (loaded.format !== "eacbot.team") throw new Error("expected a legacy team");
+    if (loaded.format !== "openmaus.team") throw new Error("expected a legacy team");
     expect(loaded.team.members[0]?.name).toBe("Ada");
     expect(fetcher).toHaveBeenCalledTimes(6);
   });
@@ -115,7 +115,7 @@ describe("team library", () => {
     const shared = JSON.parse(readFileSync(join(import.meta.dirname, "..", "shared", "package-fixtures", "full-team.v2.json"), "utf8"));
     const fetcher = vi.fn(async () => response(shared)) as unknown as typeof fetch;
     const loaded = await fetchGithubTeam("https://github.com/acme/team/blob/main/sales-desk-1.3.0.eacbot.json", fetcher);
-    if (loaded.format !== "eacbot.package" || loaded.version !== 2) throw new Error("expected a shared team");
+    if (loaded.format !== "openmaus.package" || loaded.version !== 2) throw new Error("expected a shared team");
     expect(loaded.package.team?.name).toBe("Sales desk");
     expect(loaded.package.publisher).toBeUndefined();
   });

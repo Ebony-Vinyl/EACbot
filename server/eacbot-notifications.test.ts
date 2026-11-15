@@ -103,7 +103,7 @@ describe("who may", () => {
     expect(rows[0]!.read).toBe(false);
   });
 
-  it("refuses on any shared workspace, even for a EACbot with no person", () => {
+  it("refuses on any shared workspace, even for an EACbot with no person", () => {
     const { host, rows } = setup([entry("a", "done")], [EACBOT], true);
     expect(listUnread(host, "eacbot")).toMatchObject({ ok: false, error: expect.stringContaining("read in the app") });
     expect(markRead(host, "eacbot", ["a"])).toMatchObject({ ok: false });

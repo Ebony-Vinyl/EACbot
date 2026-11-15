@@ -57,7 +57,7 @@ it("takes cron through the real routine tools, applying the bot's own routine at
     expect(create.subtitle).toContain("Cron: 0 9 1 * *");
     const { resultId: routineId } = applied(create);
     const current = async () => (await api("GET", "/api/routines")).routines.find((routine: any) => routine.id === routineId);
-    expect(await current()).toMatchObject({ schedule, enabled: true, runOn: "eacbot", overlap: "queue", runOnStartup: true });
+    expect(await current()).toMatchObject({ schedule, enabled: true, runOn: "maus", overlap: "queue", runOnStartup: true });
     expect(create.subtitle).toContain("Queue one scheduled run");
     expect(create.subtitle).toContain("On startup: Also runs once each time EACbot starts");
     expect((await current()).nextRunAt).toBe(nextCronRuns(schedule, create.routineRequest.createdAt, 1)[0]);

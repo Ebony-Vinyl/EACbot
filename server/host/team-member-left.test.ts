@@ -71,7 +71,7 @@ describe("createTeamMemberLeft", () => {
     expect(result).toMatchObject({ bots: 1, botsKept: 0 });
   });
 
-  it("reports a EACbot it could not delete", async () => {
+  it("reports an EACbot it could not delete", async () => {
     const fx = fixture();
     const result = await createTeamMemberLeft({ ...fx.deps, deleteBot: async () => false })(BOB);
     expect(result).toMatchObject({ bots: 0, botsKept: 1 });

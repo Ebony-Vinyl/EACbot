@@ -115,9 +115,9 @@ function hostileState(): SnapshotState {
     sections: [HOSTILE, "Ops"],
     routines: [
       { name: HOSTILE, prompt: HOSTILE, enabled: true, runOn: "cloud", target: "bot", schedule: { type: "cron", expression: HOSTILE, timeZone: HOSTILE } },
-      { name: HOSTILE, prompt: HOSTILE, enabled: false, runOn: "eacbot", target: "room-goal", schedule: { type: "daily", time: "09:00", weekdays: [1] } },
-      { name: HOSTILE, prompt: HOSTILE, enabled: true, runOn: "eacbot", target: "bot", schedule: { type: "once", at: 1 } },
-      { name: HOSTILE, prompt: HOSTILE, enabled: true, runOn: "eacbot", target: "bot", schedule: { type: "interval", everyMinutes: 60, anchorAt: 0 } },
+      { name: HOSTILE, prompt: HOSTILE, enabled: false, runOn: "maus", target: "room-goal", schedule: { type: "daily", time: "09:00", weekdays: [1] } },
+      { name: HOSTILE, prompt: HOSTILE, enabled: true, runOn: "maus", target: "bot", schedule: { type: "once", at: 1 } },
+      { name: HOSTILE, prompt: HOSTILE, enabled: true, runOn: "maus", target: "bot", schedule: { type: "interval", everyMinutes: 60, anchorAt: 0 } },
     ] as unknown as SnapshotState["routines"],
     routinesLoadState: "ready",
     webhooks: [{ id: HOSTILE, name: HOSTILE }] as unknown as SnapshotState["webhooks"],

@@ -47,7 +47,7 @@ describe("additive template imports in the real renderer", () => {
     // Viewing a chat marks it read at any moment; an import must leave everything else as it was.
     const withoutReadState = (value: unknown) => JSON.parse(JSON.stringify(value, (key, field) => key === "unread" || key === "lastReadMessageId" ? undefined : field));
     const transcript = await control("messages", "--bot", info!.botId, "--limit", "10");
-    const manifest = { format: "eacbot.team", version: 2, team: { name: "Sales crew", members: [
+    const manifest = { format: "openmaus.team", version: 2, team: { name: "Sales crew", members: [
       { key: "researcher", name: "Lead finder", appearance: { color: "cyan" } },
       { key: "writer", name: "Outreach writer", appearance: { color: "purple" } },
     ] } };

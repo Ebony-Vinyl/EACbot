@@ -86,7 +86,7 @@ function loopbackTrust(input: Parameters<typeof resolveLoopbackTrust>[0]): { tru
   const raw = (input.env ?? process.env).EAC_LOOPBACK_TRUST;
   const requested = raw?.trim().toLowerCase();
   if (input.cloudHome) {
-    return { trust: "service", reason: "EACbot Cloud home", ...(raw !== undefined && requested !== "service" ? { warning: "EAC_LOOPBACK_TRUST is ignored on a EACbot Cloud home: a local request is always a service" } : {}) };
+    return { trust: "service", reason: "EACbot Cloud home", ...(raw !== undefined && requested !== "service" ? { warning: "EAC_LOOPBACK_TRUST is ignored on an EACbot Cloud home: a local request is always a service" } : {}) };
   }
   if (input.desktopManaged) {
     return { trust: "owner", reason: "desktop app", ...(raw !== undefined ? { warning: "EAC_LOOPBACK_TRUST is ignored in the desktop app" } : {}) };

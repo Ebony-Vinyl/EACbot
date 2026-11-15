@@ -44,7 +44,7 @@ signed in or too old; every pass goes over the window's sign-in to that server
 only and never signs it out; lending to that server stops once it has other
 people on it or another server answers at its address; while a server of the
 person's own is chosen no move to My Cloud starts; the frozen screen names the
-server and never asks for a EACbot Cloud sign-in; and connected apps through
+server and never asks for an EACbot Cloud sign-in; and connected apps through
 EACbot's service stay on this computer (a final, plain reason) when the server
 has no such service, so the move's check still passes.
 

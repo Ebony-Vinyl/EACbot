@@ -7,7 +7,7 @@ export interface WebhookRequestDefinition {
   name: string;
   /** Instructions for every call; empty means each call's own task is used. */
   instructions: string;
-  runOn: "eacbot" | "cloud";
+  runOn: "maus" | "cloud";
   eventTypes?: string[];
 }
 

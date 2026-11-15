@@ -558,6 +558,22 @@ export interface ModelVariantSession {
   variants?: { options: ModelVariantOption[]; currentValue?: string };
 }
 
+/** The pages EACbot's own command centre adds to the shell. They are views of
+ * the same window, not a second application: the rail, the background layer and
+ * the skins are the ones the rest of the app uses. */
+export const NEW_PAGES = ["hermes", "missions", "computers", "agents", "terminals"] as const;
+
+export type NewPage = (typeof NEW_PAGES)[number];
+
+/** The skin token and label each new page goes by in the rail and the tab. */
+export const NEW_PAGE_LABELS: Readonly<Record<NewPage, string>> = {
+  hermes: "Hermes",
+  missions: "Tasks",
+  computers: "Computers",
+  agents: "Agents",
+  terminals: "Terminals",
+};
+
 export interface AppState {
   bots: Bot[];
   groups: Group[];
@@ -569,7 +585,7 @@ export interface AppState {
   liveCallVersion: number;
   liveCallLookupSeq: number;
   selectedId: string;
-  activeView: "chat" | "team-map" | "routines" | "files" | "web-panel" | "health" | "home" | "platforms" | "platform";
+  activeView: "chat" | "team-map" | "routines" | "files" | "web-panel" | "health" | "home" | "platforms" | "platform" | NewPage;
   /** Which platform board is open when `activeView` is "platform". */
   platformId?: PlatformId;
   /** Folders a finished move left on this computer, for Files to offer sharing. */
@@ -659,6 +675,7 @@ export type Action =
   | { type: "showHealth" } | { type: "showHome" }
   | { type: "showPlatforms" } | { type: "showPlatform"; platform: PlatformId }
   | { type: "showChat" }
+  | { type: "showNewPage"; page: NewPage }
   | { type: "routinesHydrated"; routines: Routine[]; runs: RoutineRun[]; since?: number }
   | { type: "routinesLoadFailed" } | { type: "routineRunsLoaded"; runs: RoutineRun[]; from?: number; to?: number }
   | { type: "routinePatched"; routine: Routine }
@@ -1001,6 +1018,15 @@ export function reducer(state: AppState, action: Action): AppState {
       };
     case "showChat":
       return state.activeView === "chat" ? state : { ...state, activeView: "chat" };
+    case "showNewPage":
+      // A command-centre page closes the same panels every other destination
+      // closes, so one page's side sheet never follows a person to the next.
+      return state.activeView === action.page ? state : {
+        ...state,
+        activeView: action.page,
+        filesSuggest: null,
+        settingsOpen: false, computerOpen: false, inspectorOpen: false, activityOpen: false, appSettingsOpen: false, pluginsOpen: false,
+      };
     case "showTeamMap":
     case "showHealth":
     case "showHome":
@@ -2282,7 +2308,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     };
 
     const wrapped: React.Dispatch<Action> = (action) => {
-      if (["select", "newTask", "switchTask", "newGroupTask", "switchGroupTask", "showChat", "showRoutines", "showTeamMap", "showFiles", "showWebPanel", "showHealth", "showHome", "showPlatforms", "showPlatform"].includes(action.type)) selectionRevision.current++;
+      if (["select", "newTask", "switchTask", "newGroupTask", "switchGroupTask", "showChat", "showRoutines", "showTeamMap", "showFiles", "showWebPanel", "showHealth", "showHome", "showPlatforms", "showPlatform", "showNewPage"].includes(action.type)) selectionRevision.current++;
       // Pin before any await or optimistic state change.
       action = pinBotThreadAction(action, stateRef.current.bots);
       if (action.type === "taskSwitched") action = { ...action, bot: withTaskWrites(action.bot) as Bot };

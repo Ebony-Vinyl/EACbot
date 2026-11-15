@@ -87,6 +87,18 @@ The browser desktop viewer bundles the unmodified noVNC 1.7.0 library,
 Copyright the noVNC authors, under MPL-2.0 and its accompanying licenses.
 Attribution, license terms and the corresponding source location are in
 public/novnc-NOTICE.txt (novnc-NOTICE.txt in the built UI).
+
+The new EACbot core drives herdr-core (hc), https://github.com/herdrdev/herdr-core,
+Copyright the Herdr contributors, under the Apache License, Version 2.0
+(third_party/herdr-core/LICENSE). The pinned protocol facts and the terminal
+frame handling in core/terminal adapt its documented wire format; no Herdr
+application code is included and its names and marks are not used as EACbot
+branding.
+
+The new EACbot workbench uses the Astryx design system,
+https://github.com/meta/astryx, Copyright Meta Open Source, under the MIT
+License. Components are consumed as published npm packages; no Astryx source
+is copied into EACbot.
 The iOS companion app bundles a prebuilt WebRTC library for Live calls
 (stasel/WebRTC), built from the WebRTC project, Copyright (c) 2011, The WebRTC
 project authors, used under the BSD 3-Clause License. WebRTC includes

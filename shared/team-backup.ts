@@ -147,7 +147,7 @@ const backupSchema = z.object({
   routines: z.array(z.object({
     name, prompt: z.string().trim().min(1).max(200_000),
     target: z.enum(["bot", "room-goal"]), botId: key, groupId: key.optional(),
-    runOn: z.enum(["eacbot", "cloud"]), schedule,
+    runOn: z.enum(["maus", "cloud"]), schedule,
     durationMinutes: z.number().finite().positive(),
     timeoutMinutes: z.number().int().min(5).max(240).optional(),
     checks: z.array(z.enum(["calendar", "mail", "runs"])).max(3).optional(),
@@ -196,7 +196,7 @@ export function parseTeamBackup(input: unknown): TeamBackup {
   for (const routine of backup.routines) {
     if (!bots.has(routine.botId)) throw new Error("Invalid backup: unknown routine bot");
     if (routine.target === "room-goal") {
-      if (routine.runOn !== "eacbot") throw new Error("Invalid backup: room goals must run on this computer");
+      if (routine.runOn !== "maus") throw new Error("Invalid backup: room goals must run on this computer");
       const group = backup.groups.find((candidate) => candidate.key === routine.groupId);
       if (routine.groupId !== undefined && (!groups.has(routine.groupId) || !group || group.dm || !group.memberIds.includes(routine.botId))) {
         throw new Error("Invalid backup: unknown routine room or coordinator");

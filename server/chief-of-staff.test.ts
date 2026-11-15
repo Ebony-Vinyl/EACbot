@@ -170,7 +170,7 @@ describe("an @everyone line from the Team map", () => {
     expect(EVERYONE_ON_THE_MAP).toContain("never to all of them by default");
   });
 
-  it("says nothing of it to a Chief that cannot hand work on, or to a EACbot that only holds the tools", () => {
+  it("says nothing of it to a Chief that cannot hand work on, or to an EACbot that only holds the tools", () => {
     expect(chiefOfStaffSystemPrompt("chief", team, false)).not.toContain(EVERYONE_ON_THE_MAP);
     const eacbot = [{ id: "eacbot", name: "EACbot", defaultBot: { person: "ada@example.test" } }, ...team.slice(1)];
     expect(chiefOfStaffSystemPrompt("eacbot", eacbot, true)).not.toContain(EVERYONE_ON_THE_MAP);

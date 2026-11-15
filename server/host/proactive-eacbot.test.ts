@@ -60,7 +60,7 @@ function withRuns(runs: RoutineRun[]): void {
   writeFileSync(join(DATA_DIR, "routines.json"), JSON.stringify({ ...file, runs: [...(file.runs ?? []), ...runs] }));
 }
 const watchRun = (routine: Routine, fields: Partial<RoutineRun>): RoutineRun => ({
-  id: `run-${Math.random().toString(36).slice(2)}`, routineId: routine.id, routineName: routine.name, target: "bot", botId: routine.botId, runOn: "eacbot",
+  id: `run-${Math.random().toString(36).slice(2)}`, routineId: routine.id, routineName: routine.name, target: "bot", botId: routine.botId, runOn: "maus",
   scheduledFor: Date.now(), status: "completed", manual: false, checkKey: "key-1", deliver: "brief", access: "read-and-draft", createdAt: Date.now() - 60_000, ...fields,
 });
 
@@ -256,7 +256,7 @@ describe("EACbot keeps an eye on the day", () => {
   });
 
   it("moves to My Cloud with EACbot, untouched as it looks, once the person changed the watch, and is the only watch on there", async () => {
-    // This computer: the watch was handed to a EACbot nobody has opened yet.
+    // This computer: the watch was handed to an EACbot nobody has opened yet.
     const { first, clive, watch } = existingInstall();
     const eacbot = ensureDefaultBot(first.store, { dataDir: DATA_DIR })!;
     const here = start();

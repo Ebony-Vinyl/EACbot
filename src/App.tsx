@@ -1,4 +1,6 @@
 import { TaskCenter } from "@/features/tasks/TaskCenter";
+import { CommandPageView } from "@/next/pages/CommandPageView";
+import { NEW_PAGES, type NewPage } from "@/state/store";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PluginUiHost } from "@/components/PluginUiHost";
 import { Live2dOverlay } from "@/components/Live2dOverlay";
@@ -377,7 +379,9 @@ function Shell({ viewer }: { viewer: WelcomeViewer | null }) {
           />}
         </SidebarSwap>
       )}
-      {tasksOpen ? <TaskCenter onClose={() => setTasksOpen(false)} /> : state.activeView === "health" ? (
+      {isNewPage(state.activeView) ? (
+        <CommandPageView page={state.activeView} />
+      ) : tasksOpen ? <TaskCenter onClose={() => setTasksOpen(false)} /> : state.activeView === "health" ? (
         <HealthPage />
       ) : state.activeView === "home" ? (
         <HomePage />
@@ -494,6 +498,12 @@ function Shell({ viewer }: { viewer: WelcomeViewer | null }) {
       />
     </div>
   );
+}
+
+/** Whether the active view is one of the command-centre pages, which own the
+ * whole main pane rather than sitting beside a chat. */
+function isNewPage(view: string): view is NewPage {
+  return (NEW_PAGES as readonly string[]).includes(view);
 }
 
 function Application() {

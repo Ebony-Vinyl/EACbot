@@ -783,7 +783,7 @@ beforeAll(async () => {
         goalStatus: "completed",
         groupId: "test-goal-restart-room",
         botId: "test-bot-a",
-        runOn: "eacbot",
+        runOn: "maus",
         scheduledFor: 5,
         status: "completed",
         manual: false,
@@ -1913,7 +1913,7 @@ describe("harness HTTP API", () => {
       target: "room-goal",
       groupId: room.id,
       botId: lead.id,
-      runOn: "eacbot",
+      runOn: "maus",
       enabled: true,
       schedule: { type: "daily", time: "10:00", weekdays: [1, 2, 3, 4, 5] },
     });
@@ -5774,7 +5774,7 @@ describe("harness HTTP API", () => {
       .map((bot: { name: string }) => bot.name);
     const exported = await api("POST", "/api/teams/export", { name: "Field Team" });
     expect(exported.status).toBe(200);
-    expect(exported.body).toMatchObject({ format: "eacbot.team", version: 2, team: { name: "Field Team" } });
+    expect(exported.body).toMatchObject({ format: "openmaus.team", version: 2, team: { name: "Field Team" } });
     expect(exported.body.team.members.map((member: { name: string }) => member.name)).toEqual(visibleNames);
     expect(exported.body.team.members).toEqual(expect.arrayContaining([
       expect.objectContaining({ key: "mira", name: "Mira", title: "Project Lead", appearance: { color: "purple", mascotExpression: "focused", mascotBody: first.mascotBody } }),
@@ -5899,7 +5899,7 @@ describe("harness HTTP API", () => {
     try {
       for (const suffix of [3, 4]) {
         const imported = await api("POST", "/api/teams/import", {
-          format: "eacbot.team", version: 2,
+          format: "openmaus.team", version: 2,
           team: { name: `${stem} long template name`, members: [{ key: "helper", name: "Template helper", section: "Must not choose destination", appearance: { color: "blue" } }] },
         });
         expect(imported.status).toBe(201);
@@ -5967,7 +5967,7 @@ describe("harness HTTP API", () => {
           name: "Morning signals",
           agent: "scout",
           prompt: "Prepare the approved morning signal brief.",
-          runOn: "eacbot",
+          runOn: "maus",
           schedule: { type: "daily", time: "09:00", weekdays: [1, 2, 3, 4, 5] },
           durationMinutes: 30,
           enabledAfterInstall: false,
@@ -6113,7 +6113,7 @@ describe("harness HTTP API", () => {
     const room = (await api("POST", "/api/groups", { memberIds: [trusted.id], name: "War Room" })).body.group;
 
     const smuggled = {
-      format: "eacbot.team",
+      format: "openmaus.team",
       version: 2,
       team: {
         name: "Trap Team",
@@ -6172,7 +6172,7 @@ describe("harness HTTP API", () => {
     expect(after.bots.filter((bot: { chiefOfStaff?: boolean }) => bot.chiefOfStaff).map((bot: { id: string }) => bot.id).sort()).toEqual(chiefsBefore);
 
     const legacy = await api("POST", "/api/teams/import", {
-      format: "eacbot.team",
+      format: "openmaus.team",
       version: 1,
       team: {
         name: "Trap Team Legacy",
@@ -7154,7 +7154,7 @@ describe("harness HTTP API", () => {
         prompt: "look at the cloud desktop",
         target: "bot",
         botId: bot.id,
-        runOn: "eacbot",
+        runOn: "maus",
         enabled: true,
         schedule: { type: "daily", time: "10:00", weekdays: [1, 2, 3, 4, 5] },
       });
@@ -9918,7 +9918,7 @@ describe("harness HTTP API", () => {
       name: "Deletion safety routine",
       prompt: "Keep running until interrupted.",
       botId: bot.id,
-      runOn: "eacbot",
+      runOn: "maus",
       enabled: false,
       schedule: { type: "daily", time: "10:00", weekdays: [1] },
     })).body.routine;
@@ -9978,7 +9978,7 @@ describe("harness HTTP API", () => {
         name: "Emergency stop routine",
         prompt: "Keep running until interrupted.",
         botId: bot.id,
-        runOn: "eacbot",
+        runOn: "maus",
         enabled: false,
         schedule: { type: "daily", time: "10:00", weekdays: [1] },
       });
@@ -11157,7 +11157,7 @@ describe("harness HTTP API", () => {
               time: "09:00",
               weekdays: ["monday", "tuesday", "wednesday", "thursday", "friday"],
             },
-            runOn: "eacbot",
+            runOn: "maus",
             durationMinutes: 30,
           },
         }),
@@ -11211,7 +11211,7 @@ describe("harness HTTP API", () => {
             name: "Nowhere brief",
             instructions: "Should never be scheduled.",
             schedule: { type: "weekly", time: "09:00", weekdays: ["monday"] },
-            runOn: "eacbot",
+            runOn: "maus",
           },
         }),
       });
@@ -11232,7 +11232,7 @@ describe("harness HTTP API", () => {
             name: "Teammate brief",
             instructions: "Summarize for the teammate every weekday.",
             schedule: { type: "weekly", time: "08:30", weekdays: ["monday"] },
-            runOn: "eacbot",
+            runOn: "maus",
             durationMinutes: 30,
           },
         }),
@@ -11398,7 +11398,7 @@ describe("harness HTTP API", () => {
             name: "Orphan-safe brief",
             instructions: "Summarize without recreating the deleted source.",
             schedule: { type: "weekly", time: "09:00", weekdays: ["monday"] },
-            runOn: "eacbot",
+            runOn: "maus",
           },
         }),
       });
@@ -11425,7 +11425,7 @@ describe("harness HTTP API", () => {
         runOnStartup: true,
         prompt: `${fakeSecret}\n${"Review the archive. ".repeat(180)}`,
         botId: bot.id,
-        runOn: "eacbot",
+        runOn: "maus",
         enabled: false,
         schedule: {
           type: "interval",
@@ -11504,7 +11504,7 @@ describe("harness HTTP API", () => {
         name: "Teammate digest",
         prompt: "Summarize the teammate's queue.",
         botId: teammate.id,
-        runOn: "eacbot",
+        runOn: "maus",
         enabled: true,
         schedule: { type: "daily", time: "07:30", weekdays: [1, 2, 3, 4, 5] },
       })).body.routine;
@@ -11512,7 +11512,7 @@ describe("harness HTTP API", () => {
         name: "Chief digest",
         prompt: "Summarize the chief's queue.",
         botId: chief.id,
-        runOn: "eacbot",
+        runOn: "maus",
         enabled: true,
         schedule: { type: "daily", time: "08:00", weekdays: [1] },
       })).body.routine;
@@ -11604,7 +11604,7 @@ describe("harness HTTP API", () => {
         headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
         body: JSON.stringify({ fromBotId: bot.id, fromThreadId: bot.threadId, ...body }),
       });
-      const routine = (name: string) => ({ name, instructions: `Run ${name}.`, schedule: { type: "weekly", time: "09:00", weekdays: ["monday"] }, runOn: "eacbot" });
+      const routine = (name: string) => ({ name, instructions: `Run ${name}.`, schedule: { type: "weekly", time: "09:00", weekdays: ["monday"] }, runOn: "maus" });
       for (let index = 0; index < 9; index += 1) {
         const teammates = await post({ action: "create", kind: "schedule", forBotId: teammate.id, routine: routine(`Teammate ${index}`) });
         expect(teammates.status).toBe(201);
@@ -12667,7 +12667,7 @@ describe("harness HTTP API", () => {
       name: "Incoming build",
       prompt: "Review the incoming build event",
       botId: bots.body.bots[0].id,
-      runOn: "eacbot",
+      runOn: "maus",
     });
     expect(created.status).toBe(201);
     expect(created.body.ingress).toMatchObject({ available: true, baseUrl: WEBHOOK_BASE });

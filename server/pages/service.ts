@@ -14,7 +14,7 @@ export function createPublishedPages(options: {
   dataDir: string;
   /** This server's Cloud home configuration, or null on a desktop or any other server. */
   cloudHome: { adminOrigin: string; machineId: string; bootstrapSecret: string } | null;
-  /** True for `eacbot serve`: no desktop app hands over a EACbot sign-in and there is no Cloud home. */
+  /** True for `eacbot serve`: no desktop app hands over an EACbot sign-in and there is no Cloud home. */
   selfHosted?: boolean;
   patch: (threadId: string, messageId: string, text: string, card: PublishedPageCard) => void;
   fetch?: typeof fetch;

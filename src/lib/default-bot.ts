@@ -56,7 +56,7 @@ export function chiefChoices<T extends ChiefCandidate>(bots: readonly T[], eacbo
   return bots.filter((bot) => !bot.defaultBot && !bot.hidden && !hiddenFromSidebar(bot, viewer) && chiefScope(bot) === scope);
 }
 
-/** The first run shows its Chief step only for a EACbot not yet introduced, where no other bot is the Chief in its
+/** The first run shows its Chief step only for an EACbot not yet introduced, where no other bot is the Chief in its
  * scope; otherwise the first run ends in the chat. */
 export function chiefStepFits<T extends ChiefCandidate>(bots: readonly T[], eacbot: (T & { welcomed?: boolean }) | undefined): boolean {
   if (!eacbot || eacbot.welcomed || eacbot.hidden) return false;

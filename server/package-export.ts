@@ -646,7 +646,7 @@ export function createTeamPackageExport(input: TeamExportInput): TeamExportResul
       agent,
       ...(goal ? { room: roomKeys.get(routine.groupId!)! } : {}),
       prompt: routine.prompt,
-      runOn: goal ? "eacbot" as const : routine.runOn,
+      runOn: goal ? "maus" as const : routine.runOn,
       schedule: portableSchedule(routine.schedule),
       durationMinutes: routine.durationMinutes,
       ...(routine.timeoutMinutes === undefined ? {} : { timeoutMinutes: routine.timeoutMinutes }),

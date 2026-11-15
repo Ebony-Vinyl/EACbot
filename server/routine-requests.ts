@@ -201,7 +201,7 @@ function text(value: string, field: string, max: number): string {
 }
 
 function runOn(value: RoutineRequestRunOn | undefined): RoutineRequestRunOn {
-  return value ?? "eacbot";
+  return value ?? "maus";
 }
 
 function duration(value: number | undefined): number {

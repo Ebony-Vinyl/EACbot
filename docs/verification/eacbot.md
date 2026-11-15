@@ -21,7 +21,7 @@ pnpm exec vitest run server/default-bot.test.ts server/default-bot.e2e.test.ts \
   move to My Cloud and coming home leave exactly one; each Team Cloud member
   gets their own; a Team User's EACbot holds no Chief tools.
 - `server/default-bot.e2e.test.ts`: on a real fixture server, `DELETE
-  /api/bots/:id` answers 409, the switch hides and shows it, and a EACbot that
+  /api/bots/:id` answers 409, the switch hides and shows it, and an EACbot that
   is not the Chief creates a bot with `create_bot`.
 - `server/eacbot-notifications.test.ts`, `server/drivers/agents-eacbot-tools.test.ts`
   and the second case of `server/default-bot.e2e.test.ts`: EACbot alone gets

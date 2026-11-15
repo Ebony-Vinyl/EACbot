@@ -742,7 +742,7 @@ describe("loopback trust: owner on one person's machine, service on a shared wor
     expect(pick({ EAC_LOOPBACK_TRUST: "service" })).toEqual({ trust: "service", reason: "EACbot Cloud home", localBrowsers: false });
     const forced = pick({ EAC_LOOPBACK_TRUST: "owner" });
     expect(forced.trust).toBe("service");
-    expect(forced.warning).toMatch(/ignored on a EACbot Cloud home/);
+    expect(forced.warning).toMatch(/ignored on an EACbot Cloud home/);
   });
 
   it("lets only the CLI that started the server, holding its secret, mint a pairing code under service trust", () => {

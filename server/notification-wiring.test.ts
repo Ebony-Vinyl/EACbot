@@ -31,7 +31,7 @@ interface RoutineBody {
   name: string;
   prompt: string;
   botId: string;
-  runOn: "eacbot";
+  runOn: "maus";
   schedule: { type: "once"; at: number };
 }
 
@@ -119,7 +119,7 @@ posixOnly("routine failure notification wiring", () => {
         name: "Broken nightly report",
         prompt: "Prepare the report",
         botId: bot.id,
-        runOn: "eacbot",
+        runOn: "maus",
         schedule: { type: "once", at: Date.now() + 60_000 },
       });
       expect(created.status).toBe(201);

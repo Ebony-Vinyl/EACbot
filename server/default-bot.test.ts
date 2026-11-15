@@ -56,7 +56,7 @@ describe("EACbot, every person's helper", () => {
     expect(canManage(own, fox)).toBe(false);
   });
 
-  it("gives an existing install without one a EACbot once on update, beside its Chief, which stays exactly as it was", () => {
+  it("gives an existing install without one an EACbot once on update, beside its Chief, which stays exactly as it was", () => {
     const store = new Store(selection);
     const chief = store.createBot({ name: "Pixel" });
     store.setChiefOfStaff(chief.id);
@@ -133,7 +133,7 @@ describe("EACbot, every person's helper", () => {
     expect(intros(store, eacbot)[0]?.text).not.toContain("Chief of Staff");
   });
 
-  it("keeps a EACbot Chief hidden from the sidebar working as the Chief", () => {
+  it("keeps an EACbot Chief hidden from the sidebar working as the Chief", () => {
     const store = new Store(selection);
     const eacbot = boot(store)!;
     store.patchBot(eacbot.id, { sidebarHidden: true });
@@ -157,7 +157,7 @@ describe("EACbot, every person's helper", () => {
     expect(restarted.bots).toHaveLength(3);
   });
 
-  it("never takes a first bot that is not a new install's EACbot: it gets a EACbot beside it", () => {
+  it("never takes a first bot that is not a new install's EACbot: it gets an EACbot beside it", () => {
     const store = new Store(selection);
     const pixel = store.createBot({ name: "Pixel" });
     const eacbot = boot(store)!;

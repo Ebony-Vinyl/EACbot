@@ -49,7 +49,7 @@ describe("publishing a page", () => {
     const f = setup();
     writeSite(join(f.work, "site"));
     const outcome = await f.publish({ path: "site" });
-    expect(outcome).toEqual({ status: 403, text: "Publishing a page needs a EACbot account. Sign in to EACbot in the app's Settings, then ask again." });
+    expect(outcome).toEqual({ status: 403, text: "Publishing a page needs an EACbot account. Sign in to EACbot in the app's Settings, then ask again." });
     expect(f.service.minted).toEqual([]);
     expect(f.cards).toEqual([]);
   });
@@ -72,7 +72,7 @@ describe("publishing a page", () => {
     expect(f.service.minted).toEqual([]);
     expect(f.cards).toEqual([]);
     applyIncludedPagesMessage({ type: "eacbot:included-pages", access: null });
-    expect((await f.publish({ path: "site" })).text).toMatch(/^Publishing a page needs a EACbot account/u);
+    expect((await f.publish({ path: "site" })).text).toMatch(/^Publishing a page needs an EACbot account/u);
   });
 
   it("publishes a folder to a new link with a card showing the link and the usage, and remembers it", async () => {

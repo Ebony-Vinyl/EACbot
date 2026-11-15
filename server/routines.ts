@@ -43,7 +43,7 @@ export { nextOccurrence, RoutineScheduleError } from "./routine-schedules.ts";
 export type { RoutineIntervalSchedule, RoutineIntervalScheduleInput, RoutineSchedule, RoutineScheduleInput } from "./routine-schedules.ts";
 
 /** `cloud` runs the agent inside the bot's Boat VM; `eacbot` runs the bot's own provider and borrows only its computer tools. */
-export type RoutineRunOn = "eacbot" | "cloud";
+export type RoutineRunOn = "maus" | "cloud";
 export type RoutineTarget = "bot" | "room-goal";
 export type RoutineGoalStatus = Exclude<GroupGoalRunStatus, "working">;
 
@@ -1192,8 +1192,8 @@ export class RoutineManager {
             await this.options.startTurn(
               run.botId,
               task.threadId,
-              composeExecutionPrompt({ id: run.routineId, name: run.routineName, trigger: triggerSource, runOn: run.runOn ?? "eacbot" }, prompt, run.attachments, continuityCarry(run, this.routines, this.runs), run.retried),
-              run.runOn ?? "eacbot",
+              composeExecutionPrompt({ id: run.routineId, name: run.routineName, trigger: triggerSource, runOn: run.runOn ?? "maus" }, prompt, run.attachments, continuityCarry(run, this.routines, this.runs), run.retried),
+              run.runOn ?? "maus",
               triggerSource,
               (message) => this.failThread(task.threadId, message, { cause: "refused" }),
             );

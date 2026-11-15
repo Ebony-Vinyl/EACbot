@@ -1,4 +1,4 @@
-# DeepSeek Harness as a EACbot engine
+# DeepSeek Harness as an EACbot engine
 
 Date: 2026-10-22. Status: design, approved for build under stated assumptions
 (the request was "wire this"; the calls below are the builder's, marked as such).
@@ -6,7 +6,7 @@ Date: 2026-10-22. Status: design, approved for build under stated assumptions
 ## Intent
 
 People should be able to pick DeepSeek Harness (`dsh`, github.com/deepseek-ai/deepseek-harness)
-as the engine behind a EACbot bot, the same way they pick Kimi, Droid or
+as the engine behind an EACbot bot, the same way they pick Kimi, Droid or
 Hermes today: it appears on the Engines page, Settings can install it, a
 DeepSeek API key pasted in EACbot makes it ready, and bots run turns on it
 with the normal approval cards, model picker and reasoning-effort control.

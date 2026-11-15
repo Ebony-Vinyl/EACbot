@@ -1,0 +1,378 @@
+/* The workbench inspector, history and controls, drawn with the app's existing
+ * tokens only: every value is a `--color-*`, `--font-*`, `--shadow-*` or
+ * `--radius-*` the skins already define. Nothing here names a colour. */
+
+.wb-inspector {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  min-height: 0;
+  padding: 10px 12px;
+  border-inline-start: 1px solid var(--color-edge);
+  background: color-mix(in srgb, var(--color-panel) 72%, transparent);
+  overflow-y: auto;
+}
+
+.wb-inspector-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.wb-inspector-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.wb-facts {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 4px 10px;
+  margin: 0;
+  font-size: 12px;
+}
+
+.wb-facts > div {
+  display: contents;
+}
+
+.wb-facts dt {
+  color: var(--color-ink-tertiary);
+}
+
+.wb-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.wb-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.wb-tree-item[data-current="true"] > .wb-tree-row {
+  background: var(--color-menu-active);
+}
+
+.wb-tree-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-ink-secondary);
+  font: inherit;
+  font-size: 12px;
+  text-align: start;
+  cursor: pointer;
+}
+
+.wb-tree-row:hover,
+.wb-tree-row:focus-visible {
+  background: var(--color-menu-hover);
+  color: var(--color-ink);
+}
+
+.wb-tree-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wb-commands {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.wb-steer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.wb-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--color-ink-secondary);
+}
+
+.wb-field textarea {
+  resize: vertical;
+  padding: 6px 8px;
+  border: 1px solid var(--color-edge);
+  border-radius: 8px;
+  background: var(--color-inset);
+  color: var(--color-ink);
+  font: inherit;
+  font-size: 12px;
+}
+
+.wb-field textarea:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 1px;
+}
+
+.wb-command-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.wb-button,
+.wb-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: 1px solid var(--color-edge);
+  border-radius: 8px;
+  background: var(--color-control);
+  color: var(--color-ink);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color 120ms var(--wb-ease, ease-out), border-color 120ms var(--wb-ease, ease-out), transform 120ms var(--wb-ease, ease-out);
+}
+
+.wb-button {
+  padding: 6px 10px;
+}
+
+.wb-icon-button {
+  min-width: 26px;
+  min-height: 26px;
+  padding: 2px 6px;
+}
+
+.wb-button:hover:not(:disabled),
+.wb-icon-button:hover:not(:disabled) {
+  background: var(--color-raised-hover);
+}
+
+.wb-button:active:not(:disabled),
+.wb-icon-button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.wb-button:disabled,
+.wb-icon-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.wb-button:focus-visible,
+.wb-icon-button:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.wb-danger-button {
+  border-color: color-mix(in srgb, var(--color-danger) 55%, transparent);
+  color: var(--color-danger);
+}
+
+.wb-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 7px;
+  border: 1px solid var(--color-edge);
+  border-radius: 999px;
+  font-size: 11px;
+  line-height: 1.6;
+  white-space: nowrap;
+  color: var(--color-ink-secondary);
+  background: color-mix(in srgb, var(--color-card) 70%, transparent);
+  transition: color 130ms var(--wb-ease, ease-out), border-color 130ms var(--wb-ease, ease-out);
+}
+
+.wb-chip[data-tone="accent"] {
+  border-color: color-mix(in srgb, var(--color-accent) 55%, transparent);
+  color: var(--color-accent-text);
+}
+
+.wb-chip[data-tone="success"] {
+  border-color: color-mix(in srgb, var(--color-success) 55%, transparent);
+  color: var(--color-success);
+}
+
+.wb-chip[data-tone="warning"] {
+  border-color: color-mix(in srgb, var(--color-warning) 55%, transparent);
+  color: var(--color-warning);
+}
+
+.wb-chip[data-tone="danger"] {
+  border-color: color-mix(in srgb, var(--color-danger) 55%, transparent);
+  color: var(--color-danger);
+}
+
+.wb-history {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+}
+
+.wb-history-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.wb-log {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding-inline-end: 4px;
+}
+
+.wb-log-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.wb-log-entry {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 6px;
+  padding: 3px 6px;
+  border-radius: 6px;
+  font-size: 11px;
+  color: var(--color-ink-secondary);
+}
+
+.wb-log-entry[data-source="authority"] {
+  background: color-mix(in srgb, var(--color-card) 45%, transparent);
+}
+
+.wb-log-seq,
+.wb-log-time {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--color-ink-tertiary);
+}
+
+.wb-log-type {
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.wb-log-detail {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wb-gap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 0;
+  padding: 4px 8px;
+  border: 1px dashed color-mix(in srgb, var(--color-warning) 55%, transparent);
+  border-radius: 6px;
+  color: var(--color-warning);
+  font-size: 11px;
+}
+
+.wb-hint {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--color-ink-tertiary);
+}
+
+.wb-error {
+  margin: 0;
+  color: var(--color-danger);
+  font-size: 12px;
+}
+
+.wb-danger {
+  color: var(--color-danger);
+}
+
+.wb-skeleton {
+  display: block;
+  height: 14px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--color-raised) 70%, transparent);
+  animation: wb-pulse 1.4s ease-in-out infinite;
+}
+
+.wb-side-loading {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px;
+}
+
+.wb-side-error {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid color-mix(in srgb, var(--color-danger) 45%, transparent);
+  border-radius: var(--wb-radius, 10px);
+  color: var(--color-ink-secondary);
+  font-size: 12px;
+}
+
+/* The start-a-terminal form. It is a small modal over the workbench, drawn
+ * with the same tokens as every other surface, and it never covers the whole
+ * window: a person can still see which mission they are starting it for. */
+
+.wb-dialog-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: color-mix(in srgb, var(--color-app) 62%, transparent);
+  backdrop-filter: blur(3px);
+}
+
+.wb-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(420px, 100%);
+  padding: 16px;
+  border: 1px solid var(--color-edge);
+  border-radius: var(--wb-radius, 10px);
+  background: var(--color-menu);
+  box-shadow: var(--shadow-xl);
+}
+
+.wb-field select {
+  padding: 6px 8px;
+  border: 1px solid var(--color-edge);
+  border-radius: 8px;
+  background: var(--color-inset);
+  color: var(--color-ink);
+  font: inherit;
+  font-size: 12px;
+}
+
+.wb-field select:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 1px;
+}

@@ -307,7 +307,7 @@ describe("the connector's connection to EACbot", () => {
     expect(connectUrl("https://cloud.example.test")).toBe("wss://cloud.example.test/api/cloud/box/v1/connect");
     expect(connectUrl("http://127.0.0.1:8123")).toBe("ws://127.0.0.1:8123/api/cloud/box/v1/connect");
     expect(adminOrigin("https://cloud.example.test/")).toBe("https://cloud.example.test");
-    expect(() => adminOrigin("http://cloud.example.test")).toThrow("is not a EACbot address this connector may use.");
+    expect(() => adminOrigin("http://cloud.example.test")).toThrow("is not an EACbot address this connector may use.");
     expect(() => adminOrigin(undefined)).toThrow("The install command did not say which EACbot to connect to.");
   });
 

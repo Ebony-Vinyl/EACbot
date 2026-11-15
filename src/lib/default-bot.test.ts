@@ -7,7 +7,7 @@ import type { DefaultBotFields } from "../../shared/default-bot";
 const bot = (id: string, fields: DefaultBotFields = {}): DefaultBotFields & { id: string } => ({ id, ...fields });
 
 describe("EACbot in the sidebar", () => {
-  it("leaves out a EACbot whose Show switch is off, and on a Team Cloud other people's, but keeps the viewer's own", () => {
+  it("leaves out an EACbot whose Show switch is off, and on a Team Cloud other people's, but keeps the viewer's own", () => {
     const bots = [
       bot("eacbot", { defaultBot: {} }),
       bot("ada-eacbot", { defaultBot: { person: "ada@example.com" } }),
@@ -73,7 +73,7 @@ describe("what EACbot offers to set up", () => {
 describe("the first run's Chief step", () => {
   const eacbot = { id: "eacbot", defaultBot: {}, chiefOfStaff: true };
 
-  it("shows for a EACbot not yet introduced, where it is the Chief or there is none", () => {
+  it("shows for an EACbot not yet introduced, where it is the Chief or there is none", () => {
     expect(chiefStepFits([eacbot], eacbot)).toBe(true);
     expect(chiefStepFits([{ ...eacbot, chiefOfStaff: false }], { ...eacbot, chiefOfStaff: false })).toBe(true);
   });

@@ -109,7 +109,7 @@ use their own Boat key, and how many bots run on cloud computers, without sendin
 | `paired_devices` | count | Devices signed in to this server without an email, other than this one |
 | `phone_paired` | true/false | Either count above is more than zero |
 | `members` | count | People signed in to this server with an email, other than you |
-| `cloud_home` | true/false | This server is a EACbot Cloud |
+| `cloud_home` | true/false | This server is an EACbot Cloud |
 | `cloud_plan` | `starter`, `personal`, `pro`, `max`, `other`, `none`, `unknown` | The Cloud plan: `none` when free or signed out, `unknown` when the app cannot tell |
 | `cloud_trial` | true/false | A Cloud trial is running |
 | `edition` | `oss`, `enterprise` | The edition |

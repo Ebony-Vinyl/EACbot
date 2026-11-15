@@ -22,10 +22,10 @@ function routinesHeld(routines: Routine[] = [], runs: RoutineRun[] = []) {
     adopt(apply: (held: { routines: Routine[]; runs: RoutineRun[] }) => Routine[]) { apply({ routines, runs }); },
   };
 }
-const routine = (fields: Partial<Routine> = {}): Routine => ({ id: "r1", name: "Morning", prompt: `Read ${HERE}/workspaces/b1/notes.md`, target: "bot", botId: "b1", runOn: "eacbot", enabled: true,
+const routine = (fields: Partial<Routine> = {}): Routine => ({ id: "r1", name: "Morning", prompt: `Read ${HERE}/workspaces/b1/notes.md`, target: "bot", botId: "b1", runOn: "maus", enabled: true,
   schedule: { type: "daily", time: "09:00", weekdays: [1] } as never, durationMinutes: 15, attachments: [{ id: "a1", kind: "file", name: "plan.md", path: `${HERE}/attachments/plan.md`, size: 4 }] as never,
   nextRunAt: 123, createdAt: 1, updatedAt: 2, ...fields });
-const run = (id: string, status: string, fields: Partial<RoutineRun> = {}): RoutineRun => ({ id, routineId: "r1", routineName: "Morning", target: "bot", botId: "b1", runOn: "eacbot",
+const run = (id: string, status: string, fields: Partial<RoutineRun> = {}): RoutineRun => ({ id, routineId: "r1", routineName: "Morning", target: "bot", botId: "b1", runOn: "maus",
   scheduledFor: 10, status: status as never, manual: false, createdAt: 10, output: `Wrote ${HERE}/workspaces/b1/out.md`, ...fields });
 
 function deps(dataDir: string, over: Partial<MoveKindsDeps> = {}): MoveKindsDeps & { owned: Array<[string, string]>; patched: Array<[string, unknown]>; chief: string[] } {

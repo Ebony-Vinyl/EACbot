@@ -1081,7 +1081,7 @@ describe("persistent routine results destinations", () => {
 
   it("does not route webhook or room-goal executions through bot results tasks", async () => {
     const h = resultsHarness();
-    h.manager.enqueueWebhook({ webhookId: "hook", webhookName: "Hook", prompt: "Incoming", botId: "mascot-1", runOn: "eacbot", deliveryId: "delivery", receivedAt: Date.now() });
+    h.manager.enqueueWebhook({ webhookId: "hook", webhookName: "Hook", prompt: "Incoming", botId: "mascot-1", runOn: "maus", deliveryId: "delivery", receivedAt: Date.now() });
     const goal = h.manager.create({ ...input(), target: "room-goal", groupId: "room" });
     h.manager.runNow(goal.id);
     await h.manager.tick();
@@ -1207,7 +1207,7 @@ describe("RoutineManager", () => {
       webhookName: "Lead",
       prompt: "Qualify it",
       botId: "mascot-1",
-      runOn: "eacbot",
+      runOn: "maus",
       deliveryId: "evt-1",
       receivedAt: Date.now(),
     })).toThrow(expect.objectContaining({ status: 503 }));
@@ -2205,7 +2205,7 @@ describe("RoutineManager", () => {
       webhookName: "Incoming delivery",
       prompt: "Handle the delivery",
       botId: "mascot-webhook",
-      runOn: "eacbot",
+      runOn: "maus",
       deliveryId: "delivery-exact",
       receivedAt: start,
     });
@@ -2258,7 +2258,7 @@ describe("RoutineManager", () => {
       webhookName: "Capacity check",
       prompt: "Keep active receipts",
       botId: "mascot-capacity",
-      runOn: "eacbot",
+      runOn: "maus",
       deliveryId: "delivery-capacity",
       receivedAt: 2_001,
     });
@@ -2700,12 +2700,12 @@ describe("RoutineManager", () => {
       name: "Local review",
       prompt: "Review this",
       botId: "mascot-local",
-      runOn: "eacbot",
+      runOn: "maus",
       schedule: { type: "daily", time: "09:00", weekdays: [1] },
       attachments: [attachment],
     });
     expect(() => h.manager.update(local.id, { runOn: "cloud" })).toThrow(/cloud file staging/i);
-    expect(h.manager.listRoutines()[0]).toMatchObject({ runOn: "eacbot", attachments: [attachment] });
+    expect(h.manager.listRoutines()[0]).toMatchObject({ runOn: "maus", attachments: [attachment] });
   });
 
   it("keeps room goals local and attachment-free", () => {
@@ -2769,14 +2769,14 @@ describe("RoutineManager", () => {
     });
     h.setNow(routine.nextRunAt!);
     await h.manager.tick();
-    h.manager.update(routine.id, { runOn: "eacbot" });
+    h.manager.update(routine.id, { runOn: "maus" });
 
     h.setBot("ready");
     await h.manager.tick();
 
     expect(h.runOns).toEqual(["cloud"]);
     expect(h.manager.listRuns()[0]).toMatchObject({ runOn: "cloud" });
-    expect(h.manager.listRoutines()[0]).toMatchObject({ runOn: "eacbot" });
+    expect(h.manager.listRoutines()[0]).toMatchObject({ runOn: "maus" });
   });
 
   it("opens webhook jobs in the assigned bot's live chat", async () => {
@@ -2815,7 +2815,7 @@ describe("RoutineManager", () => {
       webhookName: "Busy gate",
       prompt: "Handle after the turn",
       botId: "mascot-1",
-      runOn: "eacbot",
+      runOn: "maus",
       deliveryId: "delivery-busy",
       receivedAt: new Date(2026, 7, 17, 8, 2).getTime(),
     });
@@ -4033,7 +4033,7 @@ describe("runs that report into a chat", () => {
   it("sends an outside event's run to report where the bot's chat is, in a fresh conversation of its own", async () => {
     const h = harness();
     h.options.eventResultsThread = ({ botId, webhookId }) => `${botId}:${webhookId}:main`;
-    const queued = h.manager.enqueueWebhook({ webhookId: "hook", webhookName: "New lead", prompt: "Handle it", botId: "mascot-1", runOn: "eacbot", deliveryId: "d1", receivedAt: Date.now() });
+    const queued = h.manager.enqueueWebhook({ webhookId: "hook", webhookName: "New lead", prompt: "Handle it", botId: "mascot-1", runOn: "maus", deliveryId: "d1", receivedAt: Date.now() });
     await h.manager.tick();
     expect(h.manager.listRuns().find((run) => run.id === queued.id)).toMatchObject({ resultsThreadId: "mascot-1:hook:main", threadId: "thread-1", status: "running" });
     expect(h.taskTitles).toHaveLength(1);
@@ -4044,7 +4044,7 @@ describe("runs that report into a chat", () => {
     h.options.eventResultsThread = () => "main";
     h.options.joinConversation = (run) => run.eventSource === "wait" ? run.resultsThreadId ?? null : null;
     const queued = h.manager.enqueueWebhook({ webhookId: "wait:w1", webhookName: "the build", prompt: "[Wait finished: the build] Deploy.", botId: "mascot-1",
-      runOn: "eacbot", deliveryId: "w1", receivedAt: Date.now(), eventSource: "wait", resultsThreadId: "chat-1" });
+      runOn: "maus", deliveryId: "w1", receivedAt: Date.now(), eventSource: "wait", resultsThreadId: "chat-1" });
     await h.manager.tick();
     expect(h.manager.listRuns().find((run) => run.id === queued.id)).toMatchObject({ eventSource: "wait", resultsThreadId: "chat-1", threadId: "chat-1", status: "running" });
     expect(h.taskTitles).toHaveLength(0);

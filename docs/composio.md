@@ -17,7 +17,7 @@ The desktop app validates the key before saving it. The key is encrypted using E
 
 ## EACbot Cloud
 
-A EACbot Cloud plan includes connected apps: there is no key to add. When someone first opens Connected Apps, a Cloud home's server makes sure it has its own installation on EACbot's managed connection service, the same one the packaged desktop app registers with (`server/cloud-connected-apps.ts`, sharing `electron/managed-composio.mjs` with the app). Starting a home that nobody uses Connected Apps on registers nothing:
+An EACbot Cloud plan includes connected apps: there is no key to add. When someone first opens Connected Apps, a Cloud home's server makes sure it has its own installation on EACbot's managed connection service, the same one the packaged desktop app registers with (`server/cloud-connected-apps.ts`, sharing `electron/managed-composio.mjs` with the app). Starting a home that nobody uses Connected Apps on registers nothing:
 
 - The first opening registers the installation (`POST /v1/installations`) and keeps its token in `connected-apps-installation.json` in the data folder (`/data/.eacbot`), owner-only (0600). The token is never written to `config.json`, sent to a client or logged.
 - A token already on the volume serves at once, without a request; the first opening checks it with `GET /v1/me`. Only a refusal (401) registers a new installation; an outage or a rate limit keeps the token, so the Cloud's connected accounts are never stranded.
@@ -106,7 +106,7 @@ To grant the permission:
 
 EACbot uses your project's own auth config for an app automatically, in place of the Composio-managed one. If there are several enabled ones for the same app, it uses the most recently created, and it skips disabled ones. Google may require your OAuth app to list the added permissions on its consent screen, and to be verified before people outside your organization can grant them.
 
-On a EACbot Cloud plan, connected apps run through EACbot's managed connection service rather than your own Composio project, so you cannot add permissions yourself; ask EACbot support instead.
+On an EACbot Cloud plan, connected apps run through EACbot's managed connection service rather than your own Composio project, so you cannot add permissions yourself; ask EACbot support instead.
 
 ## Apps with no Composio-managed sign-in
 

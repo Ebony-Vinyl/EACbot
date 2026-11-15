@@ -224,7 +224,7 @@ describe("one-on-one goal runs (a room of one)", () => {
       prompt: "Review the release",
       target: "room-goal",
       botId: bot.id,
-      runOn: "eacbot",
+      runOn: "maus",
       schedule: { type: "once", at: Date.now() + 60_000 },
       durationMinutes: 30,
     });

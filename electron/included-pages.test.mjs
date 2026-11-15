@@ -46,7 +46,7 @@ describe("published pages' access on the desktop", () => {
   });
 
   it("tells the server when the Admin has no pages for this sign-in yet, so a bot never asks a signed-in person to sign in", async () => {
-    // Seen in the real app on Oct 22 against an Admin without pages: the bot was told "Publishing a page needs a EACbot
+    // Seen in the real app on Oct 22 against an Admin without pages: the bot was told "Publishing a page needs an EACbot
     // account. Sign in to EACbot in the app's Settings", while this computer was signed in.
     const { pages, posted } = desktop(vi.fn(async () => null));
     await pages.onState(signedIn());

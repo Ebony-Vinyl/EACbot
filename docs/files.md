@@ -1,6 +1,6 @@
 # Files: lent folders on My Cloud, get your bots' work
 
-Files is a top-level page in the desktop app, for people with a EACbot Cloud ("My Cloud"). It does two jobs:
+Files is a top-level page in the desktop app, for people with an EACbot Cloud ("My Cloud"). It does two jobs:
 
 - **Lent folders, even while this computer sleeps.** Every folder lent to My Cloud (each moved bot's project folder, a folder added here) also gets a copy on My Cloud, kept up to date while this computer is on. The home folder, which this computer lends My Cloud by itself (`docs/cloud-pro.md`, "This computer works for your Clouds"), is too broad for a copy and stays live only. While it is away, bots read that copy, and a change to a folder lent with editing waits on My Cloud and lands here when the computer is back. Nobody chooses anything: what fits is copied, the rest stays live only.
 - **Your bots' work.** What Cloud bots make comes down to `Documents/EACbot/<bot>/<conversation>` on this computer.

@@ -158,7 +158,7 @@ describe("bot packages", () => {
       name: "Morning brief",
       agent: "lead",
       prompt: "Summarize the overnight queue.",
-      runOn: "eacbot",
+      runOn: "maus",
       schedule: { type: "daily", time: "09:00", weekdays: [1] },
       durationMinutes: 5,
       enabledAfterInstall: false,
@@ -184,7 +184,7 @@ describe("bot packages", () => {
       ...validPackage,
       package: { ...validPackage.package, routines: [{
         key: "monthly", name: "Monthly report", agent: "lead", prompt: "Prepare the report.",
-        runOn: "eacbot", schedule, durationMinutes: 30, enabledAfterInstall: false,
+        runOn: "maus", schedule, durationMinutes: 30, enabledAfterInstall: false,
       }] },
     };
     const parsed = parseBotPackage(document);
@@ -208,7 +208,7 @@ describe("bot packages", () => {
           name: "Frequent check",
           agent: "lead",
           prompt: "Check the queue.",
-          runOn: "eacbot",
+          runOn: "maus",
           schedule: {
             type: "interval",
             everyMinutes: 15,

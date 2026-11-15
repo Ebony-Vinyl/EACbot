@@ -128,7 +128,7 @@ describe("team backups", () => {
 
 describe("legacy team files", () => {
   const manifest = (defaultResponder: Record<string, string>) => ({
-    format: "eacbot.team",
+    format: "openmaus.team",
     version: 1,
     team: {
       name: "Research",

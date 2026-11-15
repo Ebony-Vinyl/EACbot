@@ -5,7 +5,7 @@ import type { RoutineRun } from "./routines.ts";
 
 const call = (slug: string, args: Record<string, unknown> = {}) => ({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: "COMPOSIO_MULTI_EXECUTE_TOOL", arguments: { tools: [{ tool_slug: slug, arguments: args }] } } });
 const run = (access?: "read-and-draft"): RoutineRun => ({
-  id: "r1", routineId: "watch", routineName: "Keep an eye on my day", target: "bot", botId: "chief", runOn: "eacbot", scheduledFor: 0, status: "running",
+  id: "r1", routineId: "watch", routineName: "Keep an eye on my day", target: "bot", botId: "chief", runOn: "maus", scheduledFor: 0, status: "running",
   manual: false, createdAt: 0, threadId: "run-thread", checkKey: "chk-1", ...(access ? { access } : {}),
 });
 

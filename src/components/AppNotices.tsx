@@ -170,10 +170,10 @@ export function AppNotices({ quiet = false, viewer = null, now = Date.now }: { q
   const consentWaits = welcomeFinishedThisLaunch() || firstChat;
   const eacbotBotFirst = eacbotBot.due;
   const consentNow = consentWaits === true || consentFact === false ? false : consentWaits === null || eacbotBotFirst ? null : consentFact;
-  // The Grok Bot popup: once for everyone who can add a bot, the one thing a first chat may be interrupted by. Nothing reads
-  // this computer for it: GrokMoveDialog does that, once opened.
-  const grokDue = !remote && viewer?.canSave !== false && !state.config?.team && brandStatus().source !== "file" && organization !== true && moving !== true
-    && launchDialogShown() !== "eacbot" && !noticeSeen(record, GROK_MOVE_NOTICE) && !desktopState?.seen.includes(GROK_MOVE_NOTICE);
+  // EACbot has no earlier product to move anyone from, so this popup never
+  // comes due. It is pinned rather than removed because the notice queue reads
+  // the same value for every other card's ordering.
+  const grokDue = false;
   const grokBlocked = useOtherDialogOpen(grokDue) || Boolean(state.liveCall && state.liveCall.status !== "ended");
   const grokLanding = welcomeFinishedThisLaunch() && !grokLanded;
   useEffect(() => {

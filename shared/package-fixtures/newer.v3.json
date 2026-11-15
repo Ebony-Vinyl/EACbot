@@ -1,5 +1,5 @@
 {
-  "format": "eacbot.package",
+  "format": "openmaus.package",
   "version": 3,
   "package": {
     "id": "from-the-future",

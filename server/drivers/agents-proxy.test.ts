@@ -1561,7 +1561,7 @@ describe("agents-proxy MCP surface", () => {
         name: "Morning brief",
         instructions: "Summarize today's priorities.",
         schedule: { type: "weekly", time: "09:00", weekdays: ["monday", "friday"] },
-        runOn: "eacbot",
+        runOn: "maus",
         timeoutMinutes: 15,
         continuity: true,
         runOnStartup: true,
@@ -1581,7 +1581,7 @@ describe("agents-proxy MCP surface", () => {
     expect(res.result.isError).toBeFalsy();
     expect(lastRoutineRequestBody).toEqual({
       fromBotId: "bot-asker", fromThreadId: "thread-asker-routine", action: "create", kind: "webhook",
-      webhook: { name: "Interested replies", instructions: "Draft a follow-up for the lead.", runOn: "eacbot", eventTypes: ["reply.labelled"] },
+      webhook: { name: "Interested replies", instructions: "Draft a follow-up for the lead.", runOn: "maus", eventTypes: ["reply.labelled"] },
     });
     lastRoutineRequestBody = null;
     const refused = await callTool("create_trigger", { when: "webhook", name: "Bad", instructions: "x", schedule: { type: "daily", time: "09:00" } });

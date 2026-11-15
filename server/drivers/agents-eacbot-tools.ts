@@ -1,5 +1,5 @@
 // EACbot's notification tools: read the unread notifications, then mark finished work read. The catalog shows them
-// only to a EACbot; the internal route (server/routes/eacbot-notifications.ts) refuses every other bot regardless.
+// only to an EACbot; the internal route (server/routes/eacbot-notifications.ts) refuses every other bot regardless.
 // The guidance lives in their results, so the descriptions that ride every EACbot turn stay short.
 import type { ToolCallContext, ToolCallResult } from "./agents-call.ts";
 import type { Json } from "./agents-client.ts";

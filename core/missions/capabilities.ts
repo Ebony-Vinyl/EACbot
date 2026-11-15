@@ -1,122 +1,39 @@
 import type { AgentCapabilities, AgentKind, SteerCapability } from "../../packages/agent-protocol/agents.ts";
+import { AGENT_REGISTRY } from "../agents/registry.ts";
 
-/** The protocol's own view of an agent, keyed by its own kind names. `custom`
- * is the protocol's name for core/agents' `customAcp`. Every row must agree
- * with `core/agents/registry.ts`; `capabilities.test.ts` checks the fields the
- * two share. */
-const STEER_NATIVE: SteerCapability = { kind: "native" };
-const STEER_NEXT_BOUNDARY: SteerCapability = {
-  kind: "next-boundary",
-  note: "delivered at the agent's next tool boundary, not folded into the running step",
-};
-const STEER_NONE: SteerCapability = { kind: "none", reason: "this engine has no mid-turn input channel" };
+/** The protocol's view of an agent, derived from the one registry rather than kept beside it.
+ * `modelCatalog` is a two-valued engine fact there and a boolean here; `subagents` and
+ * `fileChanges` stay false because no adapter surfaces those events yet, and a capability
+ * the caller cannot use is worse than one it does not see. */
+function project(kind: AgentKind): AgentCapabilities {
+  const registryKind = kind === "custom" ? "custom" : kind;
+  const source = AGENT_REGISTRY[registryKind].capabilities;
+  const steer: SteerCapability = source.steer;
+  return {
+    events: true,
+    steer,
+    interrupt: source.interrupt,
+    resume: source.resume,
+    cancel: source.cancel,
+    approval: source.approvals,
+    questions: source.questions,
+    nativeTui: source.nativeTui,
+    modelCatalog: source.modelCatalog === "native",
+    subagents: false,
+    images: source.images,
+    usage: source.usage,
+    fileChanges: false,
+  };
+}
 
 const CAPABILITIES: Readonly<Record<AgentKind, AgentCapabilities>> = {
-  hermes: {
-    events: true,
-    steer: STEER_NEXT_BOUNDARY,
-    interrupt: true,
-    resume: true,
-    cancel: true,
-    approval: true,
-    questions: true,
-    nativeTui: true,
-    modelCatalog: true,
-    subagents: true,
-    images: false,
-    usage: true,
-    fileChanges: true,
-  },
-  claudeCode: {
-    events: true,
-    steer: STEER_NATIVE,
-    interrupt: true,
-    resume: true,
-    cancel: true,
-    approval: true,
-    questions: true,
-    nativeTui: true,
-    modelCatalog: true,
-    subagents: true,
-    images: true,
-    usage: true,
-    fileChanges: true,
-  },
-  codex: {
-    events: true,
-    steer: STEER_NATIVE,
-    interrupt: true,
-    resume: true,
-    cancel: true,
-    approval: true,
-    questions: true,
-    nativeTui: true,
-    modelCatalog: true,
-    subagents: false,
-    images: true,
-    usage: true,
-    fileChanges: true,
-  },
-  openCode: {
-    events: true,
-    steer: STEER_NATIVE,
-    interrupt: true,
-    resume: true,
-    cancel: true,
-    approval: true,
-    questions: true,
-    nativeTui: true,
-    modelCatalog: true,
-    subagents: false,
-    images: false,
-    usage: true,
-    fileChanges: true,
-  },
-  pi: {
-    events: true,
-    steer: STEER_NATIVE,
-    interrupt: true,
-    resume: true,
-    cancel: true,
-    approval: true,
-    questions: true,
-    nativeTui: true,
-    modelCatalog: false,
-    subagents: false,
-    images: true,
-    usage: true,
-    fileChanges: false,
-  },
-  ohMyPi: {
-    events: true,
-    steer: STEER_NATIVE,
-    interrupt: true,
-    resume: true,
-    cancel: true,
-    approval: true,
-    questions: true,
-    nativeTui: true,
-    modelCatalog: false,
-    subagents: false,
-    images: true,
-    usage: true,
-    fileChanges: false,
-  },
-  custom: {
-    events: true,
-    steer: STEER_NONE,
-    interrupt: true,
-    resume: true,
-    cancel: true,
-    approval: true,
-    questions: true,
-    nativeTui: false,
-    modelCatalog: false,
-    subagents: false,
-    images: false,
-    usage: false,
-    fileChanges: false,
-  },
+  hermes: project("hermes"),
+  claudeCode: project("claudeCode"),
+  codex: project("codex"),
+  openCode: project("openCode"),
+  pi: project("pi"),
+  ohMyPi: project("ohMyPi"),
+  custom: project("custom"),
 };
 
 export function capabilitiesFor(agent: AgentKind): AgentCapabilities {

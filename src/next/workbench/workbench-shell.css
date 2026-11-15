@@ -1,0 +1,679 @@
+/* The workbench shell's own layout, drawn with the app's existing tokens.
+ *
+ * No colour is written here: every value comes from a `--color-*`, `--font-*`,
+ * `--shadow-*` or `--radius-*` token the skins already define, so a skin change
+ * and a light/dark switch reach the workbench without a second palette.
+ * Surfaces stay translucent where the app's own glass does, so a picture or an
+ * ambient effect behind the window still shows through.
+ *
+ * Motion is CSS only, and every rule that moves has a
+ * `prefers-reduced-motion` branch at the end. */
+
+.wb-shell {
+  --wb-gap: 8px;
+  --wb-radius: 10px;
+  --wb-side-width: 272px;
+  --wb-side-rail: 56px;
+  --wb-inspector-width: 340px;
+  --wb-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --workbench-terminal-font-size: 12px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+  background: var(--color-app);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+.wb-side {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: var(--wb-side-width);
+  min-width: 0;
+  padding: 10px 10px 14px;
+  border-inline-end: 1px solid var(--color-edge);
+  background: color-mix(in srgb, var(--color-panel) 82%, transparent);
+  backdrop-filter: blur(18px);
+  overflow-y: auto;
+  transition: width 240ms var(--wb-ease);
+}
+
+.wb-side[data-collapsed="true"] {
+  width: var(--wb-side-rail);
+  padding-inline: 6px;
+  overflow: hidden;
+}
+
+.wb-side-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+}
+
+.wb-side-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--color-ink);
+}
+
+.wb-side-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  padding-block: 6px;
+}
+
+.wb-rail-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--color-accent);
+  opacity: 0.7;
+}
+
+.wb-side-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  /* A section is as tall as its rows. When the rail runs out of room the rail
+     scrolls; a section that shrank below its content would print its rows over
+     the heading of the section beneath it. */
+  flex: 0 0 auto;
+}
+
+.wb-side-heading {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-ink-tertiary);
+}
+
+.wb-machine-list,
+.wb-mission-list,
+.wb-terminal-list,
+.wb-agent-list,
+.wb-agent-missions,
+.wb-pinned-list,
+.wb-log {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wb-machine {
+  padding: 8px;
+  border: 1px solid var(--color-edge);
+  border-radius: var(--wb-radius);
+  background: color-mix(in srgb, var(--color-card) 70%, transparent);
+}
+
+.wb-machine-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 6px;
+}
+
+.wb-machine-name {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.wb-machine-detail {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-ink-tertiary);
+  overflow-wrap: anywhere;
+}
+
+.wb-terminal-list,
+.wb-mission-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.wb-terminal-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-ink-secondary);
+  font: inherit;
+  font-size: 12px;
+  text-align: start;
+  cursor: pointer;
+  transition: background-color 120ms var(--wb-ease), color 120ms var(--wb-ease);
+}
+
+.wb-terminal-row:hover,
+.wb-terminal-row:focus-visible {
+  background: var(--color-menu-hover);
+  color: var(--color-ink);
+}
+
+.wb-terminal-row[data-open="true"] {
+  background: var(--color-menu-active);
+  color: var(--color-ink);
+}
+
+.wb-terminal-kind {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  color: var(--color-ink-tertiary);
+}
+
+.wb-terminal-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wb-agent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.wb-agent-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  border-radius: var(--wb-radius);
+  background: color-mix(in srgb, var(--color-card) 55%, transparent);
+}
+
+.wb-agent-name {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.wb-agent-counts {
+  font-size: 11px;
+  color: var(--color-ink-tertiary);
+}
+
+.wb-agent-missions {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.wb-link-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-accent-text);
+  font: inherit;
+  font-size: 12px;
+  text-align: start;
+  cursor: pointer;
+}
+
+.wb-link-button:hover,
+.wb-link-button:focus-visible {
+  text-decoration: underline;
+}
+
+.wb-main {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+.wb-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px 6px;
+  border-block-end: 1px solid var(--color-edge);
+}
+
+.wb-pinned {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid color-mix(in srgb, var(--color-warning) 45%, transparent);
+  border-radius: var(--wb-radius);
+  background: color-mix(in srgb, var(--color-warning) 12%, transparent);
+}
+
+.wb-pinned-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-warning);
+  white-space: nowrap;
+}
+
+.wb-pinned-list {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+}
+
+.wb-pinned-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border: 1px solid var(--color-edge);
+  border-radius: 999px;
+  background: var(--color-card);
+  color: var(--color-ink);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.wb-pinned-title {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wb-tab-strip {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  overflow-x: auto;
+}
+
+.wb-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  border: 1px solid transparent;
+  border-radius: 8px 8px 0 0;
+  background: transparent;
+}
+
+.wb-tab[data-active="true"] {
+  border-color: var(--color-edge);
+  background: color-mix(in srgb, var(--color-card) 80%, transparent);
+}
+
+.wb-tab-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 4px 6px 10px;
+  border: 0;
+  background: transparent;
+  color: var(--color-ink-secondary);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.wb-tab[data-active="true"] .wb-tab-label {
+  color: var(--color-ink);
+}
+
+.wb-tab-title {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wb-tab-close {
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-ink-tertiary);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.wb-tab-close:hover,
+.wb-tab-close:focus-visible {
+  background: var(--color-menu-hover);
+  color: var(--color-ink);
+}
+
+.wb-tab-empty {
+  padding: 6px 2px;
+}
+
+.wb-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 6px 12px;
+  border-block-end: 1px solid var(--color-edge);
+  background: color-mix(in srgb, var(--color-warning) 10%, transparent);
+  color: var(--color-ink-secondary);
+  font-size: 12px;
+}
+
+.wb-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--wb-inspector-width);
+  min-height: 0;
+}
+
+.wb-panes {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  padding: var(--wb-gap);
+}
+
+.wb-panes-empty {
+  align-items: center;
+  justify-content: center;
+}
+
+.wb-split {
+  display: flex;
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+}
+
+.wb-split[data-orientation="horizontal"] {
+  flex-direction: row;
+}
+
+.wb-split[data-orientation="vertical"] {
+  flex-direction: column;
+}
+
+.wb-split-child {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+}
+
+.wb-divider {
+  position: relative;
+  flex: 0 0 8px;
+  border: 0;
+  background: transparent;
+  touch-action: none;
+  cursor: col-resize;
+}
+
+.wb-split[data-orientation="vertical"] > .wb-divider {
+  cursor: row-resize;
+}
+
+.wb-divider::after {
+  content: "";
+  position: absolute;
+  inset: 50% 3px auto;
+  height: 1px;
+  background: var(--color-edge);
+  transform: translateY(-50%);
+  transition: background-color 120ms var(--wb-ease), height 120ms var(--wb-ease);
+}
+
+.wb-split[data-orientation="vertical"] > .wb-divider::after {
+  inset: 3px auto 3px 50%;
+  width: 1px;
+  height: auto;
+  transform: translateX(-50%);
+}
+
+.wb-divider:hover::after,
+.wb-divider:focus-visible::after,
+.wb-divider[data-dragging="true"]::after {
+  background: var(--color-accent);
+}
+
+.wb-divider:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.wb-pane {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid var(--color-edge);
+  border-radius: var(--wb-radius);
+  background: color-mix(in srgb, var(--color-panel) 55%, transparent);
+  overflow: hidden;
+}
+
+.wb-pane[data-focused="true"] {
+  border-color: color-mix(in srgb, var(--color-accent) 65%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-accent) 30%, transparent);
+}
+
+.wb-pane-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  border-block-end: 1px solid var(--color-edge);
+  background: color-mix(in srgb, var(--color-frame) 65%, transparent);
+}
+
+.wb-pane-title {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  padding: 2px 4px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-ink);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.wb-pane-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wb-pane-mission {
+  font-size: 11px;
+  color: var(--color-ink-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wb-pane-badges {
+  display: inline-flex;
+  gap: 4px;
+  margin-inline-start: auto;
+}
+
+.wb-pane-actions {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.wb-pane-body {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  background: transparent;
+}
+
+.wb-pane-placeholder,
+.wb-pane-error {
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px;
+  color: var(--color-ink-secondary);
+  font-size: 12px;
+  text-align: center;
+}
+
+.wb-pane-note {
+  position: absolute;
+  inset: auto 10px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-edge);
+  border-radius: var(--wb-radius);
+  background: color-mix(in srgb, var(--color-menu) 92%, transparent);
+  box-shadow: var(--shadow-lg);
+  font-size: 12px;
+}
+
+.wb-pane-note p {
+  margin: 0;
+}
+
+.wb-terminal {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  padding: 4px 6px;
+  background: transparent;
+}
+
+.wb-terminal .xterm-viewport {
+  background: transparent !important;
+  scrollbar-color: var(--color-scrollbar) transparent;
+}
+
+.wb-terminal .xterm-screen {
+  background: transparent;
+}
+
+.wb-zoom-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-block-end: 1px solid var(--color-edge);
+}
+
+.wb-zoom-label {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.wb-zoom-body {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: var(--wb-gap);
+}
+
+.wb-offscreen {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.wb-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px;
+  border-block-start: 1px solid var(--color-edge);
+  font-size: 11px;
+  color: var(--color-ink-tertiary);
+}
+
+/* Motion and the responsive fallbacks belong to the shell: every rule that
+ * moves is turned off here when the person asked for less movement, and a
+ * narrow window turns the three columns into stacked rows rather than
+ * squeezing a terminal to nothing. */
+
+@keyframes wb-pulse {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 0.9; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wb-shell *,
+  .wb-shell *::before,
+  .wb-shell *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .wb-skeleton {
+    animation: none;
+    opacity: 0.6;
+  }
+}
+
+@media (max-width: 1180px) {
+  .wb-body {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+
+  .wb-inspector {
+    border-inline-start: 0;
+    border-block-start: 1px solid var(--color-edge);
+    max-height: 46vh;
+  }
+}
+
+/* At phone width the rail and the grid cannot both be readable side by side, so
+   the rail becomes a strip above the panes: it is capped at a third of the
+   height and scrolls, and the grid keeps the rest. Collapsing it hands the whole
+   screen to the terminal, which is what a person watching a run wants. */
+@media (max-width: 760px) {
+  .wb-shell {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .wb-side {
+    width: 100%;
+    border-inline-end: 0;
+    border-block-end: 1px solid var(--color-edge);
+    max-height: 34vh;
+  }
+
+  .wb-side[data-collapsed="true"] {
+    width: 100%;
+    max-height: none;
+  }
+
+  .wb-side-rail {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+}

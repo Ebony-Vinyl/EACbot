@@ -166,7 +166,7 @@ describe("transcript pages on bot and room frames", () => {
     let imported: any;
     const frames = await framesDuring(async () => {
       const reply = await api("POST", "/api/teams/import?mode=project", {
-        format: "eacbot.team", version: 2, team: { name: "Imported", members: [
+        format: "openmaus.team", version: 2, team: { name: "Imported", members: [
           { key: "first", name: "Imported One", appearance: { color: "purple" } },
           { key: "second", name: "Imported Two", appearance: { color: "blue" } },
         ] },

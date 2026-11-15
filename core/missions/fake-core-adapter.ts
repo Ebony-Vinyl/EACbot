@@ -36,6 +36,7 @@ export const CORE_CAPABILITIES: AgentCapabilities = {
   images: true,
   usage: true,
   modelSwitch: "in-session",
+  modelCatalog: "native",
   nativeTui: true,
 };
 

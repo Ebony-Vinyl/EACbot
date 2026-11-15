@@ -8,7 +8,9 @@ import { MASCOT_COLOR_NAMES } from "../shared/wire.ts";
 import { BOT_PROFILE_LIMITS } from "../shared/bot-profile.ts";
 import { optionalText, requiredText } from "../shared/package-format.ts";
 
-export const TEAM_MANIFEST_FORMAT = "eacbot.team" as const;
+/** The team file's own format identifier. Like the package format it is a compatibility marker, not a product name:
+ * team files already on disk and in shared repositories carry this spelling. */
+export const TEAM_MANIFEST_FORMAT = "openmaus.team" as const;
 export const TEAM_MANIFEST_VERSION = 2 as const;
 export const LEGACY_TEAM_MANIFEST_VERSION = 1 as const;
 export const MAX_TEAM_MEMBERS = 200;

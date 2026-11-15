@@ -113,7 +113,7 @@ describe("what EACbot says first", () => {
     expect(introLines({ name: "EACbot", chief: true, team: "Acme" })[1]).toBe(`${said[1]} On Acme, I'm here for you and look after your own bots.`);
   });
 
-  it("keeps a helper's lines for a EACbot that is not the Chief", () => {
+  it("keeps a helper's lines for an EACbot that is not the Chief", () => {
     expect(introLines({ name: "EACbot", chief: false })[0]).toBe("Hi! I'm EACbot, your helper for everything here.");
     expect(introLines({ name: "EACbot", chief: false, person: "Ada" })[0]).toBe("Hi Ada! I'm EACbot, your helper for everything here.");
     const member = introLines({ name: "EACbot", chief: false, team: "Acme" });

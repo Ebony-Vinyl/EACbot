@@ -45,7 +45,7 @@ const definitionSchema = z.object({
   account: z.string().trim().max(128).optional(),
   filter: filterSchema.optional(),
   config: z.record(z.string(), z.unknown()).optional(),
-  runOn: z.enum(["eacbot", "cloud"]).optional(),
+  runOn: z.enum(["maus", "cloud"]).optional(),
 }).strict();
 const changesSchema = definitionSchema.pick({ name: true, instructions: true, filter: true, config: true, runOn: true }).partial().strict()
   .refine((changes) => Object.keys(changes).length > 0, "The update action needs at least one field in changes");
