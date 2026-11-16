@@ -106,6 +106,7 @@ export class InMemoryEnvironmentStore implements EnvironmentPort {
 
 export interface EnvironmentStorePortOptions {
   readonly store: EnvironmentStore;
+  readonly local?: EnvironmentRecord;
   readonly runner: SshRunner;
   readonly now?: () => string;
   readonly id?: () => string;
@@ -131,6 +132,7 @@ export interface EnvironmentStorePortOptions {
  */
 export class EnvironmentStorePort implements EnvironmentPort {
   readonly #store: EnvironmentStore;
+  readonly #local: EnvironmentRecord | undefined;
   readonly #runner: SshRunner;
   readonly #now: () => string;
   readonly #newId: () => string;
@@ -140,6 +142,7 @@ export class EnvironmentStorePort implements EnvironmentPort {
 
   constructor(options: EnvironmentStorePortOptions) {
     this.#store = options.store;
+    this.#local = options.local;
     this.#runner = options.runner;
     this.#now = options.now ?? (() => new Date().toISOString());
     this.#newId = options.id ?? randomUUID;
@@ -148,10 +151,11 @@ export class EnvironmentStorePort implements EnvironmentPort {
   }
 
   list(): EnvironmentSummary[] {
-    return this.#store.list().map((record) => this.#summary(record));
+    return [...(this.#local ? [summaryOf(this.#local, "online")] : []), ...this.#store.list().map((record) => this.#summary(record))];
   }
 
   get(id: string): EnvironmentSummary | undefined {
+    if (id === this.#local?.id) return summaryOf(this.#local, "online");
     const record = this.#store.get(id);
     return record === null ? undefined : this.#summary(record);
   }
@@ -208,6 +212,7 @@ export class EnvironmentStorePort implements EnvironmentPort {
   }
 
   async check(id: string): Promise<EnvironmentTest> {
+    if (id === this.#local?.id) return { reachable: true, checkedAt: this.#now(), detail: "本机进程已连接，无需 SSH" };
     const record = this.#store.get(id);
     if (record === null) throw new UnknownEnvironmentError(id);
     const checkedAt = this.#now();
@@ -234,6 +239,7 @@ export class EnvironmentStorePort implements EnvironmentPort {
   }
 
   lastTest(id: string): EnvironmentTest | undefined {
+    if (id === this.#local?.id) return { reachable: true, checkedAt: this.#local.updatedAt, detail: "本机进程已连接，无需 SSH" };
     return this.#tests.get(id);
   }
 
@@ -241,6 +247,7 @@ export class EnvironmentStorePort implements EnvironmentPort {
    * local: nothing on the computer is touched, and no connection is opened,
    * because that data is the person's and a delete cannot be undone. */
   async remove(id: string): Promise<void> {
+    if (id === this.#local?.id) throw new Error("the built-in local computer cannot be removed");
     const record = this.#store.require(id);
     await this.#store.remove(id);
     rmSync(record.knownHostsFile, { force: true });
@@ -260,6 +267,8 @@ export class EnvironmentStorePort implements EnvironmentPort {
 function summaryOf(record: EnvironmentRecord, status: EnvironmentStatus): EnvironmentSummary {
   return {
     id: record.id,
+    kind: record.kind ?? "ssh",
+    tools: record.tools,
     label: record.label,
     host: record.host,
     port: record.port,

@@ -6,6 +6,7 @@
  * person sees already looks like the product. */
 
 import { useState } from "react";
+import { Link2, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Field, Input } from "@/components/ui/field";
@@ -36,25 +37,29 @@ export function PairingGate() {
   return (
     <div
       data-testid="workbench-pairing"
-      className="flex min-h-0 flex-1 items-center justify-center p-6"
+      className="neutral-pairing"
     >
-      <Card className="w-full max-w-[420px] border-hairline/40 bg-menu p-5 shadow-2xl">
-        <h2 className="text-[14px] font-semibold text-ink">Pair this device</h2>
-        <p className="mt-1 text-[12px] leading-relaxed text-ink-secondary">
-          The core printed a one-time code in its terminal. Enter it here to keep a device session.
+      <Card className="neutral-pairing-card">
+        <span className="neutral-pairing-icon"><Link2 size={22} strokeWidth={1.5} aria-hidden="true" /></span>
+        <h2>连接任务服务</h2>
+        <p>
+          将这个工作空间连接到你的任务服务。输入服务启动终端显示的一次性配对码，即可开始使用。
         </p>
         <form
-          className="mt-4 flex flex-col gap-3"
+          className="mt-6 flex flex-col gap-4"
           onSubmit={(event) => {
             event.preventDefault();
             void claim();
           }}
         >
-          <Field label="Pairing code">
+          <Field label="配对码">
             <Input
               value={code}
               onChange={(event) => setCode(event.currentTarget.value)}
               disabled={busy}
+              className="neutral-pairing-code"
+              autoComplete="one-time-code"
+              spellCheck={false}
               autoFocus
               data-testid="workbench-pairing-code"
             />
@@ -71,9 +76,10 @@ export function PairingGate() {
             disabled={busy || code.trim().length === 0}
             data-testid="workbench-pairing-submit"
           >
-            {busy ? "Pairing…" : "Pair"}
+            {busy ? "连接中…" : "连接"}
           </Button>
         </form>
+        <div className="neutral-pairing-note"><ShieldCheck size={14} aria-hidden="true" />已有机器人聊天可以继续使用</div>
       </Card>
     </div>
   );

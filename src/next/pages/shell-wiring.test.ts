@@ -4,12 +4,14 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { StoreProvider } from "@/state/store";
+import { initialState, reducer, StoreProvider } from "@/state/store";
 
 /** The five command-centre pages as a person reaches them: the shell's own rail
  * row, then the pane. This is the wiring the two halves of the change share —
  * the store's new view values and the sidebar's rows — so it is checked where
  * they meet rather than in either half alone. */
+
+vi.mock("@/next/workbench/HerdrPage", () => ({ HerdrPage: () => h("div", { "data-testid": "page-herdr-stub" }) }));
 
 const auth = vi.hoisted(() => ({ paired: false }));
 
@@ -53,11 +55,22 @@ beforeEach(() => {
 });
 
 describe("the store's page list and the page component", () => {
+  it("leaves Agent for task centre and then returns to command pages or chat", () => {
+    const agents = reducer(initialState, { type: "showNewPage", page: "agents" });
+    const tasks = reducer(agents, { type: "showTaskCenter" });
+    expect(tasks.activeView).toBe("task-center");
+    const terminals = reducer(tasks, { type: "showNewPage", page: "terminals" });
+    expect(terminals.activeView).toBe("terminals");
+    expect(reducer(terminals, { type: "showChat" }).activeView).toBe("chat");
+    expect(reducer(tasks, { type: "select", id: "bot" }).activeView).toBe("chat");
+  });
+
   it("names the same five pages on both sides, so a rail row always has a page", () => {
-    expect([...NEW_PAGES]).toEqual(["hermes", "missions", "computers", "agents", "terminals"]);
+    expect([...NEW_PAGES]).toEqual(["herdr", "hermes", "missions", "computers", "agents", "terminals"]);
   });
 
   it.each([
+    ["herdr", "page-herdr-stub"],
     ["hermes", "page-hermes-stub"],
     ["missions", "page-missions-stub"],
     ["computers", "page-computers-stub"],
@@ -67,7 +80,7 @@ describe("the store's page list and the page component", () => {
     container = document.createElement("div");
     document.body.append(container);
     root = createRoot(container);
-    act(() => root!.render(h(CommandPageView, { page })));
+    act(() => root!.render(h(CommandPageView, { page, onBackToChat: vi.fn() })));
     expect(container.querySelector(`[data-testid="${stub}"]`)).not.toBeNull();
   });
 
@@ -77,7 +90,7 @@ describe("the store's page list and the page component", () => {
     root = createRoot(container);
     act(() =>
       root!.render(
-        h(StoreProvider, null, h(CommandPageView, { page: "missions" })),
+        h(StoreProvider, null, h(CommandPageView, { page: "missions", onBackToChat: vi.fn() })),
       ),
     );
     expect(container.querySelector('[data-testid="page-missions-stub"]')).not.toBeNull();

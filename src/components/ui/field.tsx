@@ -1,22 +1,23 @@
 // The field and the toolbar chips two data pages share. Inputs are one component so a date field and a
 // search field line up, and a chip row is one component so two filters never drift apart.
 import { Search } from "lucide-react";
+import { EmptyState as NeutralEmptyState, Input as NeutralInput } from "@neutral-reference/ui";
 import type { ComponentProps, ReactNode } from "react";
 
 import { cn } from "@/lib/cn";
 
 export const inputClass =
-  "rounded-lg border border-hairline/40 bg-app px-2.5 py-1.5 text-[12px] text-ink placeholder:text-ink-secondary focus:outline-none focus:ring-1 focus:ring-accent/60 [color-scheme:dark]";
+  "eac-input rounded-lg px-2.5 py-2 text-[13px]";
 
 export function Input({ className, ...props }: ComponentProps<"input">) {
-  return <input className={cn(inputClass, className)} {...props} />;
+  return <NeutralInput className={cn(inputClass, className)} {...props} />;
 }
 
 export function SearchInput({ className, ...props }: ComponentProps<"input">) {
   return (
     <label className="relative block">
       <Search size={12} className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-ink-secondary" />
-      <input className={cn(inputClass, "pl-6", className)} {...props} />
+      <NeutralInput className={cn(inputClass, "pl-6", className)} {...props} />
     </label>
   );
 }
@@ -24,7 +25,7 @@ export function SearchInput({ className, ...props }: ComponentProps<"input">) {
 export function Field({ label, className, children }: { label: string; className?: string; children: ReactNode }) {
   return (
     <label className={cn("flex flex-col gap-1", className)}>
-      <span className="text-[10px] uppercase tracking-wide text-ink-secondary">{label}</span>
+      <span className="text-[12px] font-medium text-ink-secondary">{label}</span>
       {children}
     </label>
   );
@@ -75,21 +76,17 @@ export function Notice({ tone, onDismiss, children }: { tone: "ok" | "warn" | "b
 
 export function EmptyState({ title, body, action }: { title: string; body: string; action?: ReactNode }) {
   return (
-    <div className="rounded-xl border border-hairline/30 bg-inset p-6 text-center">
-      <p className="text-[14px] font-medium text-ink">{title}</p>
-      <p className="mx-auto mt-1 max-w-md text-[12px] leading-relaxed text-ink-secondary">{body}</p>
-      {action && <div className="mt-3 flex justify-center">{action}</div>}
-    </div>
+    <NeutralEmptyState title={title} description={body} action={action} />
   );
 }
 
 /** A page's title bar: the heading, an optional subtitle, and the controls that act on the whole page. */
 export function PageHeader({ title, subtitle, children, className }: { title: string; subtitle?: string; children?: ReactNode; className?: string }) {
   return (
-    <header className={cn("flex shrink-0 items-center gap-3 border-b border-hairline/30 px-5 py-3", className)}>
+    <header className={cn("neutral-page-header flex shrink-0 items-center gap-3 border-b border-hairline/30 px-6 py-5", className)}>
       <div className="min-w-0 flex-1">
-        <h1 className="truncate text-[15px] font-semibold text-ink">{title}</h1>
-        {subtitle && <p className="truncate text-[11px] text-ink-secondary">{subtitle}</p>}
+        <h1 className="truncate text-[22px] font-semibold tracking-tight text-ink">{title}</h1>
+        {subtitle && <p className="mt-1 text-[13px] text-ink-secondary">{subtitle}</p>}
       </div>
       {children && <div className="flex shrink-0 items-center gap-1.5">{children}</div>}
     </header>

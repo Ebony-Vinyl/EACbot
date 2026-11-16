@@ -1,7 +1,10 @@
+import { Theme } from "@neutral-reference/ui";
+import { WorkspaceHeader, WorkspaceNavigation } from "@/components/shell/NeutralWorkspace";
+import { readSkin, skinColorScheme, subscribeSkin } from "@/lib/skins";
 import { TaskCenter } from "@/features/tasks/TaskCenter";
 import { CommandPageView } from "@/next/pages/CommandPageView";
 import { NEW_PAGES, type NewPage } from "@/state/store";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { PluginUiHost } from "@/components/PluginUiHost";
 import { Live2dOverlay } from "@/components/Live2dOverlay";
 import { ChevronLeft, Loader2, Menu } from "lucide-react";
@@ -87,6 +90,9 @@ import { WebPanelPage } from "@/components/WebPanelPage";
 
 function Shell({ viewer }: { viewer: WelcomeViewer | null }) {
   const { state, dispatch } = useStore();
+  const skin = useSyncExternalStore(subscribeSkin, readSkin);
+  const neutralTheme = skinColorScheme(skin);
+  const conversationView = state.activeView === "chat" || state.activeView === "web-panel";
   useTeamChats(state.config);
   const needsYou = needsYouVersion(state.bots, state.groups, state.notifications);
   useTeamPeopleLoader(state.config, needsYou);
@@ -145,7 +151,7 @@ function Shell({ viewer }: { viewer: WelcomeViewer | null }) {
   useExternalChatLinks(state, dispatch); useDesktopNotificationOpens(state, dispatch);
   usePresence(state, dispatch);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [tasksOpen, setTasksOpen] = useState(false);
+  const tasksOpen = state.activeView === "task-center";
   const shellView = useShellView();
   usePageLanguage(effectiveLanguage(useLanguageChoice(), state.config?.language), true);
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -331,13 +337,15 @@ function Shell({ viewer }: { viewer: WelcomeViewer | null }) {
     <AppNotices quiet={paletteOpen || drawerOpen || Boolean(localVmWorkspaceBotId)} viewer={viewer} />
   </>;
   return (
-    <div className={cn("flex h-full flex-col", framed && "bg-frame")}>
+    <Theme theme={neutralTheme} data-neutral-shell className={cn("neutral-shell flex h-full flex-col", framed && "bg-frame")}>
       <AppBackground />
       <WindowFrameBar notifications={notificationTray} />
+      {state.activeView !== "herdr" && <WorkspaceHeader theme={neutralTheme} />}
       <BotLimitPopup />
       {!framed && strips}
-      <div className="relative flex min-h-0 flex-1">
-      {!calendarFocus && <button
+      <div className="neutral-workspace-body relative flex min-h-0 flex-1">
+      {state.activeView !== "herdr" && <WorkspaceNavigation />}
+      {conversationView && !calendarFocus && <button
         type="button"
         ref={menuButtonRef}
         aria-label={t("app.openBotList")}
@@ -366,10 +374,10 @@ function Shell({ viewer }: { viewer: WelcomeViewer | null }) {
       {/* The list of bots and the board take the same place: one shows at a time, so a person swaps rather than
           stacking. Both are the left-hand card. The swap is a cross-fade with a small slide, so the two surfaces read
           as one card changing its contents instead of two panes cutting in and out. */}
-      {!calendarFocus && (
+      {conversationView && !calendarFocus && (
         <SidebarSwap>
           {shellView === "board" ? <TaskBoardCard /> : <Sidebar
-            onOpenTasks={() => { setTasksOpen(true); setDrawerOpen(false); }}
+            onOpenTasks={() => { dispatch({ type: "showTaskCenter" }); setDrawerOpen(false); }}
             collapseToIcons={collapseSidebar}
             open={drawerOpen}
             onClose={() => {
@@ -380,8 +388,8 @@ function Shell({ viewer }: { viewer: WelcomeViewer | null }) {
         </SidebarSwap>
       )}
       {isNewPage(state.activeView) ? (
-        <CommandPageView page={state.activeView} />
-      ) : tasksOpen ? <TaskCenter onClose={() => setTasksOpen(false)} /> : state.activeView === "health" ? (
+        <CommandPageView page={state.activeView} onBackToChat={() => dispatch({ type: "showChat" })} />
+      ) : tasksOpen ? <TaskCenter onClose={() => dispatch({ type: "showChat" })} /> : state.activeView === "health" ? (
         <HealthPage />
       ) : state.activeView === "home" ? (
         <HomePage />
@@ -496,7 +504,7 @@ function Shell({ viewer }: { viewer: WelcomeViewer | null }) {
       <WindowCaptionButtons
         visible={capabilities.windowChrome === "win-caption" && Boolean(window.ogb?.windowControls)}
       />
-    </div>
+    </Theme>
   );
 }
 

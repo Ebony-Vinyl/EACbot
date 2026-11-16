@@ -1,3 +1,5 @@
+import { createCoreService } from "./core-service.mjs";
+import { commandPath } from "./shell-path.mjs";
 import { app, autoUpdater as nativeAutoUpdater, BrowserWindow, Tray, WebContentsView, clipboard, desktopCapturer, dialog, globalShortcut, ipcMain, Menu, nativeImage, Notification, powerMonitor, powerSaveBlocker, safeStorage, screen, session, shell, systemPreferences, utilityProcess, nativeTheme } from "electron";
 import { createRequire } from "node:module";
 import { randomBytes, randomUUID } from "node:crypto";
@@ -2525,6 +2527,18 @@ const workspaceOnly = (handler) => (event, ...args) => {
   return handler(event, ...args);
 };
 const localWorkspaceOnly = (channel, handler) => localOnly(channel, workspaceOnly(handler));
+const taskCore = createCoreService({
+  entry: app.isPackaged ? path.join(process.resourcesPath, "server", "task-core.js") : path.join(__dirname, "..", "core", "bootstrap", "main.ts"),
+  dataDir: () => path.join(runningDataDir ?? desktopDataDir(), "task-core"),
+  origin: rendererOrigin,
+  source: !app.isPackaged,
+});
+ipcMain.handle("task-core:connect", localWorkspaceOnly("task-core:connect", async event => {
+  if (desktopRemoteAccess || event.senderFrame !== event.sender.mainFrame) throw new Error("本机任务服务仅供桌面主窗口使用");
+  return taskCore.connect(await commandPath());
+}));
+app.on("before-quit", () => taskCore.stop());
+
 // No renderer-supplied address, token, paid flag or callback can choose an account or activate Pro.
 for (const method of ["state", "begin", "signInAgain", "reopen", "cancel", "refresh", "signOut", "openDashboard", "offer"]) {
   ipcMain.handle(`cloud-account:${method}`, localWorkspaceOnly(`cloud-account:${method}`, () => (method === "signOut" ? accounts.signOutActive() : ensureCloudAccount()[method]())));

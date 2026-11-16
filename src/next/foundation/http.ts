@@ -6,7 +6,7 @@
  * `core/identity/scopes.ts` (`PermissionScope`), which are not part of
  * `packages/agent-protocol`. */
 
-import { useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 
 export const API_BASE = "/api/v1";
 
@@ -58,6 +58,22 @@ export function isApiError(value: unknown): value is ApiError {
  * publish. Callers render it; they never fall back to a guessed request. */
 export function contractMissing(contract: string): ApiError {
   return new ApiError(CONTRACT_MISSING, `the workbench has no published contract for ${contract}`, 0);
+}
+
+let desktopBaseUrl: string | undefined;
+let desktopConnection: Promise<void> | undefined;
+
+export function connectDesktopCore(): Promise<void> {
+  const bridge = globalThis.window?.ogb?.taskCore;
+  if (!bridge) return Promise.resolve();
+  desktopConnection ??= bridge.connect().then(connection => {
+    desktopBaseUrl = connection.baseUrl;
+    if (snapshot?.token !== connection.token) {
+      snapshot = { status: "paired", token: connection.token, session: connection.session, error: null };
+      notify();
+    }
+  }).finally(() => { desktopConnection = undefined; });
+  return desktopConnection;
 }
 
 const SESSION_KEY = "eacbot.workbench.session.v1";
@@ -227,6 +243,7 @@ export function createApiClient(options: ApiClientOptions = {}): ApiClient {
   const fetchImpl = options.fetchImpl ?? ((...args: Parameters<typeof fetch>) => fetch(...args));
 
   async function request<T>(path: string, requestOptions: RequestOptions = {}): Promise<T> {
+    if (options.baseUrl === undefined && globalThis.window?.ogb?.taskCore) await connectDesktopCore();
     const bearer = token();
     const headers: Record<string, string> = { accept: "application/json", ...requestOptions.headers };
     if (bearer !== null) headers.authorization = `Bearer ${bearer}`;
@@ -234,7 +251,7 @@ export function createApiClient(options: ApiClientOptions = {}): ApiClient {
 
     let response: Response;
     try {
-      response = await fetchImpl(buildUrl(baseUrl, path, requestOptions.query), {
+      response = await fetchImpl(buildUrl(options.baseUrl ?? desktopBaseUrl ?? baseUrl, path, requestOptions.query), {
         method: requestOptions.method ?? "GET",
         headers,
         ...(requestOptions.body !== undefined ? { body: JSON.stringify(requestOptions.body) } : {}),
@@ -266,7 +283,7 @@ export function createApiClient(options: ApiClientOptions = {}): ApiClient {
     }
   }
 
-  return { baseUrl, request };
+  return { get baseUrl() { return options.baseUrl ?? desktopBaseUrl ?? baseUrl; }, request };
 }
 
 const defaultClient = createApiClient();
@@ -312,6 +329,16 @@ export async function claimPairing(
 }
 
 export function useAuth(): AuthState {
+  useEffect(() => {
+    if (!globalThis.window?.ogb?.taskCore) return;
+    let active = true;
+    const refresh = () => void connectDesktopCore().catch(error => {
+      if (active) setAuthError(error instanceof Error ? error.message : "任务服务连接失败");
+    });
+    refresh();
+    const timer = setInterval(refresh, 2000);
+    return () => { active = false; clearInterval(timer); };
+  }, []);
   const state = useSyncExternalStore(subscribeAuth, authSnapshot, () => ANONYMOUS);
   return {
     ...state,

@@ -73,11 +73,11 @@ export function CloudComputerSettings(): ReactNode {
   };
 
   return (
-    <section className="flex flex-col gap-3" data-testid="cloud-computer-settings">
+    <section className="neutral-resource-page" data-testid="cloud-computer-settings">
       <header className="flex flex-col gap-1">
-        <h2 className="text-[12px] font-semibold text-ink">我的云电脑</h2>
+        <h2 className="neutral-resource-title">我的电脑</h2>
         <p className="text-[10px] leading-relaxed text-ink-secondary">
-          这台电脑是你自己的，通过 SSH 连接。EACbot 不销售云电脑，也不内置任何云供应商；这里只记录连接事实和一台主机的指纹，known-hosts 文件由应用自己维护。
+          桌面客户端自动连接这台电脑。其他电脑可以通过 SSH 添加。
         </p>
       </header>
 
@@ -183,11 +183,11 @@ function ComputerRow({
           {record.status ?? "unknown"}
         </span>
         <span className="font-mono text-[10px] text-ink-secondary">
-          {record.user}@{record.host}:{record.port}
+          {record.kind === "local" ? "本机 · 自动连接" : `${record.user}@${record.host}:${record.port}`}
         </span>
       </div>
       <p className="break-all font-mono text-[10px] text-ink-secondary">
-        {hasPin(record) ? record.hostKeyFingerprint : "没有记录主机指纹"}
+        {record.kind === "local" ? "本地执行，无需 SSH 或配对码" : hasPin(record) ? record.hostKeyFingerprint : "没有记录主机指纹"}
       </p>
       <p className={cn("text-[10px]", described.tone === "success" ? "text-success" : "text-ink-secondary")}>{described.text}</p>
       {changed !== undefined && <Notice title="主机指纹变了" detail={changed} />}
@@ -195,9 +195,9 @@ function ComputerRow({
         <Button variant="secondary" size="sm" disabled={busy} onClick={onTest}>
           {busy ? "测试中…" : "测试连接"}
         </Button>
-        <Button variant="ghost" size="sm" disabled={busy} onClick={onRemove}>
+        {record.kind !== "local" && <Button variant="ghost" size="sm" disabled={busy} onClick={onRemove}>
           删除
-        </Button>
+        </Button>}
       </div>
     </Card>
   );

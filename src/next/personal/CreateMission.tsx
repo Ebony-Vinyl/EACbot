@@ -20,6 +20,7 @@ import { LoadableView } from "./ui.tsx";
 
 /** Only what the form shows about the computer a task will run on. */
 export interface CreateEnvironment {
+  readonly kind?: "local" | "ssh";
   readonly id: string;
   readonly label: string;
 }
@@ -71,7 +72,7 @@ export function CreateMission({ environment, onCreated, onCancel, parentMissionI
         environment: {
           id: environment.id,
           label: environment.label,
-          kind: "ssh",
+          kind: environment.kind ?? "ssh",
           authMode: chosenMode,
         },
         ...(model !== undefined ? { model: { agent, model } } : {}),

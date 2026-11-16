@@ -91,9 +91,9 @@ const tick = async (): Promise<void> => {
 
 interface Mounted {
   readonly connection: FakeConnection;
-  readonly chip: ReturnType<typeof vi.fn>;
-  readonly title: ReturnType<typeof vi.fn>;
-  readonly focus: ReturnType<typeof vi.fn>;
+  readonly chip: ReturnType<typeof vi.fn<() => void>>;
+  readonly title: ReturnType<typeof vi.fn<() => void>>;
+  readonly focus: ReturnType<typeof vi.fn<() => void>>;
 }
 
 async function mount(options: { canSend?: boolean; focused?: boolean } = {}): Promise<Mounted> {
@@ -119,6 +119,15 @@ async function mount(options: { canSend?: boolean; focused?: boolean } = {}): Pr
 const textarea = (): HTMLTextAreaElement | null => host.querySelector(".xterm-helper-textarea");
 
 describe("the terminal surface", () => {
+  it("changes the font size without replacing the native connection", async () => {
+    const { connection, chip, title, focus } = await mount();
+    const screen = host.querySelector(".xterm");
+    await act(async () => root.render(h(TerminalSurface, { connection, canSend: true, focused: true, onChip: chip, onTitle: title, onFocusChange: focus, label: "Terminal", fontSize: 18 })));
+    expect(host.querySelector(".xterm")).toBe(screen);
+    expect(connection.dataListeners).toBe(1);
+    expect(connection.closed).toBe(false);
+  });
+
   it("subscribes to the connection on mount and releases it on unmount", async () => {
     const { connection } = await mount();
     expect(connection.dataListeners).toBe(1);

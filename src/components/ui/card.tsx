@@ -1,10 +1,10 @@
-// A card is a surface plus a header/body/footer rhythm, so two pages that show a group of readings look alike.
+import { Card as NeutralCard } from "@neutral-reference/ui";
 import type { ComponentProps } from "react";
 
 import { cn } from "@/lib/cn";
 
 export function Card({ className, ...props }: ComponentProps<"div">) {
-  return <div className={cn("rounded-xl border border-hairline/30 bg-inset", className)} {...props} />;
+  return <NeutralCard className={cn("eac-card", className)} {...props} />;
 }
 
 export function CardHeader({ className, ...props }: ComponentProps<"div">) {

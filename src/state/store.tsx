@@ -512,6 +512,7 @@ export interface InstanceInfo extends InstanceEndpointInfo {
 }
 
 export type AppSettingsSection =
+  | "resources"
   | "general"
   | "desktopWorkspaces"
   | "organization"
@@ -561,12 +562,13 @@ export interface ModelVariantSession {
 /** The pages EACbot's own command centre adds to the shell. They are views of
  * the same window, not a second application: the rail, the background layer and
  * the skins are the ones the rest of the app uses. */
-export const NEW_PAGES = ["hermes", "missions", "computers", "agents", "terminals"] as const;
+export const NEW_PAGES = ["herdr", "hermes", "missions", "computers", "agents", "terminals"] as const;
 
 export type NewPage = (typeof NEW_PAGES)[number];
 
 /** The skin token and label each new page goes by in the rail and the tab. */
 export const NEW_PAGE_LABELS: Readonly<Record<NewPage, string>> = {
+  herdr: "Herdr",
   hermes: "Hermes",
   missions: "Tasks",
   computers: "Computers",
@@ -585,7 +587,7 @@ export interface AppState {
   liveCallVersion: number;
   liveCallLookupSeq: number;
   selectedId: string;
-  activeView: "chat" | "team-map" | "routines" | "files" | "web-panel" | "health" | "home" | "platforms" | "platform" | NewPage;
+  activeView: "chat" | "task-center" | "team-map" | "routines" | "files" | "web-panel" | "health" | "home" | "platforms" | "platform" | NewPage;
   /** Which platform board is open when `activeView` is "platform". */
   platformId?: PlatformId;
   /** Folders a finished move left on this computer, for Files to offer sharing. */
@@ -675,6 +677,7 @@ export type Action =
   | { type: "showHealth" } | { type: "showHome" }
   | { type: "showPlatforms" } | { type: "showPlatform"; platform: PlatformId }
   | { type: "showChat" }
+  | { type: "showTaskCenter" }
   | { type: "showNewPage"; page: NewPage }
   | { type: "routinesHydrated"; routines: Routine[]; runs: RoutineRun[]; since?: number }
   | { type: "routinesLoadFailed" } | { type: "routineRunsLoaded"; runs: RoutineRun[]; from?: number; to?: number }
@@ -1027,12 +1030,13 @@ export function reducer(state: AppState, action: Action): AppState {
         filesSuggest: null,
         settingsOpen: false, computerOpen: false, inspectorOpen: false, activityOpen: false, appSettingsOpen: false, pluginsOpen: false,
       };
+    case "showTaskCenter":
     case "showTeamMap":
     case "showHealth":
     case "showHome":
       return {
         ...state,
-        activeView: action.type === "showHealth" ? "health" : action.type === "showHome" ? "home" : "team-map",
+        activeView: action.type === "showTaskCenter" ? "task-center" : action.type === "showHealth" ? "health" : action.type === "showHome" ? "home" : "team-map",
         filesSuggest: null,
         settingsOpen: false, computerOpen: false, inspectorOpen: false, activityOpen: false, appSettingsOpen: false, pluginsOpen: false,
       };
@@ -2308,7 +2312,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     };
 
     const wrapped: React.Dispatch<Action> = (action) => {
-      if (["select", "newTask", "switchTask", "newGroupTask", "switchGroupTask", "showChat", "showRoutines", "showTeamMap", "showFiles", "showWebPanel", "showHealth", "showHome", "showPlatforms", "showPlatform", "showNewPage"].includes(action.type)) selectionRevision.current++;
+      if (["select", "newTask", "switchTask", "newGroupTask", "switchGroupTask", "showChat", "showTaskCenter", "showRoutines", "showTeamMap", "showFiles", "showWebPanel", "showHealth", "showHome", "showPlatforms", "showPlatform", "showNewPage"].includes(action.type)) selectionRevision.current++;
       // Pin before any await or optimistic state change.
       action = pinBotThreadAction(action, stateRef.current.bots);
       if (action.type === "taskSwitched") action = { ...action, bot: withTaskWrites(action.bot) as Bot };

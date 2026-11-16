@@ -6,7 +6,10 @@
  * behind `PairingGate` — a device without a token would otherwise show a pane
  * of 401s instead of the one thing that fixes it. */
 
+import { HerdrPage } from "../workbench/HerdrPage";
 import type { ReactNode } from "react";
+import { t } from "@/lib/i18n";
+import { Button } from "@/components/ui/button";
 
 import { useAuth } from "../foundation/api.ts";
 import { PersonalAgentPage } from "../personal/PersonalAgentPage.tsx";
@@ -16,7 +19,7 @@ import { AgentSettings } from "../settings/AgentSettings.tsx";
 import { Workbench as TerminalWorkbench } from "../workbench/Workbench.tsx";
 import { PairingGate } from "./PairingGate.tsx";
 
-export type CommandPage = "hermes" | "missions" | "computers" | "agents" | "terminals";
+export type CommandPage = "herdr" | "hermes" | "missions" | "computers" | "agents" | "terminals";
 
 /** A page's frame: the app's pane colour, the scroll boundary, and the gate. */
 function PageFrame({ testId, children }: { readonly testId: string; readonly children: ReactNode }): ReactNode {
@@ -32,12 +35,16 @@ function PageFrame({ testId, children }: { readonly testId: string; readonly chi
 
 /** Renders one command-centre page, or the pairing gate when this device has
  * no session yet. */
-export function CommandPageView({ page }: { readonly page: CommandPage }): ReactNode {
+export function CommandPageView({ page, onBackToChat }: { readonly page: CommandPage; readonly onBackToChat: () => void }): ReactNode {
   const auth = useAuth();
   if (auth.status !== "paired") {
     return (
       <PageFrame testId={`command-page-${page}`}>
-        <PairingGate />
+        <header className="neutral-page-header flex items-center justify-between border-b border-hairline px-6 py-5">
+          <h1 className="text-[22px] font-semibold tracking-tight">{t(`sidebar.nav.${page}`)}</h1>
+          <Button onClick={onBackToChat}>返回聊天</Button>
+        </header>
+        {window.ogb?.taskCore ? <div role={auth.error ? "alert" : "status"} className="m-auto p-6 text-ink-secondary">{auth.error ?? "正在连接本机任务服务…"}</div> : <PairingGate key={page} />}
       </PageFrame>
     );
   }
@@ -46,6 +53,7 @@ export function CommandPageView({ page }: { readonly page: CommandPage }): React
 
 function content(page: CommandPage): ReactNode {
   switch (page) {
+    case "herdr": return <HerdrPage />;
     case "hermes":
       return <PersonalAgentPage />;
     case "missions":

@@ -599,14 +599,18 @@ function MarkdownCode({ node, children }: BlockProps) {
   return <CodeBlock code={code} lang={lang} initialWrap={wrap} />;
 }
 
+export const LocalMarkdownImageContext = createContext<((image: { src: string; name: string; sourceOffset: number }) => ReactNode) | null>(null);
+
 function MarkdownImage(props: ComponentProps<"img"> & ExtraProps) {
   const { message, imageOffsets } = useContext(MessageScopeContext);
+  const renderLocalImage = useContext(LocalMarkdownImageContext);
   const { src, alt } = props;
   if (!src) {
     return <span className="text-[12px] text-danger" role="alert">{t("attach.imageUnavailable")}</span>;
   }
   const filePath = localFilePath(src) ?? undefined;
   const sourceOffset = props.node?.position?.start.offset;
+  if (filePath && renderLocalImage && sourceOffset !== undefined) return renderLocalImage({ src, name: markdownImageName(src, alt), sourceOffset: imageOffsets?.get(sourceOffset) ?? sourceOffset });
   return (
     <MarkdownImagePreview
       src={src}

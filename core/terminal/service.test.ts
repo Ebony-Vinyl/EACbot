@@ -198,6 +198,14 @@ async function started(herdr: FakeHerdr, service: TerminalService) {
 }
 
 describe("starting an agent TUI", () => {
+  it("runs a local executable through Herdr without SSH", async () => {
+    const herdr = new FakeHerdr();
+    const environment = environmentRecord({ kind: "local", tools: [{ name: "claude", status: "installed", path: "/fixture/bin/claude", version: "1.0.0" }] });
+    const service = track(serviceFor(herdr, { environments: { get: () => environment } }));
+    await started(herdr, service);
+    expect(herdr.plans[0]).toMatchObject({ command: "herdr-core", args: ["connect"] });
+    expect(herdr.core.callsOf("terminal.run")[0]!.params.argv).toEqual(["/fixture/bin/claude"]);
+  });
   it("opens one ssh connection from the environment record and runs the tool's own argv", async () => {
     const herdr = new FakeHerdr();
     const service = track(serviceFor(herdr));

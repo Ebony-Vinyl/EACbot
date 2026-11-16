@@ -41,7 +41,7 @@ import {
   splitPane,
   type PaneNode,
 } from "./pane-tree.ts";
-import { StartTerminalDialog } from "./StartTerminalDialog.tsx";
+import { StartTerminalDialog, type StartTerminalDialogProps } from "./StartTerminalDialog.tsx";
 import { startTerminal, toolForAgent, type TerminalTool } from "./start-terminal.ts";
 import { useTerminalRegistry } from "./terminal-registry.ts";
 import { WorkbenchSidebar, groupMachines } from "./WorkbenchSidebar.tsx";
@@ -253,7 +253,7 @@ export function Workbench(props: WorkbenchProps = {}) {
    * own list, not from the missions: a mission's `environment` is a reference
    * that a fixture may fill with a placeholder, and starting a terminal on a
    * placeholder id is a request the server can only refuse. */
-  const [computers, setComputers] = useState<readonly { readonly id: string; readonly label: string }[]>([]);
+  const [computers, setComputers] = useState<StartTerminalDialogProps["environments"]>([]);
   const environments = useMemo(() => {
     if (computers.length > 0) return computers;
     // Before the list arrives, fall back to what the missions name so the
@@ -412,13 +412,11 @@ function nextPaneId(root: PaneNode): string {
   return `pane-${index}`;
 }
 
-/** `GET /api/v1/environments` returns each record with a `lastTest` beside it.
- * Only the two fields a terminal picker shows are kept. */
-async function readComputers(): Promise<readonly { readonly id: string; readonly label: string }[]> {
+async function readComputers(): Promise<StartTerminalDialogProps["environments"]> {
   const body = await apiClient().request<{
-    environments: readonly { readonly id: string; readonly label: string }[];
+    environments: StartTerminalDialogProps["environments"];
   }>("/environments");
-  return body.environments.map((record) => ({ id: record.id, label: record.label }));
+  return body.environments;
 }
 
 function messageOf(failure: unknown): string {
