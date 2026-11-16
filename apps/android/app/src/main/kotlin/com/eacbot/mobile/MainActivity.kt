@@ -1,5 +1,16 @@
 package com.eacbot.mobile
 
+import android.content.Context
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.eacbot.mobile.data.SessionStore
+import com.eacbot.mobile.legacy.LegacyScreen
+import com.eacbot.mobile.legacy.LegacyViewModel
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -45,7 +56,19 @@ class MainActivity : ComponentActivity() {
         val app = application as EacbotApplication
         setContent {
             EacbotTheme {
-                EacbotShell(connection = app.connection, sessions = app.sessions)
+                val preferences = remember { getSharedPreferences("eacbot-backend", Context.MODE_PRIVATE) }
+                var legacy by remember { mutableStateOf(preferences.getBoolean("legacy", true)) }
+                val legacyModel = viewModel { LegacyViewModel(SessionStore(applicationContext, "eacbot-legacy-session")) }
+                Column(Modifier.fillMaxSize().statusBarsPadding()) {
+                    TextButton(onClick = {
+                        legacy = !legacy
+                        preferences.edit().putBoolean("legacy", legacy).apply()
+                    }) { Text(if (legacy) "EACbot · 切换到任务中心" else "任务中心 · 切换到 EACbot") }
+                    Box(Modifier.weight(1f)) {
+                        if (legacy) LegacyScreen(legacyModel)
+                        else EacbotShell(connection = app.connection, sessions = app.sessions)
+                    }
+                }
             }
         }
     }

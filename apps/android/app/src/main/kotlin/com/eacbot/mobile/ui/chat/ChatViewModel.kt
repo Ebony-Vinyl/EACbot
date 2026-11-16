@@ -40,6 +40,7 @@ data class ChatUiState(
     val offline: Boolean = false,
 ) {
     val operations get() = mission?.let { allowedOperations(it) }
+    val canSend get() = operations?.let { it.steer || it.answer } == true
 }
 
 /**
@@ -110,7 +111,7 @@ class ChatViewModel(
 
     fun send() {
         val text = state.value.draft.trim()
-        if (text.isEmpty() || state.value.sending) return
+        if (text.isEmpty() || state.value.sending || !state.value.canSend) return
         val mission = state.value.mission ?: return
         state.update { it.copy(sending = true, error = null) }
         viewModelScope.launch {
