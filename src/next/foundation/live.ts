@@ -161,6 +161,7 @@ export function connectLiveEvents(options: LiveEventsOptions): LiveEventsHandle 
 }
 
 function originOf(baseUrl: string): string {
+  if (/^https?:\/\//u.test(baseUrl)) return new URL(baseUrl).origin;
   const origin = globalThis.location?.origin;
   if (origin !== undefined && origin !== "null" && origin.length > 0) return origin;
   try {

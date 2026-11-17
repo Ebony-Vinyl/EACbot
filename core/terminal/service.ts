@@ -18,7 +18,7 @@ import { TOOL_NAMES, type EnvironmentRecord, type ToolName } from "../environmen
 import { AttachStream, type AttachOptions } from "./attach.ts";
 import { HcClient } from "./client.ts";
 import { RpcError, TransportError } from "./protocol.ts";
-import { HC_PROGRAM, sshConnectPlan, type SpawnPlan, type SshConnectConfig } from "./transport.ts";
+import { HC_PROGRAM, localConnectPlan, sshConnectPlan, type SpawnPlan, type SshConnectConfig } from "./transport.ts";
 import type { EventParams, InterruptResult, SendResult, Status, Terminal } from "./types.ts";
 import { FrameKind, creditPayload } from "./wire.ts";
 
@@ -124,6 +124,7 @@ export interface TerminalServiceEvents {
 }
 
 export interface StartTerminalInput {
+  readonly args?: readonly string[];
   readonly environmentId: string;
   readonly tool: ToolName;
   readonly missionId: string;
@@ -291,7 +292,7 @@ export class TerminalService extends EventEmitter<TerminalServiceEvents> {
     const client = await this.#connect(environment.id);
     const labels = { ...input.labels, eacbot: "terminal", environment: environment.id };
     const result = await client.run({
-      argv: [input.tool],
+      argv: [environment.kind === "local" ? environment.tools.find((tool) => tool.name === input.tool && tool.status === "installed")?.path ?? input.tool : input.tool, ...(input.args ?? [])],
       cwd,
       size: { cols: input.cols ?? DEFAULT_TERMINAL_COLS, rows: input.rows ?? DEFAULT_TERMINAL_ROWS },
       // A non-interactive remote command has no login profile. The agent
@@ -299,7 +300,7 @@ export class TerminalService extends EventEmitter<TerminalServiceEvents> {
       // system binaries stay reachable as the last resort.
       env: {
         HOME: home,
-        PATH: `${home.replace(/\/+$/, "")}/.local/bin:${home.replace(/\/+$/, "")}/.eacbot-env/bin:${home.replace(/\/+$/, "")}/.eacbot-env/npm/bin:/usr/local/bin:/usr/bin:/bin`,
+        PATH: environment.kind === "local" ? process.env.PATH ?? "" : `${home.replace(/\/+$/, "")}/.local/bin:${home.replace(/\/+$/, "")}/.eacbot-env/bin:${home.replace(/\/+$/, "")}/.eacbot-env/npm/bin:/usr/local/bin:/usr/bin:/bin`,
       },
       labels,
       ...(input.name !== undefined ? { name: input.name } : {}),
@@ -381,6 +382,11 @@ export class TerminalService extends EventEmitter<TerminalServiceEvents> {
       throw new TerminalServiceError("not_controller", `no viewer holds control of terminal ${terminalId}`);
     }
     await attachment.stream.resize(cols, rows);
+  }
+
+  async inspect(terminalId: string): Promise<Terminal> {
+    const record = this.#requireRecord(terminalId);
+    return (await this.#connect(record.environmentId)).get(record.nativeId);
   }
 
   async send(terminalId: string, text: string, options: { caller?: string | null; force?: boolean } = {}): Promise<SendResult> {
@@ -508,7 +514,7 @@ export class TerminalService extends EventEmitter<TerminalServiceEvents> {
 
   #createClient(environment: EnvironmentRecord): HcClient {
     const config = sshConfigForEnvironment(environment, this.#identity);
-    const plan = sshConnectPlan(config);
+    const plan = environment.kind === "local" ? localConnectPlan() : sshConnectPlan(config);
     return this.#clientFactory({ plan, config, environment });
   }
 
@@ -675,10 +681,10 @@ export class TerminalService extends EventEmitter<TerminalServiceEvents> {
 }
 
 function defaultClientFactory(requestTimeoutMs?: number): HcClientFactory {
-  return ({ plan, config }) =>
+  return ({ plan, config, environment }) =>
     new HcClient({
       plan,
-      transport: { kind: "ssh", ...config },
+      transport: environment.kind === "local" ? { kind: "local" } : { kind: "ssh", ...config },
       ...(requestTimeoutMs !== undefined ? { requestTimeoutMs } : {}),
     });
 }

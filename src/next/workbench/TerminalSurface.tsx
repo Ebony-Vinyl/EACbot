@@ -25,7 +25,7 @@ function themeFrom(element: HTMLElement): ITheme {
   return {
     // Transparent: the surface below carries the skin, so glass and a picture
     // behind the workbench stay visible through the grid.
-    background: "transparent",
+    background: "#00000000",
     ...(ink ? { foreground: ink, cursor: ink, cursorAccent: token("--color-inset") } : {}),
     ...(accent ? { selectionBackground: token("--color-menu-active") } : {}),
   };
@@ -37,6 +37,7 @@ function fontSizeFrom(element: HTMLElement): number {
 }
 
 export interface TerminalSurfaceProps {
+  readonly fontSize?: number;
   readonly connection: TerminalConnection;
   /** A watcher draws every byte but may not type, so xterm's own input path is
    * closed too, not only the send gate. */
@@ -48,9 +49,10 @@ export interface TerminalSurfaceProps {
   readonly label: string;
 }
 
-export function TerminalSurface({ connection, canSend, focused, onChip, onTitle, onFocusChange, label }: TerminalSurfaceProps) {
+export function TerminalSurface({ connection, canSend, focused, onChip, onTitle, onFocusChange, label, fontSize }: TerminalSurfaceProps) {
   const host = useRef<HTMLDivElement | null>(null);
   const terminal = useRef<Terminal | null>(null);
+  const fit = useRef<(() => void) | null>(null);
   const [ready, setReady] = useState(false);
   const callbacks = useRef({ onChip, onTitle, onFocusChange });
   callbacks.current = { onChip, onTitle, onFocusChange };
@@ -60,6 +62,7 @@ export function TerminalSurface({ connection, canSend, focused, onChip, onTitle,
     if (!element) return undefined;
     const term = new Terminal({
       allowTransparency: true,
+      minimumContrastRatio: 4.5,
       convertEol: false,
       cursorBlink: true,
       fontFamily: getComputedStyle(element).getPropertyValue("--font-mono").trim() || undefined,
@@ -131,6 +134,7 @@ export function TerminalSurface({ connection, canSend, focused, onChip, onTitle,
       if (term.cols > 0 && term.rows > 0) connection.resize(term.cols, term.rows);
     };
 
+    fit.current = fitNow;
     const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(fitNow);
     if (observer) observer.observe(element);
     globalThis.addEventListener?.("resize", fitNow);
@@ -145,15 +149,21 @@ export function TerminalSurface({ connection, canSend, focused, onChip, onTitle,
       globalThis.removeEventListener?.("resize", fitNow);
       term.dispose();
       terminal.current = null;
+      fit.current = null;
       setReady(false);
     };
   }, [connection]);
 
   useEffect(() => {
+    if (terminal.current && fontSize !== undefined) { terminal.current.options.fontSize = fontSize; fit.current?.(); }
+  }, [fontSize, ready]);
+
+  useEffect(() => {
     const term = terminal.current;
     if (!term) return;
     term.options.disableStdin = !canSend;
-  }, [canSend, ready]);
+    if (canSend) { fit.current?.(); if (focused) term.focus(); }
+  }, [canSend, focused, ready]);
 
   useEffect(() => {
     const term = terminal.current;

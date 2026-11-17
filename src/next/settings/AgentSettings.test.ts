@@ -14,6 +14,7 @@ const wire = vi.hoisted(() => ({
 
 vi.mock("../personal/foundation.ts", () => ({
   useAgents: () => wire.agents,
+  useEnvironments: () => ({ status: "ready", data: [] }),
   useAgentModels: (kind: string | null) => wire.models[kind ?? ""] ?? { status: "loading" },
 }));
 

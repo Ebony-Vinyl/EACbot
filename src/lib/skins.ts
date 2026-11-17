@@ -15,6 +15,10 @@ export const SKIN_IDS = [
 ] as const;
 export type SkinId = (typeof SKIN_IDS)[number];
 
+export function skinColorScheme(id: SkinId): "light" | "dark" {
+  return ["atelier", "lagoon", "linen", "daylight", "meadow", "pop"].includes(id) ? "light" : "dark";
+}
+
 export type Skin = {
   id: SkinId;
   name: string;
@@ -102,6 +106,7 @@ export function subscribeSkin(listener: () => void): () => void {
 
 function paintSkin(id: SkinId): void {
   document.documentElement.dataset.skin = id;
+  document.documentElement.dataset.mpTheme = skinColorScheme(id);
   for (const listener of listeners) listener();
   // On Windows the caption buttons sit in a native overlay the main process paints, out of CSS's reach.
   try {
@@ -130,6 +135,7 @@ function followSystem(follow: boolean): void {
 export function wearSkin(value: unknown): void {
   if (!isSkinId(value)) return;
   document.documentElement.dataset.skin = value;
+  document.documentElement.dataset.mpTheme = skinColorScheme(value);
   for (const listener of listeners) listener();
 }
 

@@ -13,7 +13,7 @@ import { TERMINAL_TOOLS, isTerminalTool, toolForAgent, type TerminalTool } from 
 export interface StartTerminalDialogProps {
   readonly mission: Mission | null;
   /** The computers a terminal can start on. */
-  readonly environments: readonly { readonly id: string; readonly label: string }[];
+  readonly environments: readonly { readonly id: string; readonly label: string; readonly kind?: "local" | "ssh"; readonly tools?: readonly { name: string; status: string }[] }[];
   readonly busy: boolean;
   readonly error: string | null;
   readonly onStart: (request: { environmentId: string; tool: TerminalTool }) => void;
@@ -24,7 +24,10 @@ export function StartTerminalDialog(props: StartTerminalDialogProps) {
   const fromMission = props.mission;
   const missionTool = fromMission === null ? null : toolForAgent(fromMission.agent);
   const [environmentId, setEnvironmentId] = useState(fromMission?.environment.id ?? props.environments[0]?.id ?? "");
-  const [tool, setTool] = useState<TerminalTool>(missionTool ?? "hermes");
+  const installed = props.environments.find((environment) => environment.id === environmentId);
+  const choices = installed?.kind === "local" ? TERMINAL_TOOLS.filter((name) => installed.tools?.some((tool) => tool.name === name && tool.status === "installed")) : TERMINAL_TOOLS;
+  const [selectedTool, setTool] = useState<TerminalTool>(missionTool ?? "hermes");
+  const tool = choices.includes(selectedTool) ? selectedTool : choices[0];
 
   return (
     <div className="wb-dialog-scrim" role="presentation">
@@ -59,7 +62,7 @@ export function StartTerminalDialog(props: StartTerminalDialogProps) {
             }}
             disabled={props.busy || missionTool !== null}
           >
-            {TERMINAL_TOOLS.map((option) => <option key={option} value={option}>{option}</option>)}
+            {choices.map((option) => <option key={option} value={option}>{option}</option>)}
           </select>
         </label>
         {props.error ? <p className="wb-error" role="alert">{props.error}</p> : null}
@@ -67,8 +70,8 @@ export function StartTerminalDialog(props: StartTerminalDialogProps) {
           <button
             type="button"
             className="wb-button"
-            disabled={props.busy || environmentId === ""}
-            onClick={() => props.onStart({ environmentId, tool })}
+            disabled={props.busy || environmentId === "" || tool === undefined}
+            onClick={() => tool !== undefined && props.onStart({ environmentId, tool })}
           >
             {props.busy ? "Starting…" : "Open terminal"}
           </button>

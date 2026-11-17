@@ -36,6 +36,8 @@ export interface EnvironmentTestResult {
 }
 
 export interface EnvironmentRecord {
+  readonly kind?: "local" | "ssh";
+  readonly tools?: readonly import("../settings/agents.ts").InstalledTool[];
   readonly id: string;
   readonly label: string;
   readonly host: string;

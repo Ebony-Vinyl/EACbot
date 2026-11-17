@@ -1,7 +1,9 @@
+import { HerdrSessions } from "../herdr/sessions.ts";
 import { spawn } from "node:child_process";
 import { existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 
+import { discoverLocalComputer, localAgents } from "../environments/local.ts";
 import { EnvironmentStore } from "../environments/store.ts";
 import { defaultSshRunner } from "../environments/ssh.ts";
 import { FakeAdapterRegistry } from "../missions/fake-registry.ts";
@@ -33,11 +35,14 @@ const spawnAgent: SpawnFn = (command, args, options) =>
     windowsHide: true,
   }) as unknown as ChildLike;
 
-const useFake = process.env.EAC_CORE_FAKE_AGENTS === "1" || !existsSync(join(dataDir, "core.json"));
+const desktop = process.send !== undefined && process.env.EAC_CORE_DESKTOP_ORIGIN !== undefined;
+const useFake = process.env.EAC_CORE_FAKE_AGENTS === "1" || (!desktop && !existsSync(join(dataDir, "core.json")));
+const local = desktop ? await discoverLocalComputer(process.env) : undefined;
 const agents = useFake ? fakeAgents() : null;
 const production = agents === null
   ? buildProductionComposition({
       dataDir,
+      discoveredAgents: local ? localAgents(local) : [],
       spawn: spawnAgent,
       fetch: (input, init) => fetch(input, init),
       hostEnv: process.env,
@@ -47,10 +52,13 @@ const production = agents === null
 const runtime = production?.runtime ?? agents!.runtime;
 const catalog: AgentCatalogPort = production?.agents ?? agents!.catalog;
 const computers = openComputers(dataDir);
+const herdr = local ? new HerdrSessions(computers.terminals.service, local, dataDir) : undefined;
 const staticRoot = join(process.cwd(), "dist");
 
 const server = await startServer({
   runtime,
+  herdr,
+  ...(desktop ? { cors: { enabled: true, allowedOrigins: [process.env.EAC_CORE_DESKTOP_ORIGIN!] }, printPairingCode: () => {} } : {}),
   agents: catalog,
   environments: computers.environments,
   terminals: computers.terminals.terminals,
@@ -60,6 +68,12 @@ const server = await startServer({
   onError: (error, context) => process.stderr.write(`${context}: ${describe(error)}\n`),
 });
 process.stdout.write(`EACbot core listening at ${server.url}\n`);
+if (desktop) {
+  const issued = server.identity.pair({ code: server.pairing.code, label: "EACbot Desktop", loopback: true, requestedScope: "owner" });
+  process.send!({ type: "eac-core-ready", connection: { baseUrl: `${server.url}/api/v1`, token: issued.token, session: { ...issued.session, expiresAt: new Date(issued.session.expiresAt).toISOString() } } });
+  server.identity.issuePairingCode();
+}
+
 for (const skipped of production?.skipped ?? []) {
   process.stderr.write(`agent ${skipped.instanceId} skipped: ${skipped.reason}\n`);
 }
@@ -69,9 +83,11 @@ const shutdown = async (): Promise<void> => {
   computers.terminals.close();
   if (production !== null) production.close();
   else (runtime as MissionRuntime).close();
+  if (process.connected) process.disconnect?.();
 };
 process.once("SIGINT", () => void shutdown());
 process.once("SIGTERM", () => void shutdown());
+if (desktop) process.once("disconnect", () => void shutdown());
 
 interface Computers {
   readonly environments: EnvironmentPort;
@@ -87,9 +103,9 @@ function openComputers(directory: string): Computers {
   try {
     const store = EnvironmentStore.open({ dataDir: directory });
     return {
-      environments: new EnvironmentStorePort({ store, runner: defaultSshRunner }),
+      environments: new EnvironmentStorePort({ store, runner: defaultSshRunner, local }),
       terminals: createProductionTerminalService({
-        environments: store,
+        environments: { get: (id) => id === local?.id ? local : store.get(id) },
         refsPath: join(directory, "terminals.json"),
         log: (line) => process.stderr.write(`${line}\n`),
       }),

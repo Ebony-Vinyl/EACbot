@@ -37,6 +37,8 @@ export interface EnvironmentTest {
  * the connection right now. A check this process has not run has no
  * `lastTest`, which is how a restart reports an unverified computer. */
 export interface EnvironmentSummary {
+  readonly kind?: "local" | "ssh";
+  readonly tools?: readonly import("../environments/types.ts").InstalledTool[];
   readonly id: string;
   readonly label: string;
   readonly host: string;

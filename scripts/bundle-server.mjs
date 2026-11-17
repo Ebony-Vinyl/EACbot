@@ -78,7 +78,15 @@ await build({
   // Written after tsc, replacing its output for these entry points.
   allowOverwrite: true,
   logLevel: "info",
-  plugins: [yamlEsmPlugin, serverLocalePlugin],
+  plugins: [yamlEsmPlugin, serverLocalePlugin, {
+    name: "matter-node-runtime",
+    setup(build) {
+      // Matter.js 0.18 dynamically imports this adapter only on Bun. Preserve that boundary in Node bundles.
+      build.onResolve({ filter: /^\.\/platform\/BunSqlite\.js$/ }, args =>
+        args.kind === "dynamic-import" && args.importer.replaceAll("\\", "/").endsWith("/@matter/nodejs/dist/esm/storage/sqlite/SqlitePlatform.js")
+          ? { path: args.path, external: true } : undefined);
+    },
+  }],
   banner: NODE_REQUIRE,
 });
 
@@ -170,3 +178,5 @@ writeFileSync(join(root, "dist-server", "package.json"), `${JSON.stringify({ typ
 // tsc copies the language packs server/server-lines.ts imports (13 MB) beside its own output. The bundles above carry
 // the server's keys, so nothing reads the copies.
 rmSync(join(root, "dist-server", "src", "locales"), { recursive: true, force: true });
+
+await build({ entryPoints: [join(root, "core/bootstrap/main.ts")], bundle: true, platform: "node", target: "node24", format: "esm", outfile: join(root, "dist-server/task-core.js"), banner: NODE_REQUIRE });

@@ -1,3 +1,5 @@
+import type { HerdrSessions } from "../herdr/sessions.ts";
+import { registerHerdrRoutes } from "../herdr/routes.ts";
 import { EventHub } from "../events/hub.ts";
 import type { NotificationKind } from "../events/hub.ts";
 import type { IdentityService } from "../identity/service.ts";
@@ -12,6 +14,7 @@ import type { AgentCatalogPort, EnvironmentPort, MissionPort, TerminalPort, Term
 export const SERVER_VERSION = "0.2.0-core.1";
 
 export interface ServerComposition {
+  readonly herdr?: HerdrSessions;
   readonly missions: MissionPort;
   readonly identity: IdentityService;
   readonly agents: AgentCatalogPort;
@@ -68,6 +71,7 @@ export function composeServer(composition: ServerComposition): ComposedServer {
     startedAt,
   };
   registerRoutes(deps);
+  if (composition.herdr) registerHerdrRoutes(router, composition.herdr);
   registerEventsRoute(router, { events, now });
   registerTerminalStreamRoute(router, { terminals: composition.terminals, handler: composition.terminalStreams });
 

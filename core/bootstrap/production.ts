@@ -60,6 +60,7 @@ export interface ProductionCompositionOptions extends ProductionDependencies {
   /** Holds `core.json` and `missions.db`. */
   readonly dataDir: string;
   readonly configPath?: string;
+  readonly discoveredAgents?: readonly CoreConfigAgent[];
   readonly now?: () => string;
   readonly catalogTtlMs?: number;
   readonly onError?: (error: unknown, context: string) => void;
@@ -92,7 +93,9 @@ export interface ProductionComposition {
  * when this returns. */
 export function buildProductionComposition(options: ProductionCompositionOptions): ProductionComposition {
   const config = loadCoreConfig(options.configPath ?? join(options.dataDir, "core.json"));
-  const built = buildInstances(config.config, options, options.onError);
+  const configuredKinds = new Set(config.config.agents.map((agent) => agent.agentId));
+  const discovered = (options.discoveredAgents ?? []).filter((agent) => !configuredKinds.has(agent.agentId));
+  const built = buildInstances({ ...config.config, agents: [...config.config.agents, ...discovered] }, options, options.onError);
   mkdirSync(options.dataDir, { recursive: true, mode: 0o700 });
 
   const catalog = new ProbedAgentCatalog({

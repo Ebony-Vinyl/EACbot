@@ -116,6 +116,8 @@ const __APP_VERSION__: string;
 
   interface Window {
     ogb?: {
+      /** Private desktop-owned core connection; credentials remain in memory. */
+      taskCore?: { connect(): Promise<{ baseUrl: string; token: string; session: import("../next/foundation/http").AuthSession }> };
       platform: NodeJS.Platform;
       /** This app's own version, and whether this page is this app's own: false on a server added in the Server menu,
        * whose page carries that server's version. Absent in desktop builds before it. */

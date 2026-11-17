@@ -125,6 +125,8 @@ export function describeConnection(report: ConnectionReport | undefined): { read
 }
 
 export interface EnvironmentRecord {
+  readonly kind?: "local" | "ssh";
+  readonly tools?: readonly import("./agents.ts").InstalledTool[];
   readonly id: string;
   readonly label: string;
   readonly host: string;

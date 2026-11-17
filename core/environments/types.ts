@@ -58,6 +58,7 @@ export const UNKNOWN_CAPABILITIES: EnvironmentCapabilities = {
 };
 
 export interface EnvironmentRecord {
+  readonly kind?: "local" | "ssh";
   readonly id: string;
   readonly label: string;
   readonly host: string;

@@ -9,6 +9,7 @@ import { t } from "@/lib/i18n";
 import { NEW_PAGES, useStore, type NewPage } from "@/state/store";
 
 const PAGE_ICONS: Readonly<Record<NewPage, typeof Bot>> = {
+  herdr: TerminalSquare,
   hermes: Bot,
   missions: ListTree,
   computers: MonitorSmartphone,

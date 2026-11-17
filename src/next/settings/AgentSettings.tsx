@@ -13,7 +13,7 @@ import type { AgentDescriptor } from "../../../packages/agent-protocol/agents.ts
 import { Card } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
 import { cn } from "@/lib/cn";
-import { useAgentModels, useAgents } from "../personal/foundation.ts";
+import { useAgentModels, useAgents, useEnvironments } from "../personal/foundation.ts";
 import { LoadableView } from "../personal/ui.tsx";
 import {
   AUTH_MODE_DETAILS, AUTH_MODE_LABELS, capabilityRows, defaultAuthMode, installState, missingSelectionNotice,
@@ -31,14 +31,18 @@ const selectClass =
 
 export function AgentSettings({ tools }: AgentSettingsProps): ReactNode {
   const agents = useAgents();
+  const environments = useEnvironments();
+  const localTools = environments.status === "ready" ? environments.data.find((record) => record.kind === "local")?.tools : undefined;
+  tools ??= localTools;
   return (
-    <section className="flex flex-col gap-3" data-testid="agent-settings">
+    <section className="neutral-resource-page" data-testid="agent-settings">
       <header className="flex flex-col gap-1">
-        <h2 className="text-[12px] font-semibold text-ink">Agent</h2>
+        <h2 className="neutral-resource-title">Agent</h2>
         <p className="text-[10px] leading-relaxed text-ink-secondary">
           这些是你自己安装的 Agent 软件。EACbot 只负责启动、观察和记录，不销售软件，也不代理登录。
         </p>
       </header>
+      {localTools && <p className="text-[11px] text-ink-secondary">本机已安装：{localTools.filter((tool) => tool.status === "installed").map((tool) => tool.name).join("、") || "未检测到"}。HTTP 类型的 Agent 还需配置服务地址，已安装的 CLI 可在终端中使用。</p>}
       <LoadableView state={agents} label="正在读取 Agent 列表" what="Agent 设置">
         {(list) =>
           list.length === 0 ? (
@@ -48,7 +52,7 @@ export function AgentSettings({ tools }: AgentSettingsProps): ReactNode {
               </p>
             </Card>
           ) : (
-            <div className="flex flex-col gap-2">
+            <div className="neutral-resource-grid">
               {list.map((agent) => (
                 <AgentRow key={agent.kind} agent={agent} {...(tools !== undefined ? { tools } : {})} />
               ))}

@@ -11,6 +11,8 @@ import type { AuthSnapshot } from "../foundation/http.ts";
  * screen that fixes it rather than a pane of 401s. The pages' own behaviour is
  * covered by their own tests. */
 
+vi.mock("../workbench/HerdrPage", () => ({ HerdrPage: () => h("div", { "data-testid": "page-herdr-stub" }) }));
+
 const auth = vi.hoisted(() => ({ value: { status: "anonymous", token: null, session: null, error: null } as AuthSnapshot }));
 
 vi.mock("../foundation/api.ts", () => ({ useAuth: () => auth.value }));
@@ -40,11 +42,11 @@ const { CommandPageView } = await import("./CommandPageView.tsx");
 let root: Root | null = null;
 let container: HTMLDivElement | null = null;
 
-function mount(page: "hermes" | "missions" | "computers" | "agents" | "terminals"): HTMLDivElement {
+function mount(page: "herdr" | "hermes" | "missions" | "computers" | "agents" | "terminals"): HTMLDivElement {
   container = document.createElement("div");
   document.body.append(container);
   root = createRoot(container);
-  act(() => root!.render(h(CommandPageView, { page })));
+  act(() => root!.render(h(CommandPageView, { page, onBackToChat: vi.fn() })));
   return container;
 }
 
@@ -68,6 +70,7 @@ afterEach(() => {
 
 describe("the command-centre pages", () => {
   it.each([
+    ["herdr", "page-herdr-stub"],
     ["hermes", "page-hermes-stub"],
     ["missions", "page-missions-stub"],
     ["computers", "page-computers-stub"],
@@ -84,6 +87,17 @@ describe("the command-centre pages", () => {
     const dom = mount("hermes");
     expect(dom.querySelector('[data-testid="pairing-gate-stub"]')).not.toBeNull();
     expect(dom.querySelector('[data-testid="page-hermes-stub"]')).toBeNull();
+  });
+
+  it("changes the destination heading while unpaired and allows returning to chat", () => {
+    const back = vi.fn();
+    const dom = mount("agents");
+    const agentHeading = dom.querySelector("h1")?.textContent;
+    act(() => root!.render(h(CommandPageView, { page: "terminals", onBackToChat: back })));
+    expect(dom.querySelector("h1")?.textContent).not.toBe(agentHeading);
+    expect(dom.querySelector('[data-testid="command-page-terminals"]')).not.toBeNull();
+    act(() => dom.querySelector<HTMLButtonElement>("header button")!.click());
+    expect(back).toHaveBeenCalledOnce();
   });
 
   it("fills the shell's main pane with the app's own pane colour", () => {
