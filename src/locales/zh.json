@@ -7727,5 +7727,8 @@
   "neutral.search": "搜索工作空间",
   "neutral.navigation": "工作空间导航",
   "neutral.light": "切换浅色主题",
-  "neutral.dark": "切换深色主题"
+  "neutral.dark": "切换深色主题",
+  "neutral.projects": "项目",
+  "neutral.executions": "执行任务",
+  "neutral.tasks": "任务"
 }

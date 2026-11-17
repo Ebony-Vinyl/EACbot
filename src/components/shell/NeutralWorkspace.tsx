@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Badge, Button, Drawer } from "@neutral-reference/ui";
-import { ArrowUpRight, AudioLines, Bot, CalendarDays, ChevronRight, Files, HeartPulse, House, LayoutGrid, ListTodo, Menu, MessageSquare, Monitor, Moon, Network, Plug, Search, Settings2, Sun, Terminal, Workflow } from "lucide-react";
+import { AudioLines, Bot, CalendarDays, ChevronRight, Files, HeartPulse, House, LayoutGrid, ListTodo, Menu, MessageSquare, Monitor, Moon, Network, Plug, Search, Settings2, Sun, Terminal, Workflow } from "lucide-react";
 import { useStore, type Action } from "@/state/store";
 import { openCommandPalette } from "@/components/CommandPalette";
 import { applySkinChoice } from "@/lib/skins";
@@ -8,11 +8,11 @@ import { t } from "@/lib/i18n";
 
 const sections = [
   { label: "neutral.workspace", items: [
-    { view: "herdr", label: "sidebar.nav.herdr", icon: Terminal, action: { type: "showNewPage", page: "herdr" } },
+    { view: "herdr", label: "neutral.projects", icon: Terminal, action: { type: "showNewPage", page: "herdr" } },
     { view: "chat", label: "neutral.chat", icon: MessageSquare, action: { type: "showChat" } },
     { view: "hermes", label: "sidebar.nav.hermes", icon: AudioLines, action: { type: "showNewPage", page: "hermes" } },
     { view: "task-center", label: "neutral.board", icon: LayoutGrid, action: { type: "showTaskCenter" } },
-    { view: "missions", label: "sidebar.nav.missions", icon: ListTodo, action: { type: "showNewPage", page: "missions" } },
+    { view: "missions", label: "neutral.executions", icon: ListTodo, action: { type: "showNewPage", page: "missions" } },
     { view: "routines", label: "neutral.schedule", icon: CalendarDays, action: { type: "showRoutines" } },
   ] },
   { label: "neutral.resources", items: [
@@ -41,17 +41,38 @@ function Navigation({ onNavigate }: { onNavigate?: () => void }) {
       <Search size={15} /><span>{t("neutral.search")}</span><kbd>⌘ K</kbd>
     </Button>
     <nav aria-label={t("neutral.navigation")} className="neutral-navigation-groups">
-      {sections.filter(section => section.label !== "neutral.resources").map(section => <div className="neutral-navigation-group" key={section.label}>
-        <p>{t(section.label)}</p>
-        {section.items.map(({ view, label, icon: Icon, action }) => <Button
-          key={view} variant="ghost" className="neutral-nav-item"
-          data-workspace-page={view} aria-current={state.activeView === view ? "page" : undefined}
-          onClick={() => act(action)}
-        ><Icon size={17} strokeWidth={1.65} /><span>{t(label)}</span>{state.activeView === view && <span className="neutral-nav-dot" />}</Button>)}
-      </div>)}
+      <div className="neutral-navigation-group">
+        {(["chat", "herdr", "task-center"] as const).map(view => {
+          const item = sections[0].items.find(item => item.view === view)!;
+          const active = view === "chat" ? ["chat", "hermes"].includes(state.activeView)
+            : view === "task-center" ? ["task-center", "missions", "routines"].includes(state.activeView) : state.activeView === view;
+          const Icon = item.icon;
+          const children = view === "chat" ? ["hermes"] : view === "task-center" ? ["missions", "routines"] : [];
+          return <div key={view}>
+            <Button variant="ghost" className="neutral-nav-item" data-workspace-page={view}
+              aria-current={state.activeView === view ? "page" : undefined} data-active={active || undefined}
+              onClick={() => act(item.action)}><Icon size={18} strokeWidth={1.65} /><span>{t(view === "task-center" ? "neutral.tasks" : item.label)}</span></Button>
+            {active && children.length > 0 && <div className="neutral-nav-children">
+              {sections[0].items.filter(child => children.includes(child.view)).map(child => <Button
+                key={child.view} variant="ghost" className="neutral-nav-item" data-workspace-page={child.view}
+                aria-current={state.activeView === child.view ? "page" : undefined}
+                onClick={() => act(child.action)}><child.icon size={15} /><span>{t(child.label)}</span></Button>)}
+            </div>}
+          </div>;
+        })}
+      </div>
+      <details className="neutral-navigation-group neutral-nav-more" key={state.activeView}
+        open={sections[2].items.some(item => item.view === state.activeView)}>
+        <summary><Menu size={16} /><span>{t("neutral.more")}</span><ChevronRight size={14} /></summary>
+        {sections[2].items.map(({ view, label, icon: Icon, action }) => <Button key={view}
+          variant="ghost" className="neutral-nav-item" data-workspace-page={view}
+          aria-current={state.activeView === view ? "page" : undefined} onClick={() => act(action)}>
+          <Icon size={16} /><span>{t(label)}</span></Button>)}
+        <Button variant="ghost" className="neutral-nav-item" onClick={() => act({ type: "togglePlugins", open: true })}>
+          <Plug size={16} /><span>{t("neutral.extensions")}</span></Button>
+      </details>
     </nav>
     <footer className="neutral-navigation-footer">
-      <Button variant="ghost" className="neutral-nav-item" onClick={() => act({ type: "togglePlugins", open: true })}><Plug size={17} />{t("neutral.extensions")}<ArrowUpRight size={14} className="neutral-nav-end" /></Button>
       <Button variant="ghost" className="neutral-nav-item" onClick={() => act({ type: "toggleAppSettings", open: true })}><Settings2 size={17} />{t("neutral.settings")}</Button>
       <div className="neutral-connection"><Badge dot tone={state.connected ? "success" : "warning"}>{t(state.connected ? "neutral.connected" : "neutral.connecting")}</Badge><span>v{__APP_VERSION__}</span></div>
     </footer>

@@ -10226,5 +10226,8 @@
   "neutral.search": "Search workspace",
   "neutral.navigation": "Workspace navigation",
   "neutral.light": "Switch to light theme",
-  "neutral.dark": "Switch to dark theme"
+  "neutral.dark": "Switch to dark theme",
+  "neutral.projects": "Projects",
+  "neutral.executions": "Executions",
+  "neutral.tasks": "Tasks"
 }

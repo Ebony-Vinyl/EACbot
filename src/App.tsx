@@ -340,11 +340,11 @@ function Shell({ viewer }: { viewer: WelcomeViewer | null }) {
     <Theme theme={neutralTheme} data-neutral-shell className={cn("neutral-shell flex h-full flex-col", framed && "bg-frame")}>
       <AppBackground />
       <WindowFrameBar notifications={notificationTray} />
-      {state.activeView !== "herdr" && <WorkspaceHeader theme={neutralTheme} />}
+      <WorkspaceHeader theme={neutralTheme} />
       <BotLimitPopup />
       {!framed && strips}
       <div className="neutral-workspace-body relative flex min-h-0 flex-1">
-      {state.activeView !== "herdr" && <WorkspaceNavigation />}
+      <WorkspaceNavigation />
       {conversationView && !calendarFocus && <button
         type="button"
         ref={menuButtonRef}

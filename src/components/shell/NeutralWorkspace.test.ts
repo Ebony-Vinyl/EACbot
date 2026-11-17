@@ -22,6 +22,7 @@ afterEach(() => { act(() => root.unmount()); container.remove(); vi.clearAllMock
 
 describe("workspace navigation", () => {
   it("keeps task board and core missions on their own existing routes", () => {
+    store.state.activeView = "task-center";
     const dom = mount(h(WorkspaceNavigation));
     for (const view of ["task-center", "missions", "chat"]) {
       act(() => dom.querySelector<HTMLButtonElement>(`[data-workspace-page="${view}"]`)!.click());
@@ -35,10 +36,23 @@ describe("workspace navigation", () => {
 
   it("keeps settings and extensions reachable without a selected conversation", () => {
     const dom = mount(h(WorkspaceNavigation));
-    const buttons = dom.querySelectorAll<HTMLButtonElement>("footer button");
-    act(() => { buttons[0]!.click(); buttons[1]!.click(); });
+    const extension = dom.querySelector<HTMLButtonElement>(".neutral-nav-more button:last-child")!;
+    const settings = dom.querySelector<HTMLButtonElement>("footer button")!;
+    act(() => { extension.click(); settings.click(); });
     expect(store.dispatch).toHaveBeenNthCalledWith(1, { type: "togglePlugins", open: true });
     expect(store.dispatch).toHaveBeenNthCalledWith(2, { type: "toggleAppSettings", open: true });
+  });
+
+  it("keeps secondary task routes under tasks and expands the active section", () => {
+    store.state.activeView = "chat";
+    const dom = mount(h(WorkspaceNavigation));
+    expect(dom.querySelector('[data-workspace-page="missions"]')).toBeNull();
+    expect(dom.querySelector('[data-workspace-page="hermes"]')).not.toBeNull();
+    expect(dom.querySelector("details")!.open).toBe(false);
+    store.state.activeView = "missions";
+    act(() => root.render(h(WorkspaceNavigation)));
+    expect(dom.querySelector('[data-workspace-page="missions"]')!.getAttribute("aria-current")).toBe("page");
+    expect(dom.querySelector('[data-workspace-page="task-center"]')!.hasAttribute("data-active")).toBe(true);
   });
 
   it("persists the header theme choice through the existing skin system", () => {
