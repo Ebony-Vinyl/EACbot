@@ -1,6 +1,6 @@
 # Sharing a whole department
 
-The sidebar groups bots into departments. **Share department…** saves one department as a single file (`<team>-<version>.openmaus.json`).
+The sidebar groups bots into departments. **Share department…** saves one department as a single file (`<team>-<version>.eacbot.json`).
 Someone else adds it in **Templates → Import**, or an organization uploads it
 in Admin → Packages and its desktops add it from **Templates → From
 {Organization}** ([org-library.md](org-library.md)). Open it from the department's menu in the sidebar (right-click
@@ -132,7 +132,7 @@ Cloud, a hosted member, a branded build and a desktop an organization runs.
 
 | In Grok Bot | Here |
 | --- | --- |
-| Name, title, instructions | A new bot in its own section, through the `openmaus.package` import |
+| Name, title, instructions | A new bot in its own section, through the `eacbot.package` import |
 | Skills | That bot's skills, switched on. One the skill scan flags stays off, and the dialog names it |
 | Memories and facts about you | That bot's `MEMORY.md`, repeats dropped |
 | Routine on a schedule | A routine named `<Bot>: <routine>`, paused, with its schedule and time zone and the skills it uses named in its prompt |
@@ -150,7 +150,7 @@ privilege-bearing field itself. A server name you already have is skipped, and a
 Bot already moved is not added twice. One file or item that can't be read costs
 the rest nothing.
 
-The earlier `openmaus.grok/1` export still reads.
+The earlier `eacbot.grok/1` export still reads.
 
 After the button is pressed, and on the computer running EACbot only, the
 desktop app reads through `GET /api/setup-import/grok` (its own window only, never
@@ -168,7 +168,7 @@ popup in `src/components/GrokMovePopup.tsx`.
 
 ## The file format
 
-`openmaus.package` version 2, defined in `shared/package-format.ts`, the one
+`eacbot.package` version 2, defined in `shared/package-format.ts`, the one
 module the app, the import preview and Admin all validate with. It still
 reads version 1 files (JSON and the BotMRR Markdown playbook). Older apps
 refuse version 2 files with their existing "not supported" message; Admin can

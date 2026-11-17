@@ -50,7 +50,7 @@ Expected:
 ## EACbot as the owner
 
 ```sh
-pnpm exec vitest run server/host/proactive-mausbot.test.ts
+pnpm exec vitest run server/host/proactive-eacbot.test.ts
 ```
 
 Each step starts the store, the routines and the proactive side from the files
@@ -90,7 +90,7 @@ cap, busy bots, and Run now. The others:
 - `server/host/routine-checks.test.ts`, `server/host/check-plan.test.ts` and
   `server/host/check-prompts.test.ts`: the checks, planner and prompts;
 - `server/host/brief.test.ts`, `server/host/proactive.test.ts` and
-  `server/host/proactive-mausbot.test.ts`: the brief, the default routine and
+  `server/host/proactive-eacbot.test.ts`: the brief, the default routine and
   its owner;
 - `server/connected-reads.test.ts` and `server/records-block.test.ts`: the
   readers and the sanitiser;

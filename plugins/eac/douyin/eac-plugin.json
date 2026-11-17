@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
   "pluginId": "eac.douyin",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "apiVersion": "^1.0.0",
   "name": "EAC 抖音内容台",
-  "description": "抖音内容运营的本地工作台：选题、素材、草稿与发布计划。发布与互动需要官方授权通道，未实现前不假装可用；本插件负责让 Bot 帮你把内容准备好。",
+  "description": "抖音内容运营台：选题、素材、视频脚本与分镜、发布计划（本地，稳定可用）；发布经由已登录的创作服务平台网页，按规则自动或逐项审批，全部动作留审计。数据指标未开放，不做推断；遇验证码与风控一律暂停上报。",
   "publisher": "EACbot Community",
   "license": "Apache-2.0",
   "source": {
@@ -12,25 +12,121 @@
     "revision": "813bba63fd7aa94c98ecf6d93d43648abe50f3a9"
   },
   "compatibility": {
-    "hostVersion": "^0.1.0",
-    "hosts": ["server", "desktop"],
-    "platforms": ["win32-x64", "linux-x64", "darwin-arm64", "darwin-x64"]
+    "hostVersion": "^0.1.0 || >=0.2.0-preview.0 <0.3.0",
+    "hosts": [
+      "server",
+      "desktop"
+    ],
+    "platforms": [
+      "win32-x64",
+      "linux-x64",
+      "darwin-arm64",
+      "darwin-x64"
+    ]
   },
-  "runtime": { "mode": "process", "entry": "entry.mjs", "isolation": "none" },
-  "activation": ["manual"],
+  "runtime": {
+    "mode": "process",
+    "entry": "entry.mjs",
+    "isolation": "none"
+  },
+  "activation": [
+    "manual"
+  ],
   "permissions": [
-    { "id": "dy-read", "capability": "douyin.content.read", "effect": "read", "scope": {}, "reason": "读取选题、素材、草稿与计划。" },
-    { "id": "dy-write", "capability": "douyin.content.write", "effect": "write", "scope": {}, "reason": "维护选题、素材、草稿与发布计划。" },
-    { "id": "dy-delete", "capability": "douyin.content.delete", "effect": "delete", "scope": {}, "reason": "删除选题、素材、草稿与计划。" }
+    {
+      "id": "dy-read",
+      "capability": "douyin.content.read",
+      "effect": "read",
+      "scope": {},
+      "reason": "读取选题、素材、草稿与计划。"
+    },
+    {
+      "id": "dy-write",
+      "capability": "douyin.content.write",
+      "effect": "write",
+      "scope": {},
+      "reason": "维护选题、素材、草稿与发布计划。"
+    },
+    {
+      "id": "dy-delete",
+      "capability": "douyin.content.delete",
+      "effect": "delete",
+      "scope": {},
+      "reason": "删除选题、素材、草稿与计划。"
+    },
+    {
+      "id": "dy-publish",
+      "capability": "douyin.video.publish",
+      "effect": "send",
+      "scope": {},
+      "reason": "在已登录的创作服务平台发布视频，需主人单独授权。"
+    }
   ],
   "contributes": {
+    "platform": {
+      "id": "douyin",
+      "label": "抖音",
+      "transports": [
+        "web"
+      ],
+      "accountCapabilities": [
+        "选题 / 素材 / 视频脚本 / 发布计划（本地）",
+        "发布视频（按规则或逐项审批）",
+        "作品管理页数据读取"
+      ]
+    },
     "tools": [
-      { "id": "dy-idea", "entry": "entry.mjs", "effect": "write", "permission": "dy-write", "description": "选题管理：action=add|list|delete（add 需要 title；list 支持 status 过滤）。" },
-      { "id": "dy-material", "entry": "entry.mjs", "effect": "write", "permission": "dy-write", "description": "素材管理：action=add|list|delete（文本素材：title, body, tags?）。" },
-      { "id": "dy-draft", "entry": "entry.mjs", "effect": "write", "permission": "dy-write", "description": "视频草稿：action=save|list|update|delete（title, script, shotList?, status?）。" },
-      { "id": "dy-plan", "entry": "entry.mjs", "effect": "write", "permission": "dy-write", "description": "发布计划：action=add|list|delete|done（draftId, plannedFor, note?）。提醒：这只是本机计划，不会自动发布。" }
+      {
+        "id": "dy-idea",
+        "entry": "entry.mjs",
+        "effect": "write",
+        "permission": "dy-write",
+        "description": "选题管理：action=add|list|delete（add 需要 title；list 支持 status 过滤）。"
+      },
+      {
+        "id": "dy-material",
+        "entry": "entry.mjs",
+        "effect": "write",
+        "permission": "dy-write",
+        "description": "素材管理：action=add|list|delete（文本素材：title, body, tags?）。"
+      },
+      {
+        "id": "dy-draft",
+        "entry": "entry.mjs",
+        "effect": "write",
+        "permission": "dy-write",
+        "description": "视频草稿：action=save|list|update|delete（title, script, shotList?, status?）。"
+      },
+      {
+        "id": "dy-plan",
+        "entry": "entry.mjs",
+        "effect": "write",
+        "permission": "dy-write",
+        "description": "发布计划：action=add|list|delete|done（draftId, plannedFor, note?）。提醒：这只是本机计划，不会自动发布。"
+      },
+      {
+        "id": "dy-publish",
+        "entry": "entry.mjs",
+        "effect": "send",
+        "permission": "dy-publish",
+        "description": "发布一条视频；规则为 manual 时进入待审批队列而不直接发布。"
+      },
+      {
+        "id": "dy-rules",
+        "entry": "entry.mjs",
+        "effect": "write",
+        "permission": "dy-write",
+        "description": "设置发布模式（mode=auto|manual）。"
+      },
+      {
+        "id": "dy-bridge-status",
+        "entry": "entry.mjs",
+        "effect": "read",
+        "permission": "dy-read",
+        "description": "报告网页线路状态、内容计数与发布模式。"
+      }
     ]
   },
   "configSchema": "config.schema.json",
-  "stateVersion": 1
+  "stateVersion": 2
 }

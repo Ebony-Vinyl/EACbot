@@ -6,11 +6,11 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-09-x-research-pro-relay-design.md`
 
-**Worktrees:** app `/Users/omkar/Desktop/openmaus/OpenGrokBot-x-research` (branch `feat/x-research-pro`, from local main a5406ed2); Admin `/Users/omkar/Desktop/openmaus/openmaus-cloud-x-relay` (branch `feat/x-research-relay`, from origin/main 82f1386). Node 24. Nothing is pushed or deployed.
+**Worktrees:** app `/Users/omkar/Desktop/eacbot/OpenGrokBot-x-research` (branch `feat/x-research-pro`, from local main a5406ed2); Admin `/Users/omkar/Desktop/eacbot/eacbot-cloud-x-relay` (branch `feat/x-research-relay`, from origin/main 82f1386). Node 24. Nothing is pushed or deployed.
 
 ## Global Constraints
 
-- Admin rules (openmaus-cloud AGENTS.md): schema only through `migrate()`, additive and idempotent; no edits to applied migrations or `runtime/`; tests never make paid calls; expected errors are a status and a plain sentence; never log bodies, tokens or emails.
+- Admin rules (eacbot-cloud AGENTS.md): schema only through `migrate()`, additive and idempotent; no edits to applied migrations or `runtime/`; tests never make paid calls; expected errors are a status and a plain sentence; never log bodies, tokens or emails.
 - Relay endpoint allow-list is exactly the eight ids in the spec.
 - Allowances: personal 1,500, pro 5,000, max 15,000 per account per UTC month; unknown plan `EAC_CLOUD_X_CALLS_PER_MONTH` (default 1,500).
 - Token prefixes: home `omb_x_`, desktop `omb_xd_`. Env: `EAC_CLOUD_TREG_KEY` (Admin), `EAC_CLOUD_X_URL` + secret `EAC_CLOUD_X_TOKEN` (homes).
@@ -25,7 +25,7 @@
 4. Treg refusing our key must read as "temporarily unavailable" to the customer, never as their plan or token problem.
 5. Removing the person's token must not break loading an existing config.json that still contains `treg`.
 
-## Admin tasks (openmaus-cloud)
+## Admin tasks (eacbot-cloud)
 
 ### Task C1: Tier allowance `xCallsPerMonth`
 - Files: `server/cloud-plans.ts`, `tests/cloud-plans.test.ts` (or the existing tier tests).

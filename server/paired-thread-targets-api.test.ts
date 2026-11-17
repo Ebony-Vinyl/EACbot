@@ -71,7 +71,7 @@ describe("paired thread targets through an isolated HTTP fixture", () => {
       expect(result.status, `${method} ${suffix}`).toBe(409);
       expect(result.body.error).toMatch(/Update the EACbot app on this device.*choose a thread/);
     }
-    const legacyPhone = await api("POST", `/api/bots/${bot.id}/read`, undefined, { "x-openmausbot-companion": "1", "x-openmausbot-companion-device": "fixture-phone" });
+    const legacyPhone = await api("POST", `/api/bots/${bot.id}/read`, undefined, { "x-eacbot-companion": "1", "x-eacbot-companion-device": "fixture-phone" });
     expect(legacyPhone.status).toBe(409);
     expect((await page(threadA)).messages).toEqual(beforeA.messages);
     expect((await page(threadB)).messages).toEqual(beforeB.messages);
@@ -138,8 +138,8 @@ describe("paired thread targets through an isolated HTTP fixture", () => {
     const before = await page(bot.threadId);
     const spoofed = await api("POST", `/api/bots/${bot.id}/messages`, { text: "Unauthorized", threadId: bot.threadId }, {
       "x-forwarded-for": "203.0.113.5",
-      "x-openmausbot-companion": "1",
-      "x-openmausbot-companion-device": "not-authenticated",
+      "x-eacbot-companion": "1",
+      "x-eacbot-companion-device": "not-authenticated",
     });
     expect(spoofed.status).toBe(403);
     expect((await page(bot.threadId)).messages).toEqual(before.messages);

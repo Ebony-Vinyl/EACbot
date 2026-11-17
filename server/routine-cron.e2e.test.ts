@@ -101,7 +101,7 @@ it("takes cron through the real routine tools, applying the bot's own routine at
       name: "Explicit Boat", instructions: "Run on the Boat-hosted agent.", schedule, run_on: "box",
     }, "Try the separate Boat runner without a Boat account.", true);
     const boatResponse = providerEvidence().at(-1).evidence.find((entry: any) => entry.step?.tool === "create_trigger").response;
-    expect(boatResponse.result.content[0].text).toContain('run_on="maus"');
+    expect(boatResponse.result.content[0].text).toContain('run_on="eacbot"');
     expect(boatResponse.result.content[0].text).toContain("self-hosted VPS");
     const before = await current();
     for (const invalid of [

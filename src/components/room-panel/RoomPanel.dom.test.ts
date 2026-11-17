@@ -20,7 +20,7 @@ vi.mock("../DesktopCapabilities", async (importOriginal) => ({
   useCaptionChrome: () => ({ dragProps: {}, padClass: "" }),
   useDesktopCapabilities: () => ({ capabilities: { host: { homeDir: "/Users/ada" } }, ready: true }),
 }));
-vi.mock("../Avatar", () => ({ BotAvatar: () => null, MausAvatar: () => null }));
+vi.mock("../Avatar", () => ({ BotAvatar: () => null, MascotAvatar: () => null }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 
 const bot = (id: string, name: string): Bot => ({

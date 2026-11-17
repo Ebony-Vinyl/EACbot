@@ -3,6 +3,7 @@
 // most its share; the engine's own tools are never trimmed, and a server still answers a call to a tool it left out.
 
 import { CHAT_TOOL_LIMIT } from "../shared/tool-budget.ts";
+import { quotaLimits } from "./limits.ts";
 
 /** The most tools one MCP server lists for this turn, in the environment of each server the turn hands an engine. */
 export const TOOL_LIMIT_ENV = "EAC_TOOL_LIMIT";
@@ -124,13 +125,13 @@ export function mcpToolBudget(limit: number | undefined, engineTools: number): n
 const UNCOUNTED_HOSTS = /(?:^|\.)venice\.ai$/;
 
 /** The most tools one Chat Completions request to `apiUrl` carries for `model`: the limit a refusal taught, else the
- * provider's own, else the common 128. Null when the provider sets none. */
+ * provider's own, else config.json "limits.chatToolsPerRequest" (128 unless raised). Null when the provider sets none. */
 export function chatToolLimitFor(apiUrl: string, model: string): number | null {
   const learned = learnedToolCountLimit(chatToolLimitKey(apiUrl, model));
   if (learned !== undefined) return learned;
   let host = "";
   try { host = new URL(apiUrl).hostname.toLowerCase(); } catch {}
-  return UNCOUNTED_HOSTS.test(host) ? null : CHAT_TOOL_LIMIT;
+  return UNCOUNTED_HOSTS.test(host) ? null : quotaLimits().chatToolsPerRequest ?? CHAT_TOOL_LIMIT;
 }
 
 export function chatToolLimitKey(apiUrl: string, model: string): string {

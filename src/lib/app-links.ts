@@ -14,7 +14,7 @@ export function withSource(url: string, source: string): string {
   return target.href;
 }
 export const LICENSE_URL = `${APP_REPOSITORY}/blob/main/LICENSE`;
-export const IOS_APP_STORE_URL = "https://apps.apple.com/in/app/mausbot/id6803387923";
+export const IOS_APP_STORE_URL = "https://apps.apple.com/in/app/eacbot/id6803387923";
 export const ANDROID_APK_URL = `${APP_REPOSITORY}/releases/download/android-v1.5.0/EACbot.apk`;
 
 export function appVersion(): string {

@@ -217,7 +217,7 @@ export function createProactive(deps: ProactiveDeps) {
 
   /** The proactive bot's default routine, once, when connected apps are there to read: pausing or deleting it is how it
    * is switched off, so it is never made again. Asked at start and every minute, since a Cloud's access arrives later,
-   * and a EACbot can arrive after the routine was made. */
+   * and an EACbot can arrive after the routine was made. */
   function ensureWatch(): Routine | null {
     const manager = deps.routines();
     const bot = owner();

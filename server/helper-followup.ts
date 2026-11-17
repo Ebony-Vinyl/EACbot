@@ -31,15 +31,15 @@ function seenBy(bot: BotRecord, person: string): boolean {
 
 /** What EACbot found: what its client saw, with the person's other bots and the routines they run counted here. */
 export function followupFacts(
-  maus: BotRecord,
+  eacbot: BotRecord,
   seen: { ai: HelperFollowupFacts["ai"]; apps: readonly string[] },
   bots: readonly BotRecord[],
   routines: readonly { botId: string; enabled: boolean }[],
   connects?: string,
 ): HelperFollowupFacts {
-  const person = defaultBotPerson(maus);
-  const others = bots.filter((bot) => bot.id !== maus.id && !bot.hidden && !bot.defaultBot && !bot.movedTo && seenBy(bot, person));
-  const theirs = new Set([maus.id, ...others.map((bot) => bot.id)]);
+  const person = defaultBotPerson(eacbot);
+  const others = bots.filter((bot) => bot.id !== eacbot.id && !bot.hidden && !bot.defaultBot && !bot.movedTo && seenBy(bot, person));
+  const theirs = new Set([eacbot.id, ...others.map((bot) => bot.id)]);
   return {
     ai: seen.ai,
     apps: [...new Set(seen.apps)],

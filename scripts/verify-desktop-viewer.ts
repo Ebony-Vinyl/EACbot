@@ -26,7 +26,7 @@ try {
   writeFileSync(join(bin, "docker"), `#!${process.execPath}
 let args = process.argv.slice(2);
 if (args[0] === "-H") args = args.slice(2);
-const labels = ${JSON.stringify({ "com.eacbot.local-vm": "1", "com.eacbot.cua-driver": CUA_DRIVER_VERSION, "com.eacbot.cua-base": BASE_IMAGE_DIGEST, "com.openmausbot.image-layer": IMAGE_LAYER_VERSION, "com.eacbot.workspace": "1" })};
+const labels = ${JSON.stringify({ "com.eacbot.local-vm": "1", "com.eacbot.cua-driver": CUA_DRIVER_VERSION, "com.eacbot.cua-base": BASE_IMAGE_DIGEST, "com.eacbot.image-layer": IMAGE_LAYER_VERSION, "com.eacbot.workspace": "1" })};
 let result;
 const imageId = 'sha256:' + 'a'.repeat(64);
 if (args[0] === 'inspect' && /^eacbot-vps-/.test(args[1])) result = [{
@@ -42,7 +42,7 @@ else if (args[0] === 'exec') result = args.includes('--version') ? 'cua-driver $
   : args.includes('health_report') ? {schema_version:'1',overall:'ok',checks:[]} : {};
 else if (args[0] === 'info') result = 'fixture';
 else if (args[0] === 'image' && args[1] === 'inspect') result = [{Id:imageId,Config:{Labels:labels}}];
-else if (args[0] === 'inspect' && args[1] === 'openmausbot-computer') result = [{
+else if (args[0] === 'inspect' && args[1] === 'eacbot-computer') result = [{
   Config:{Image:${JSON.stringify(IMAGE)},Labels:labels,Env:['VNC_PW=fixture-password']},
   State:{Running:true},Image:imageId,
   HostConfig:{PortBindings:{'6901/tcp':[{HostIp:'127.0.0.1',HostPort:'${desktop.port}'}]}},

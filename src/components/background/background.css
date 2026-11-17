@@ -1,0 +1,295 @@
+/* The app's ground, as its own layer behind everything.
+   Loaded by src/components/background/AppBackground.tsx, so a build without that import carries none of it.
+
+   Two things make this work rather than just painting a picture under the app:
+   - the app's own panes paint an opaque `bg-app`, so `data-background-live` on the root makes them see-through for as
+     long as a background is drawn, and the skin colour underneath comes from `body` — unchanged when there is none;
+   - the glass surfaces (`.glass-surface`, `.glass-bar`, …) already blur what is behind them, so a picture behind the
+     app blurs through them for free. Nothing here re-implements that. */
+
+.eacbg {
+  position: fixed;
+  inset: 0;
+  /* Behind every pane of the app. `body` gives up its own opaque ground while a background is drawn (below), so this
+     layer's own base colour is what the skin's ground colour lands on. */
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  /* No `contain`/`isolation` here: the effects are positioned against the viewport and would be clipped by either. */
+  background-color: var(--color-app);
+}
+
+.eacbg-pictures {
+  position: absolute;
+  inset: 0;
+  opacity: var(--eacbg-strength, 1);
+  transition: opacity 240ms ease-out;
+  /* Softened, because a photograph at full sharpness behind text costs legibility and competes with the UI. The cards
+     blur it again through `backdrop-filter`, so they read as glass over a picture rather than as slabs over a photo.
+     The overscan hides the blur's soft edge. */
+  filter: blur(var(--eacbg-blur, 18px));
+  transform: scale(1.06);
+}
+
+.eacbg-picture {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  will-change: opacity;
+  animation: eacbg-fade-in var(--eacbg-fade, 1600ms) ease-in-out both;
+}
+
+/* The outgoing picture holds its last frame while the incoming one fades in over it. */
+.eacbg-picture-out {
+  animation: none;
+  opacity: 1;
+}
+
+@keyframes eacbg-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* A soft colour wash over the picture, so a bright wallpaper still reads as the app's own tone rather than a photo
+   pasted behind a UI. Kept very low: the veil below is what carries contrast. */
+.eacbg-wash {
+  position: absolute;
+  inset: 0;
+  background: color-mix(in oklab, var(--color-app) 30%, transparent);
+  mix-blend-mode: soft-light;
+}
+
+/* The veil: the skin's own ground colour, at the strength the person chose. This is what keeps text readable over any
+   picture, and it is the one knob that trades the picture's presence for contrast. */
+.eacbg-veil {
+  position: absolute;
+  inset: 0;
+  background: var(--color-app);
+  opacity: var(--eacbg-veil, 0.35);
+}
+
+/* ── Effects ──────────────────────────────────────────────────────────────
+   Decoration only: every element is aria-hidden by its container and takes no pointer events. */
+
+.eacbg-effect {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.eacbg-petal {
+  position: absolute;
+  top: -6vh;
+  display: block;
+  border-radius: 100% 0 100% 0;
+  background: rgb(248 187 208 / 0.75);
+  box-shadow: 0 0 6px rgb(255 182 193 / 0.55);
+  animation-name: eacbg-petal-fall;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+@keyframes eacbg-petal-fall {
+  0% {
+    transform: translate(0, -10vh) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--eacbg-drift, 10vw), 112vh) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+.eacbg-fly-holder {
+  position: absolute;
+  display: block;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+.eacbg-fly {
+  display: block;
+  border-radius: 9999px;
+  background: rgb(198 255 208 / 0.92);
+  animation-name: eacbg-fly-breathe;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+@keyframes eacbg-fly-breathe {
+  0%,
+  100% {
+    opacity: 0;
+    transform: scale(0.3);
+    box-shadow: none;
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+    box-shadow:
+      0 0 10px 3px rgb(100 255 150 / 0.75),
+      0 0 20px 6px rgb(50 255 100 / 0.35);
+  }
+}
+
+@keyframes eacbg-float-1 {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  33% {
+    transform: translate(10vw, -14vh);
+  }
+  66% {
+    transform: translate(-5vw, -19vh);
+  }
+}
+
+@keyframes eacbg-float-2 {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  33% {
+    transform: translate(-11vw, 9vh);
+  }
+  66% {
+    transform: translate(8vw, 14vh);
+  }
+}
+
+@keyframes eacbg-float-3 {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  33% {
+    transform: translate(14vw, 14vh);
+  }
+  66% {
+    transform: translate(-9vw, 5vh);
+  }
+}
+
+@keyframes eacbg-float-4 {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  33% {
+    transform: translate(-14vw, -9vh);
+  }
+  66% {
+    transform: translate(9vw, -14vh);
+  }
+}
+
+.eacbg-blade-holder {
+  position: absolute;
+  bottom: 0;
+  display: flex;
+  align-items: flex-end;
+  transform-origin: bottom;
+  animation-name: eacbg-blade-sway;
+  animation-timing-function: ease-in-out;
+  animation-direction: alternate;
+  animation-iteration-count: infinite;
+}
+
+.eacbg-blade {
+  display: block;
+  height: 100%;
+  background: linear-gradient(to top, color-mix(in srgb, var(--color-accent) 70%, transparent), transparent);
+}
+
+@keyframes eacbg-blade-sway {
+  from {
+    transform: rotate(-5deg);
+  }
+  to {
+    transform: rotate(14deg);
+  }
+}
+
+/* ── The app over the ground ──────────────────────────────────────────────
+   Set by AppBackground while a picture is drawn.
+
+   `body` gives up its own opaque ground first: it paints the skin colour by default, which would sit in front of the
+   layer at `z-index: -1` and hide the picture entirely. The layer paints that same colour itself, so a skin with no
+   background configured is pixel-identical to before.
+
+   The panes are made see-through with colour alone — no `backdrop-filter` here. The picture behind is already blurred
+   by the layer, so blurring it a second time per pane bought nothing and cost a compositor pass for every pane, which
+   is what made a blurred wallpaper feel slow and made the sidebar flicker between blurred and sharp as it re-composited. */
+
+:root[data-background-live] body {
+  background-color: transparent;
+}
+
+/* The conversation is the pane a person reads longest, so it stays the most open. */
+:root[data-background-live] .bg-app {
+  background-color: color-mix(in srgb, var(--color-app) 34%, transparent);
+}
+
+/* The sidebar and the window frame are read at a glance with text straight on them: they keep more of their own colour. */
+:root[data-background-live] .bg-panel {
+  background-color: color-mix(in srgb, var(--color-panel) 58%, transparent);
+}
+
+:root[data-background-live] .bg-frame {
+  background-color: color-mix(in srgb, var(--color-frame) 64%, transparent);
+}
+
+/* The app's own scrollers paint their background too; keep them transparent so the picture is not cut off mid-pane. */
+:root[data-background-live] .glass-scroller {
+  background-color: transparent;
+}
+
+/* A person who has asked their system for less transparency gets the app as it was: the picture stays visible around
+   the panes but nothing is made see-through, so contrast never depends on what is behind it. */
+@media (prefers-reduced-transparency: reduce) {
+  :root[data-background-live] .bg-app {
+    background-color: var(--color-app);
+  }
+  :root[data-background-live] .bg-panel {
+    background-color: var(--color-panel);
+  }
+  :root[data-background-live] .bg-frame {
+    background-color: var(--color-frame);
+  }
+  .eacbg-veil {
+    opacity: max(var(--eacbg-veil, 0.35), 0.6);
+  }
+}
+
+/* High-contrast modes: the picture is decoration, and the app must win. */
+@media (forced-colors: active) {
+  .eacbg {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .eacbg-picture {
+    animation: none;
+  }
+  .eacbg-petal,
+  .eacbg-fly,
+  .eacbg-fly-holder,
+  .eacbg-blade-holder {
+    animation: none;
+    display: none;
+  }
+}

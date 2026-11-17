@@ -45,9 +45,13 @@ const cleanLabel = (value, fallback) => {
  * add the control-plane entry with that release as its minAppVersion. */
 export const NEXT_MANAGED_COMPANION_HOST_SUFFIX = "";
 
-/** Every zone the control plane makes addresses in, lowercase apex names. Ship a new domain here first. */
+/** Every zone the control plane makes addresses in, lowercase apex names. Ship a new domain here first.
+ * This build ships only the zones it can verify. A deployment running its own control plane adds its apex through
+ * EAC_MANAGED_COMPANION_HOST_SUFFIXES (comma-separated), so no address is ever trusted that the build did not issue. */
 export const MANAGED_COMPANION_HOST_SUFFIXES = Object.freeze(
-  ["eacbot.com", "mausbot.si", NEXT_MANAGED_COMPANION_HOST_SUFFIX].filter(Boolean),
+  ["eacbot.com", NEXT_MANAGED_COMPANION_HOST_SUFFIX,
+    ...String(process.env.EAC_MANAGED_COMPANION_HOST_SUFFIXES ?? "").split(",").map((name) => name.trim().toLowerCase())]
+    .filter(Boolean),
 );
 
 /** Only the control plane's `c-<32 hex>` names: any other name in those zones never receives a pairing code. */

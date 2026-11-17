@@ -39,7 +39,7 @@ beforeAll(async () => {
       return { id: `run-${queued.length}` };
     },
   });
-  const created = manager.create({ name: "Build event", prompt: "Review the build", botId: "maus-1" });
+  const created = manager.create({ name: "Build event", prompt: "Review the build", botId: "mascot-1" });
   endpointId = created.webhook.endpointId;
   secret = created.secret;
   ingress = await listenWebhookIngress(manager, { port: 0 });
@@ -123,7 +123,7 @@ describe("webhook-only ingress", () => {
         return { posted: true, attachments: 1, threadId: "room-7-thread" };
       },
     });
-    const created = rooms.create({ name: "Room brief", prompt: "", botId: "maus-1", delivery: "post", groupId: "room-7" });
+    const created = rooms.create({ name: "Room brief", prompt: "", botId: "mascot-1", delivery: "post", groupId: "room-7" });
     const receiver = await listenWebhookIngress(rooms, { port: 0 });
     const send = (deliveryId: string) => fetch(`${receiver.baseUrl}/hooks/${created.webhook.endpointId}/${created.secret}`, {
       method: "POST",
@@ -172,7 +172,7 @@ describe("webhook-only ingress", () => {
   });
 
   it("captures a verification event without queueing work", async () => {
-    const created = manager.create({ name: "Verify", prompt: "", botId: "maus-1", enabled: false, verificationPending: true });
+    const created = manager.create({ name: "Verify", prompt: "", botId: "mascot-1", enabled: false, verificationPending: true });
     const before = queued.length;
     const response = await fetch(webhookCredential(ingress.baseUrl, created.webhook.endpointId, created.secret).url, {
       method: "POST",
@@ -251,7 +251,7 @@ describe("requests with a wrong secret", () => {
       enqueue: () => ({ id: `flood-run-${++runs}` }),
       emit: (frame) => { if (frame.kind === "webhook.attempt") emitted.add(frame.attempt.id); },
     });
-    const created = flooded.create({ name: "CI", prompt: "Review", botId: "maus-1" });
+    const created = flooded.create({ name: "CI", prompt: "Review", botId: "mascot-1" });
     const receiver = await listenWebhookIngress(flooded, { port: 0 });
     const url = `${receiver.baseUrl}/hooks/${created.webhook.endpointId}`;
     const deliver = (id: string) => fetch(url, {
@@ -310,6 +310,15 @@ describe("advertised base URL", () => {
     for (const bad of ["bots.example.com", "ftp://bots.example.com", "", "/hooks"]) {
       expect(() => advertisedWebhookBase(bad)).toThrow(/absolute http\(s\) URL such as https:\/\//);
     }
-    expect(advertisedWebhookBase("http://10.0.0.5:8800///")).toBe("http://10.0.0.5:8800");
+  });
+
+  it("requires https for a public base and allows http only on a loopback address", () => {
+    for (const loopback of ["http://127.0.0.1:8800///", "http://localhost:8800", "http://[::1]:8800"]) {
+      expect(advertisedWebhookBase(loopback)).toBe(loopback.replace(/\/+$/, ""));
+    }
+    for (const publicHttp of ["http://bots.example.com", "http://10.0.0.5:8800", "http://192.168.1.4:8800"]) {
+      expect(() => advertisedWebhookBase(publicHttp)).toThrow(/must use https unless it is a loopback address/);
+    }
+    expect(advertisedWebhookBase("https://bots.example.com///")).toBe("https://bots.example.com");
   });
 });

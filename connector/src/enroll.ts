@@ -17,7 +17,7 @@ export function adminOrigin(raw: string | undefined): string {
     throw new Error("The install command did not say which EACbot to connect to. Copy the install command from EACbot again.");
   }
   if (url.username || url.password || (url.protocol !== "https:" && !(url.protocol === "http:" && isLoopbackHost(url.hostname)))) {
-    throw new Error(`${url.origin} is not a EACbot address this connector may use.`);
+    throw new Error(`${url.origin} is not an EACbot address this connector may use.`);
   }
   return url.origin;
 }

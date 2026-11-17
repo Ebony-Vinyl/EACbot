@@ -18,7 +18,7 @@ afterEach(async () => { for (const directory of directories.splice(0)) await rem
 const secret = "S".repeat(43);
 const ownServer = (extra: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv => ({
   EAC_CLOUD_ROLE: "team", EAC_CLOUD_TEAM_ID: "team-1", EAC_CLOUD_TEAM_NAME: "Acme", EAC_CLOUD_MACHINE_ID: "box-1a2b3c",
-  EAC_CLOUD_ADMIN_URL: "https://cloud.example.test", EAC_PUBLIC_URL: "https://mausbot.acme.example", EAC_CLOUD_BOOTSTRAP_SECRET: secret,
+  EAC_CLOUD_ADMIN_URL: "https://cloud.example.test", EAC_PUBLIC_URL: "https://eacbot.acme.example", EAC_CLOUD_BOOTSTRAP_SECRET: secret,
   PATH: "/usr/bin", ...extra,
 });
 const edgeOf = (env: NodeJS.ProcessEnv, home = "/data") => cloudHomeChildEnvironments(cloudHomeConfiguration(env)!, env, home);
@@ -66,7 +66,7 @@ it("serves HTTPS on the home's own domain only when asked, with the certificate 
 
   const tls = edgeOf(ownServer({ EAC_CLOUD_EDGE_TLS: "1" }));
   expect(tls.edgeFiles).toEqual({ config: "/app/cloud/Caddyfile.tls", routes: "/app/cloud/edge-routes.caddy" });
-  expect(tls.edge.EAC_CLOUD_PUBLIC_HOST).toBe("mausbot.acme.example");
+  expect(tls.edge.EAC_CLOUD_PUBLIC_HOST).toBe("eacbot.acme.example");
   // A new container (an update, a rollback, a restart on a new host) finds the same certificate; Let's Encrypt issues
   // one name at most 5 times a week.
   expect(tls.edge.EAC_CLOUD_EDGE_STORAGE).toBe("/data/.omb-edge/caddy");
@@ -102,7 +102,7 @@ it("reaches a home with no open port through its own tunnel, whose token only cl
   expect(command.args).toEqual(["tunnel", "--no-autoupdate", "--loglevel", "info", "run"]);
   expect(command.args.join(" ")).not.toContain(token);
   expect(command.env).toEqual({ PATH: "/usr/local/bin:/usr/bin:/bin", HOME: "/nonexistent", TUNNEL_TOKEN: token });
-  expect(TUNNEL_USER).not.toBe("maus");
+  expect(TUNNEL_USER).not.toBe("eacbot");
 
   expect(tunnelRestartDelay(0, 1_000)).toBe(5_000);
   expect(tunnelRestartDelay(5_000, 1_000)).toBe(10_000);

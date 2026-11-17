@@ -33,7 +33,7 @@ function messageOf(error: unknown): string {
 }
 
 /** Connects platform accounts and manages shared-memory membership; nothing here runs a platform turn. */
-export function PlatformAccountsPanel({ onClose }: { onClose(): void }) {
+export function PlatformAccountsPanel({ onClose, embedded = false }: { onClose(): void; embedded?: boolean }) {
   const { state } = useStore();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [spaces, setSpaces] = useState<MemorySpace[]>([]);
@@ -120,8 +120,8 @@ export function PlatformAccountsPanel({ onClose }: { onClose(): void }) {
   const pill = "inline-flex h-8 items-center gap-1.5 rounded-full bg-control px-3 text-[12px] font-medium text-ink-secondary hover:bg-raised-hover hover:text-ink disabled:opacity-50";
 
   return (
-    <div className="glass-popup-frame" style={glassPopupFrameStyle()} onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-      <div className="flex max-h-[80vh] w-[min(860px,94vw)] flex-col overflow-hidden rounded-[22px] bg-panel text-ink shadow-xl">
+    <div className={embedded ? "flex min-h-0 flex-1 flex-col" : "glass-popup-frame"} style={embedded ? undefined : glassPopupFrameStyle()} onMouseDown={(event) => !embedded && event.target === event.currentTarget && onClose()}>
+      <div className={embedded ? "flex min-h-0 flex-1 flex-col overflow-hidden bg-panel text-ink" : "flex max-h-[80vh] w-[min(860px,94vw)] flex-col overflow-hidden rounded-[22px] bg-panel text-ink shadow-xl"}>
         <div className="flex items-center justify-between border-b border-line px-5 py-4">
           <div className="flex items-center gap-2">
             <Users size={18} />

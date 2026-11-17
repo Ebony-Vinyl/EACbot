@@ -14,6 +14,7 @@ import { link, open, unlink } from "node:fs/promises";
 import { basename, dirname, extname, join, resolve } from "node:path";
 import { FILE_MAX_BYTES } from "../shared/upload-limits.ts";
 import { DATA_DIR } from "./config.ts";
+import { quotaLimits } from "./limits.ts";
 import { boxUploadsDir } from "./bot-box/plan.ts";
 
 export { FILE_MAX_BYTES } from "../shared/upload-limits.ts";
@@ -25,15 +26,31 @@ export const DEFAULT_ATTACHMENTS_MAX_BYTES = 512 * 1024 * 1024;
 /** A person's own Cloud is the only home of everything their computers held, on a volume a move grows to fit. */
 export const CLOUD_HOME_ATTACHMENTS_MAX_BYTES = 8 * 1024 * 1024 * 1024;
 
-/** A team server can raise the ceiling with EAC_ATTACHMENTS_MAX_BYTES; a missing or invalid value keeps 512 MB, or 8 GB on a Cloud home. */
-export function attachmentsMaxBytes(env: NodeJS.ProcessEnv = process.env): number {
+function envAttachmentsMaxBytes(env: NodeJS.ProcessEnv): number | undefined {
   const raw = env.EAC_ATTACHMENTS_MAX_BYTES?.trim();
   const parsed = raw ? Number(raw) : NaN;
-  if (Number.isSafeInteger(parsed) && parsed > 0) return parsed;
-  return env.EAC_CLOUD_ROLE === "home" || env.EAC_CLOUD_ROLE === "team" ? CLOUD_HOME_ATTACHMENTS_MAX_BYTES : DEFAULT_ATTACHMENTS_MAX_BYTES;
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : undefined;
 }
 
-/** Never evict: prompts refer to attachment paths, so at this ceiling a new upload gets an explicit 507. */
+// An operator sets these when the process starts, as before; only config.json is re-read while it runs.
+const STARTUP_ATTACHMENTS_MAX_BYTES = envAttachmentsMaxBytes(process.env);
+const STARTUP_CLOUD_HOME = process.env.EAC_CLOUD_ROLE === "home" || process.env.EAC_CLOUD_ROLE === "team";
+
+/** A team server raises the ceiling with EAC_ATTACHMENTS_MAX_BYTES, a saved one with config.json "limits.attachmentsMaxBytes";
+ * a missing or invalid value keeps 512 MB, or 8 GB on a Cloud home. Passing `env` reads that instead of the startup env. */
+export function attachmentsMaxBytes(
+  env?: NodeJS.ProcessEnv,
+  configured: number | undefined = quotaLimits().attachmentsMaxBytes,
+): number {
+  const fromEnv = env ? envAttachmentsMaxBytes(env) : STARTUP_ATTACHMENTS_MAX_BYTES;
+  if (fromEnv !== undefined) return fromEnv;
+  if (typeof configured === "number" && Number.isSafeInteger(configured) && configured > 0) return configured;
+  const cloudHome = env ? env.EAC_CLOUD_ROLE === "home" || env.EAC_CLOUD_ROLE === "team" : STARTUP_CLOUD_HOME;
+  return cloudHome ? CLOUD_HOME_ATTACHMENTS_MAX_BYTES : DEFAULT_ATTACHMENTS_MAX_BYTES;
+}
+
+/** The ceiling at startup; the checks read attachmentsMaxBytes() so a saved limit applies without a restart.
+ * Never evict: prompts refer to attachment paths, so at this ceiling a new upload gets an explicit 507. */
 export const ATTACHMENTS_MAX_BYTES = attachmentsMaxBytes();
 
 function formatStoreLimit(bytes: number): string {
@@ -44,7 +61,7 @@ function formatStoreLimit(bytes: number): string {
 /** Cleanup removes only our stale partial files, never a committed attachment a transcript may reference. */
 export const ATTACHMENT_PARTIAL_MAX_AGE_MS = 60 * 60 * 1000;
 
-const PARTIAL_NAME = /^\.openmaus-upload-[0-9a-f-]+-[0-9a-f-]+\.partial$/i;
+const PARTIAL_NAME = /^\.eacbot-upload-[0-9a-f-]+-[0-9a-f-]+\.partial$/i;
 const UPLOAD_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const activePartials = new Set<string>();
 const uploadLocks = new Map<string, Promise<void>>();
@@ -204,7 +221,7 @@ export function deleteAttachment(path: string): void {
 /** Settings → General: what the store holds against its ceiling, rescanned so files removed outside the app count. */
 export function attachmentStorageUsage(): { usedBytes: number; maxBytes: number } {
   invalidateAttachmentAccounting();
-  return { usedBytes: committedBytes(), maxBytes: ATTACHMENTS_MAX_BYTES };
+  return { usedBytes: committedBytes(), maxBytes: attachmentsMaxBytes() };
 }
 
 /** What a Settings clear leaves, as stored names: pictures given by their /api/attachments/ url (bot and profile
@@ -263,7 +280,7 @@ export function __resetAttachmentAccountingForTests(): void {
 /** Holding the upload id's lock, any inactive partial with its prefix is a crashed attempt and can go now. */
 function cleanupAttachmentPartialsForUpload(uploadId: string): void {
   ensureAttachmentsDir();
-  const prefix = `.openmaus-upload-${uploadId}-`;
+  const prefix = `.eacbot-upload-${uploadId}-`;
   for (const entry of readdirSync(ATTACHMENTS_DIR, { withFileTypes: true })) {
     if (!entry.isFile() || !entry.name.startsWith(prefix) || !PARTIAL_NAME.test(entry.name)) continue;
     const path = join(ATTACHMENTS_DIR, entry.name);
@@ -289,16 +306,17 @@ class AttachmentReservation {
   }
 
   private reserveAtLeast(required: number, preferred: number): void {
-    let available = ATTACHMENTS_MAX_BYTES - committedBytes() - reservedAttachmentBytes;
+    const limit = attachmentsMaxBytes();
+    let available = limit - committedBytes() - reservedAttachmentBytes;
     if (available < required) {
       // People free space by deleting attachments outside the app, which the cache never sees.
       invalidateAttachmentAccounting();
-      available = ATTACHMENTS_MAX_BYTES - committedBytes() - reservedAttachmentBytes;
+      available = limit - committedBytes() - reservedAttachmentBytes;
     }
     if (available < required) {
       throw statusError(
         507,
-        `attachments storage is full (${formatStoreLimit(ATTACHMENTS_MAX_BYTES)} limit)${clearOffered ? ". Clear old attachments in Settings → General." : ""}`,
+        `attachments storage is full (${formatStoreLimit(limit)} limit)${clearOffered ? ". Clear old attachments in Settings → General." : ""}`,
       );
     }
     const granted = Math.min(preferred, available);
@@ -476,7 +494,7 @@ export async function saveFile(
 
     const id = uploadId ?? randomUUID();
     const path = join(ATTACHMENTS_DIR, `${id}${extension}`);
-    const partialPath = join(ATTACHMENTS_DIR, `.openmaus-upload-${id}-${randomUUID()}.partial`);
+    const partialPath = join(ATTACHMENTS_DIR, `.eacbot-upload-${id}-${randomUUID()}.partial`);
     const reservation = new AttachmentReservation();
     if (expectedBytes) reservation.reserve(expectedBytes);
     activePartials.add(partialPath);
@@ -540,7 +558,7 @@ export async function saveNamedAttachment(name: string, chunks: AsyncIterable<Ui
   if (expectedBytes !== undefined && expectedBytes > FILE_MAX_BYTES) throw statusError(413, `attachments are limited to ${FILE_MAX_BYTES} bytes`);
   ensureAttachmentsDir();
   const path = join(ATTACHMENTS_DIR, name);
-  const partialPath = join(ATTACHMENTS_DIR, `.openmaus-upload-${randomUUID()}-${randomUUID()}.partial`);
+  const partialPath = join(ATTACHMENTS_DIR, `.eacbot-upload-${randomUUID()}-${randomUUID()}.partial`);
   const reservation = new AttachmentReservation();
   activePartials.add(partialPath);
   let file: Awaited<ReturnType<typeof open>> | undefined;
@@ -599,7 +617,7 @@ export function saveImage(bytes: Buffer, mime: string, requestedUploadId?: strin
   const id = uploadId ?? randomUUID();
   const name = `${id}${ext}`;
   const path = join(ATTACHMENTS_DIR, name);
-  const partialPath = join(ATTACHMENTS_DIR, `.openmaus-upload-${id}-${randomUUID()}.partial`);
+  const partialPath = join(ATTACHMENTS_DIR, `.eacbot-upload-${id}-${randomUUID()}.partial`);
   activePartials.add(partialPath);
   let partialCleanupFailed = false;
   try {
@@ -653,7 +671,7 @@ export function saveAudio(bytes: Buffer, mime: string): SavedAttachment {
   const id = randomUUID();
   const name = `${id}${format.ext}`;
   const path = join(ATTACHMENTS_DIR, name);
-  const partialPath = join(ATTACHMENTS_DIR, `.openmaus-upload-${id}-${randomUUID()}.partial`);
+  const partialPath = join(ATTACHMENTS_DIR, `.eacbot-upload-${id}-${randomUUID()}.partial`);
   activePartials.add(partialPath);
   let partialCleanupFailed = false;
   try {

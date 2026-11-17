@@ -1,0 +1,5 @@
+{
+  "extends": "./missions/tsconfig.json",
+  "include": ["./**/*.ts"],
+  "exclude": ["**/*.test.ts", "**/testing/**"]
+}

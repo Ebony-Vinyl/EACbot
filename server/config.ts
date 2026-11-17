@@ -8,7 +8,8 @@ import type { ImageGenerationConfig } from "../shared/image-generation.ts";
 import { imageGenConfigSchema, imageGenPatchSchema, keepKeysOutOfImageModels, type ImageGenCredentialPatch } from "./image-generation-config.ts";
 import { botAvatarUrlSchema } from "../shared/bot-avatar.ts";
 import { writeFileAtomic } from "./atomic.ts";
-import { defaultBotThreads, MAX_CONCURRENT_BOT_THREADS } from "./bot-thread-limits.ts";
+import { defaultBotThreads, MAX_BOT_THREADS_SETTING } from "./bot-thread-limits.ts";
+import { positiveLimit, setQuotaLimits, type QuotaLimits } from "./limits.ts";
 import { anthropicKeyEnv } from "./anthropic-key-env.ts";
 import { withoutComputerEngine } from "./computer-engine-removal.ts";
 import { newBotDefaultsSchema, type NewBotDefaults } from "./new-bot-defaults.ts";
@@ -229,6 +230,75 @@ const browserProfilesSchema = z.array(browserProfileSchema).max(20).superRefine(
     });
   });
 });
+/** The app a person registered with a cloud health provider. Write-only: a save never echoes it back. */
+const healthCloudAppSchema = z.object({
+  clientId: z.string().trim().min(1).max(200),
+  clientSecret: z.string().trim().min(1).max(500).optional(),
+  /**
+   * Override the provider's endpoints. A self-hosted gateway, or a fixture that must not reach the internet; the
+   * production addresses are the default.
+   */
+  endpoints: z.object({
+    authorizeUrl: z.string().trim().url().max(500),
+    tokenUrl: z.string().trim().url().max(500),
+    revokeUrl: z.string().trim().url().max(500).optional(),
+    scope: z.string().trim().max(500),
+  }).strict().optional(),
+}).strict();
+
+/** A health source the person connected: the adapter's own id and where its credential lives. */
+const healthSourceConfigSchema = z.object({
+  /** `cloud:withings`, `file:apple-health`; a stable id the samples carry. */
+  sourceId: z.string().trim().min(1).max(120),
+  kind: z.enum(["manual", "file", "cloud", "device"]),
+  label: z.string().trim().min(1).max(120).optional(),
+  /** An opaque key in the credential store; never the token itself. */
+  credentialRef: z.string().regex(/^[a-z0-9][a-z0-9._-]{1,119}$/).optional(),
+  /** Which cloud provider reads this source; required for `cloud`, refused otherwise. */
+  provider: z.enum(["withings", "oura", "polar", "fitbit"]).optional(),
+  /** The app registered with that provider. The sign-in's tokens live in health-cloud.json, never here. */
+  app: healthCloudAppSchema.optional(),
+}).strict().refine((source) => source.kind !== "cloud" || (source.provider !== undefined && source.app !== undefined), {
+  message: "a cloud source needs both provider and app: e.g. { \"kind\": \"cloud\", \"provider\": \"withings\", \"app\": { \"clientId\": \"…\" } }",
+  path: ["provider"],
+});
+
+/** Health readings: which sources exist and whether a summary may leave this machine. */
+const healthConfigSchema = z.object({
+  /** Off (the default) keeps a health summary out of model calls, shared memory and platform replies. */
+  shareWithModels: z.boolean().optional(),
+  sources: z.array(healthSourceConfigSchema).max(32).optional(),
+}).strict();
+
+/** One home adapter, as config.json names it. A kind this build does not have is skipped with a reason. */
+const homeAdapterConfigSchema = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("home-assistant"),
+    baseUrl: z.string().trim().url().max(300),
+    token: z.string().trim().min(1).max(500),
+    label: z.string().trim().min(1).max(120).optional(),
+    /** Entity ids, or `domain.` prefixes, to leave out of the home entirely. */
+    exclude: z.array(z.string().trim().min(1).max(200)).max(200).optional(),
+  }).strict(),
+  z.object({
+    kind: z.literal("matter"),
+    label: z.string().trim().min(1).max(120).optional(),
+    /** Devices already paired, by operational node id, with the name and zone a person wants to see. */
+    nodes: z.array(z.object({
+      nodeId: z.string().trim().min(1).max(64),
+      name: z.string().trim().min(1).max(120).optional(),
+      zone: z.string().trim().min(1).max(64).optional(),
+    }).strict()).max(256).optional(),
+  }).strict(),
+]);
+
+/** The home: its adapters, and the default a bot gets when it sets none of its own. */
+const homeConfigSchema = z.object({
+  adapters: z.array(homeAdapterConfigSchema).max(16).optional(),
+  /** `read` unless set: a new bot looks at the home but changes nothing until the person says so. */
+  botAccess: z.enum(["off", "read", "control", "full"]).optional(),
+}).strict();
+
 // Not strict: a stale client's unknown flag must be dropped, not fail the whole config.
 const featureConfigSchema = z.object({
   /** Bots may draft skills for your review. On unless false. */
@@ -302,7 +372,7 @@ const cacheKeepWarmSchema = z.object({
   windowMinutes: z.number().int().min(15).max(MAX_WINDOW_MINUTES).optional(),
 }).strict();
 const threadsConfigSchema = z.object({
-  maxConcurrentPerBot: z.number().int().min(1).max(MAX_CONCURRENT_BOT_THREADS),
+  maxConcurrentPerBot: z.number().int().min(1).max(MAX_BOT_THREADS_SETTING),
   /** Byte cap for each thread's events/ and native/ log; absent means unbounded. */
   eventLogMaxBytes: z.number().int().min(MIN_THREAD_EVENT_LOG_BYTES).max(MAX_THREAD_EVENT_LOG_BYTES).optional(),
   /** Days a closed or archived thread's event logs survive; absent keeps them forever. */
@@ -320,6 +390,19 @@ const threadsPatchSchema = threadsConfigSchema.extend({
   eventLogMaxBytes: threadsConfigSchema.shape.eventLogMaxBytes.nullable(),
   eventLogRetentionDays: threadsConfigSchema.shape.eventLogRetentionDays.nullable(),
 });
+/** The caps that used to be fixed numbers, each with the old value as its default: absent changes nothing. */
+const limitsConfigSchema = z.object({
+  botsPerWorkspace: z.number().int().min(1).max(100_000).optional(),
+  botThreads: z.number().int().min(1).max(MAX_BOT_THREADS_SETTING).optional(),
+  attachmentsMaxBytes: z.number().int().min(1).max(1024 * 1024 ** 3).optional(),
+  imagesPerDay: z.number().int().min(1).max(1_000_000).optional(),
+  chatToolsPerRequest: z.number().int().min(1).max(10_000).optional(),
+  mcpServers: z.number().int().min(1).max(10_000).optional(),
+  roomPostsPerTurn: z.number().int().min(1).max(1_000).optional(),
+  roomPostsPerMinute: z.number().int().min(1).max(1_000).optional(),
+  roomPostsWithoutReply: z.number().int().min(0).max(1_000).optional(),
+  roomBreakerMinutes: z.number().int().min(1).max(1_440).optional(),
+}).strict();
 const appConfigSchema = z.object({
   /** Set only by the verified domain endpoint, never by a config patch. */
   customDomain: z.string().optional(),
@@ -422,8 +505,17 @@ const appConfigSchema = z.object({
     tidyHour: z.number().int().min(0).max(23).optional(),
   }).strict().optional(),
   threads: threadsConfigSchema.optional(),
+  /** Caps that may be raised past their old fixed values; see server/limits.ts. */
+  limits: limitsConfigSchema.optional(),
   /** Minimum days of decision-log month files kept; EAC_DECISION_RETENTION_DAYS wins. */
   decisions: z.object({ retentionDays: z.number().int().min(1).max(3650).optional() }).strict().optional(),
+  /**
+   * Health readings, kept on this machine. `shareWithModels` off (the default) keeps a summary out of a model
+   * call, a shared memory and a platform reply; the tools still answer the person's own turns.
+   */
+  health: healthConfigSchema.optional(),
+  /** The home's adapters and what a bot may do with them. No adapter configured means the home is not offered. */
+  home: homeConfigSchema.optional(),
   loopGuard: loopGuardConfigSchema.optional(),
   safetyFloor: z.object({ enabled: z.boolean().optional() }).strict().optional(), // off by default: safetyFloorEnabled in server/safety-floor-gate.ts
   localVm: localVmConfigSchema.optional(),
@@ -482,6 +574,30 @@ export interface AppConfig extends HelperConfig {
   openrouter?: { key?: string };
   budgets?: { monthlyUsd?: number; warnAtPercent?: number };
   decisions?: { retentionDays?: number };
+  /** Health readings kept on this machine; `shareWithModels` off keeps a summary out of every model call. */
+  health?: {
+    shareWithModels?: boolean;
+    sources?: Array<{
+      sourceId: string;
+      kind: "manual" | "file" | "cloud" | "device";
+      label?: string;
+      credentialRef?: string;
+      provider?: "withings" | "oura" | "polar" | "fitbit";
+      app?: {
+        clientId: string;
+        clientSecret?: string;
+        endpoints?: { authorizeUrl: string; tokenUrl: string; revokeUrl?: string; scope: string };
+      };
+    }>;
+  };
+  /** The home's adapters and the default access a bot gets; no adapter means the home is not offered. */
+  home?: {
+    adapters?: Array<
+      | { kind: "home-assistant"; baseUrl: string; token: string; label?: string; exclude?: string[] }
+      | { kind: "matter"; label?: string; nodes?: Array<{ nodeId: string; name?: string; zone?: string }> }
+    >;
+    botAccess?: "off" | "read" | "control" | "full";
+  };
   loopGuard?: LoopGuardConfig;
   safetyFloor?: { enabled?: boolean };
   billing?: { currency?: string; prices?: Record<string, { inputPerMillion: number; outputPerMillion: number; cachedInputPerMillion?: number }> };
@@ -500,6 +616,7 @@ export interface AppConfig extends HelperConfig {
   rooms?: { turnTimeoutMinutes: number };
   mcp?: { callTimeoutMinutes?: number };
   threads?: { maxConcurrentPerBot: number; eventLogMaxBytes?: number; eventLogRetentionDays?: number };
+  limits?: QuotaLimits;
   context?: { rebuildBytes?: number; compactAt?: number; autoCompact?: boolean; roomCompactAt?: number; roomSessions?: boolean; replayToolHistory?: boolean };
   memory?: { captureQuietMs?: number; tidyHour?: number };
   localVm?: { mode?: "shared" | "per-bot" | "pool"; maxInstances?: number; idleTimeoutMinutes?: number; preserveInstalledApps?: boolean };
@@ -613,6 +730,12 @@ export function browserEngineAttachCdpUrl(cfg: AppConfig): string | null {
 
 export function roomTurnTimeoutMinutes(cfg: AppConfig): number {
   return cfg.rooms?.turnTimeoutMinutes ?? DEFAULT_ROOM_TURN_TIMEOUT_MINUTES;
+}
+
+/** Bots one workspace may hold: config.json "limits.botsPerWorkspace", else the original 100. */
+export const DEFAULT_MAX_WORKSPACE_BOTS = 100;
+export function maxBotsPerWorkspace(cfg: Pick<AppConfig, "limits"> = {}): number {
+  return positiveLimit(cfg.limits?.botsPerWorkspace, DEFAULT_MAX_WORKSPACE_BOTS);
 }
 
 export function mcpCallTimeoutMinutes(cfg: AppConfig): number {
@@ -794,6 +917,7 @@ export function loadConfig(): AppConfig {
     if (process.env.EAC_SIGNIN_EMAILS !== undefined) cfg.signIn.admins = splitEmails(process.env.EAC_SIGNIN_EMAILS);
     if (process.env.EAC_SIGNIN_MEMBER_EMAILS !== undefined) cfg.signIn.members = splitEmails(process.env.EAC_SIGNIN_MEMBER_EMAILS);
   }
+  setQuotaLimits(cfg.limits);
   return cfg;
 }
 
@@ -870,7 +994,7 @@ function openCodeProviderKeyNameRefusal(name: string): string | undefined {
   const reserved = name.startsWith("OPENCODE_") || name.startsWith("EAC_")
     || (WORKSPACE_CREDENTIAL_ENV as readonly string[]).includes(name)
     || ((PROVIDER_CREDENTIAL_ENV as readonly string[]).includes(name) && !(OPENCODE_PROVIDER_ENV as readonly string[]).includes(name));
-  return reserved ? `OpenMaus keeps ${name} for itself, so OpenCode can't be given it here. Put this key in opencode.json instead.` : undefined;
+  return reserved ? `EACbot keeps ${name} for itself, so OpenCode can't be given it here. Put this key in opencode.json instead.` : undefined;
 }
 
 export function openCodeProviderKeys(cfg: Pick<AppConfig, "opencodeGo">): Record<string, string> {
@@ -933,7 +1057,7 @@ export function saveConfig(
   const keepImageModels = keepKeysOutOfImageModels(disk, checkedPatch.imageGen);
   const storedProfiles = storedBrowserProfilesSchema.safeParse(disk.browserProfiles);
   if (storedProfiles.success) disk.browserProfiles = storedProfiles.data;
-  for (const key of ["xai", "anthropic", "mistral", "cerebras", "treg", "postiz", "groq", "greenference", "meta", "deepseek", "openai", "openrouter", "openaiCompat", "composio", "box", "opencodeGo", "tts", "decider", "imageGen", "live", "profile", "rooms", "mcp", "threads", "context", "memory", "localVm", "features", "budgets", "billing", "decisions", "loopGuard", "onboarding", "browserEngine", "newBots", "safetyFloor"] as const) {
+  for (const key of ["xai", "anthropic", "mistral", "cerebras", "treg", "postiz", "groq", "greenference", "meta", "deepseek", "openai", "openrouter", "openaiCompat", "composio", "box", "opencodeGo", "tts", "decider", "imageGen", "live", "profile", "rooms", "mcp", "threads", "limits", "context", "memory", "localVm", "features", "budgets", "billing", "decisions", "loopGuard", "onboarding", "browserEngine", "newBots", "safetyFloor"] as const) {
     const section = checkedPatch[key];
     if (!section) continue;
     const current = jsonObjectSchema.safeParse(disk[key]);
@@ -1031,6 +1155,8 @@ export function saveConfig(
   mkdirSync(DATA_DIR, { recursive: true });
   writeFileAtomic(p, JSON.stringify(disk, null, 2), { mode: 0o600 });
   storedConfig.forget();
+  const applied = storedAppConfigSchema.safeParse(disk);
+  setQuotaLimits(applied.success ? applied.data.limits : undefined);
   for (const listener of configSaveListeners) {
     try {
       listener(before, disk);

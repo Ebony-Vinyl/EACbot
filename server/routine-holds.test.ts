@@ -18,6 +18,7 @@ function harness(file?: string) {
   let now = START;
   let task = 0;
   const started: string[] = [];
+  const interruptedTurns: Array<{ botId: string; threadId: string }> = [];
   const emitted: Array<Record<string, unknown>> = [];
   if (!file) {
     const dir = mkdtempSync(join(tmpdir(), "omb-routine-holds-"));
@@ -28,12 +29,13 @@ function harness(file?: string) {
     file, now: () => now, emit: (payload) => emitted.push(payload), botState: () => "ready", goalState: () => "ready",
     createTask: () => ({ threadId: `thread-${++task}` }),
     startTurn: async (_botId, threadId) => { started.push(threadId); },
+    interruptTurn: async (botId, threadId) => { interruptedTurns.push({ botId, threadId }); },
   };
   const manager = new RoutineManager(options);
-  const hourly = (name: string, enabled = true) => manager.create({ name, prompt: `Do ${name}`, botId: "maus-1", enabled,
+  const hourly = (name: string, enabled = true) => manager.create({ name, prompt: `Do ${name}`, botId: "mascot-1", enabled,
     schedule: { type: "interval", everyMinutes: 60, anchorAt: START + HOUR } });
   const routine = (id: string) => manager.listRoutines().find((candidate) => candidate.id === id)!;
-  return { manager, file, started, emitted, hourly, routine, setNow: (at: number) => { now = at; }, now: () => now };
+  return { manager, file, started, interruptedTurns, emitted, hourly, routine, setNow: (at: number) => { now = at; }, now: () => now };
 }
 
 describe("why routines wait while their owner has left", () => {
@@ -77,6 +79,32 @@ describe("routines pause while their owner has left, and come back by themselves
     expect(h.manager.listRuns().filter((run) => run.status === "failed" || run.status === "missed")).toEqual([]);
     // The same causes again change nothing and pause nothing twice.
     expect(h.manager.holdFor(["no_engine"])).toEqual([]);
+  });
+
+  it("stops the running and waiting runs of a routine it holds, not only the queued one", async () => {
+    const h = harness();
+    const daily = h.hourly("Clarity export");
+    const running = h.manager.runNow(daily.id)!;
+    const waiting = h.manager.runNow(daily.id)!;
+    await h.manager.tick();
+    h.manager.handleRuntimeEvent({
+      eventId: "waiting-question", provider: "fake", threadId: "thread-2", createdAt: new Date(0).toISOString(),
+      type: "request.opened", requestType: "question", tool: "ask", summary: "Which account should I use?",
+    });
+    expect(h.manager.listRuns().find((run) => run.id === waiting.id)).toMatchObject({ status: "waiting" });
+
+    expect(h.manager.holdFor(["plan_cancelled"])).toEqual(["plan_cancelled"]);
+
+    for (const id of [running.id, waiting.id]) {
+      expect(h.manager.listRuns().find((run) => run.id === id)).toMatchObject({
+        status: "cancelled", attention: undefined,
+        error: "The routine was paused while this run was still working",
+      });
+    }
+    expect(h.interruptedTurns).toEqual([
+      { botId: "mascot-1", threadId: "thread-1" },
+      { botId: "mascot-1", threadId: "thread-2" },
+    ]);
   });
 
   it("turns them back on from now once nothing holds them, without the runs they skipped", async () => {
@@ -125,7 +153,7 @@ describe("routines pause while their owner has left, and come back by themselves
 
   it("never turns back on a room's routine whose room was deleted while it waited", () => {
     const h = harness();
-    const goal = h.manager.create({ name: "Weekly plan", prompt: "Plan the week", botId: "maus-1", target: "room-goal", groupId: "room-1",
+    const goal = h.manager.create({ name: "Weekly plan", prompt: "Plan the week", botId: "mascot-1", target: "room-goal", groupId: "room-1",
       schedule: { type: "interval", everyMinutes: 60, anchorAt: START + HOUR } });
     h.manager.holdFor(["no_engine"]);
     h.manager.disableForGroup("room-1");
@@ -136,7 +164,7 @@ describe("routines pause while their owner has left, and come back by themselves
 
   it("leaves a one-time run whose time passed while it waited over, never late", () => {
     const h = harness();
-    const once = h.manager.create({ name: "Send the recap", prompt: "Send it", botId: "maus-1", schedule: { type: "once", at: START + HOUR } });
+    const once = h.manager.create({ name: "Send the recap", prompt: "Send it", botId: "mascot-1", schedule: { type: "once", at: START + HOUR } });
     h.manager.holdFor(["no_engine"]);
     h.setNow(START + 3 * HOUR);
     h.manager.holdFor([]);

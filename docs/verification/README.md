@@ -55,7 +55,7 @@ Use only mapped, tested commands:
 - [OpenCode model variants through ACP](opencode-variants.md)
 - [Bot setup, model scope, and file continuity](bot-continuity.md)
 - [Reviewed Chief team setup and scoped deletion](team-setup.md)
-- [EACbot, everyone's helper](mausbot.md)
+- [EACbot, everyone's helper](eacbot.md)
 - [Profile proposal and credential-card lifecycle](proposal-cards.md)
 - [Full Access without duplicate approvals](full-access.md)
 - [Gmail draft creation, send approval and revision](gmail-drafts.md)
@@ -338,6 +338,8 @@ M1/M3 contracts, `/api/plugins`, signed channel install/update/rollback and the 
 - [Plugin platform, platform bots, memory and UI](plugin-platform.md)
 - [Business plugins and cross-module integration](plugin-integrations.md)
 - [Plugin supply chain, releases and recovery](plugin-release.md)
+- [Health readings and the home's devices](health-and-home.md)
+- [Platform boards and the domestic platforms](platform-boards.md)
 
 The [implementation roadmap](../superpowers/plans/2026-11-07-eac-plugin-platform/README.md)
 tracks the prerequisites. Do not treat mock coverage as real-account verification.

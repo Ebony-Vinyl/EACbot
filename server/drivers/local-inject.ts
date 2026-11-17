@@ -5,6 +5,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 
 import type { ModelCatalog, ProviderInstance } from "../contracts.ts";
+import { envSetting } from "../../shared/env-names.ts";
 import { isContextName, pickedName, servedModel, serveWithWindow } from "./ollama-context.ts";
 
 export interface LocalHost {
@@ -150,7 +151,7 @@ export function codexLocalProviderArgs(
   if (!inject || CODEX_RESERVED_PROVIDERS.has(inject.host)) return [];
   const host = localHost(inject.host);
   if (!host) return [];
-  const envKey = `OPENMAUSBOT_LOCAL_${host.id.toUpperCase().replace(/[^A-Z0-9]+/g, "_")}_API_KEY`;
+  const envKey = `EACBOT_LOCAL_${host.id.toUpperCase().replace(/[^A-Z0-9]+/g, "_")}_API_KEY`;
   env[envKey] = hostApiKey(host, env);
   return [
     "-c",
@@ -412,7 +413,7 @@ export async function mergeLocalInject(
   fetchImpl: typeof fetch = fetch,
 ): Promise<ModelCatalog> {
   const vitest = env.VITEST ?? process.env.VITEST;
-  const probe = env.OPENMAUSBOT_PROBE_LOCAL_INJECT ?? process.env.OPENMAUSBOT_PROBE_LOCAL_INJECT;
+  const probe = envSetting(env, "EACBOT_PROBE_LOCAL_INJECT") ?? envSetting(process.env, "EACBOT_PROBE_LOCAL_INJECT");
   if (vitest === "true" && probe !== "1") return catalog;
   // An engine's own config lists whatever it was last told to run, which may be a name that carries a window.
   catalog = { ...catalog, options: catalog.options.filter((option) => !isContextName(option.id)) };

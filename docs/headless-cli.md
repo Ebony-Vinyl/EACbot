@@ -20,7 +20,7 @@ files it links, and writes everything to `./rehearsal`.
 
 ## Which workspace, and as whom
 
-- `--url URL` or `OPENMAUSBOT_URL`: a workspace somewhere else. Use `https://`
+- `--url URL` or `EACBOT_URL`: a workspace somewhere else. Use `https://`
   unless it is this computer (`ALLOW_INSECURE_HTTP=true` allows plain `http://`).
 - `--port N` or `EAC_PORT`: this computer, on that port.
 - Otherwise the command looks on this computer's usual ports (8799, 18799,
@@ -30,8 +30,8 @@ On this computer a headless server treats you as its owner, and no token is
 needed. Anywhere else you need a token:
 
 ```sh
-eacbot connect https://maus.example.com --code ABCD1234 --out ~/.eacbot-token
-eacbot doctor --url https://maus.example.com --token-file ~/.eacbot-token
+eacbot connect https://eacbot.example.com --code ABCD1234 --out ~/.eacbot-token
+eacbot doctor --url https://eacbot.example.com --token-file ~/.eacbot-token
 ```
 
 Get the code in the app under **Settings → Phone → Set up a phone**, or on
@@ -40,7 +40,7 @@ minutes unless `--ttl` says otherwise, at most a day, and works once). On this
 computer's own server, `connect` makes the code itself (`--client` gives a
 token that can chat but not change settings). The token goes to a file only
 you can read, and is never printed. Pass it with `--token-file FILE` or
-`OPENMAUSBOT_TOKEN`; there is no `--token` flag, because a command line can be
+`EACBOT_TOKEN`; there is no `--token` flag, because a command line can be
 read by other programs. A token is never sent while the command is still
 looking for a server: with a token, name the server.
 
@@ -112,7 +112,7 @@ The message for `send` and `run` can be the next word, `--text TEXT`,
 Before you install a server, check the machine it will run on:
 
 ```text
-$ sudo eacbot doctor --host --data-dir /srv/mausbot
+$ sudo eacbot doctor --host --data-dir /srv/eacbot
 ok    Ubuntu 24.04.1 LTS, kernel 6.8.0-45-generic
 ok    x86_64
 ok    Docker 27.3.1
@@ -120,8 +120,8 @@ FAIL  Bot sandbox: AppArmor blocks unprivileged user namespaces
       fix: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0   (and put it in /etc/sysctl.d/ to keep it after a reboot)
 ok    seccomp is available
 ok    cgroup v2
-ok    412 GB free for /srv/mausbot
-warn  /srv/mausbot is not on an encrypted disk
+ok    412 GB free for /srv/eacbot
+warn  /srv/eacbot is not on an encrypted disk
       fix: use LUKS full-disk encryption, unless your provider encrypts the disk at rest
 ok    8 CPUs, 31 GB memory (a team of 20 needs 8 CPUs and 16 GB)
 ok    Port 8799 is free for the server
@@ -141,7 +141,7 @@ and 100 GB for a Team server), disk encryption, CPUs and memory (a Team needs
 network time (signed requests allow 300 seconds). It changes nothing.
 
 On a server that runs EACbot's own connector (a team on its own server), it
-also asks the connector for its checks (`mausbot-connector probe --json`,
+also asks the connector for its checks (`eacbot-connector probe --json`,
 which starts the bots' box once under the home's own security settings) and
 lists any that fail. There the home runs under its own AppArmor profile, so
 AppArmor's server-wide switch can stay on: the user-namespace check passes
@@ -486,7 +486,7 @@ section, or `eacbot engine set`, can set it later instead).
 
 The step fails when the job fails (exit 1), needs someone (exit 3) or runs out
 of time (exit 4). To drive a workspace that is already running elsewhere, set
-`OPENMAUSBOT_URL` and pass a token made with `eacbot connect` as a secret
+`EACBOT_URL` and pass a token made with `eacbot connect` as a secret
 file (`--token-file`).
 
 ## For other agents

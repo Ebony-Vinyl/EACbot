@@ -252,7 +252,7 @@ describe("control-plane desktop client", () => {
   it("reports the app's release with an endpoint request only when it is a printable version", async () => {
     const connectorToken = `eyJ${"x".repeat(80)}`;
     const fetchImpl = vi.fn(async () =>
-      jsonResponse({ endpoint: { url: "https://c-opaque.mausbot.si" }, connectorToken }),
+      jsonResponse({ endpoint: { url: "https://c-opaque.eacbot.si" }, connectorToken }),
     );
     const client = createControlPlaneClient({ baseURL: "https://accounts.eacbot.com", fetchImpl });
     const sent = () => {
@@ -261,7 +261,7 @@ describe("control-plane desktop client", () => {
     };
 
     await expect(client.ensureEndpoint(INSTALL, { appVersion: " 0.1.104 " })).resolves.toEqual({
-      endpoint: { url: "https://c-opaque.mausbot.si" },
+      endpoint: { url: "https://c-opaque.eacbot.si" },
       connectorToken,
     });
     expect(sent()).toEqual({ body: JSON.stringify({ appVersion: "0.1.104" }), contentType: "application/json" });

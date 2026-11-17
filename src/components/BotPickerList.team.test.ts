@@ -20,7 +20,7 @@ it("names each teammate's EACbot for its person in a picker, and the viewer's ow
   expect(html.match(/role="checkbox" aria-label="[^"]*"/g)?.map((match) => match.slice(match.indexOf("aria-label")))).toEqual(['aria-label="EACbot"', 'aria-label="EACbot · Ada"', 'aria-label="EACbot · Ben"']);
 });
 
-it("names a EACbot whose person is not in the list by their address", () => {
+it("names an EACbot whose person is not in the list by their address", () => {
   expect(teamBotName(helper("x", "dan.smith@acme.test"), team)).toBe("EACbot · Dan Smith");
   expect(teamBotName({ name: "Scout" }, team)).toBe("Scout");
 });

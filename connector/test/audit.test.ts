@@ -105,7 +105,7 @@ describe("the server owner's policy", () => {
     run: async (job) => { ran.push(`${job.type}`); return { id: job.id, ok: true, result: { home: { state: "running", image: HOME, health: null } } } as JobReply; },
     audit: new AuditLog(join(dir, "audit.jsonl")), log: () => {}, policyFile: join(dir, "policy.json"),
   });
-  const SELF = { id: "self-1", type: "self-update", args: { image: `ghcr.io/milind-soni/mausbot-connector@sha256:${"b".repeat(64)}` } } as Job;
+  const SELF = { id: "self-1", type: "self-update", args: { image: `ghcr.io/milind-soni/eacbot-connector@sha256:${"b".repeat(64)}` } } as Job;
   const UPDATE = { id: "u1", type: "update", args: { image: HOME } } as Job;
 
   it("limits what EACbot may run here, records each refusal, and never limits root on the server or a self-update", async () => {

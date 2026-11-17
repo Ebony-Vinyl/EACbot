@@ -10,7 +10,7 @@ import {
 import { generateKeyPair, seal, unseal } from "../src/signed.ts";
 
 const HOME = `ghcr.io/milind-soni/eacbot-cloud-home@sha256:${"a".repeat(64)}`;
-const CONNECTOR = `ghcr.io/milind-soni/mausbot-connector@sha256:${"b".repeat(64)}`;
+const CONNECTOR = `ghcr.io/milind-soni/eacbot-connector@sha256:${"b".repeat(64)}`;
 const env = {
   EAC_CLOUD_ROLE: "home", EAC_CLOUD_MACHINE_ID: "3f9c2a4e-8b1d-4c6e-9a7f-2d5e8c1b0a93", EAC_CLOUD_ADMIN_URL: "https://cloud.example.test",
   EAC_PUBLIC_URL: "https://acme.example.test", EAC_CLOUD_BOOTSTRAP_SECRET: "S".repeat(43),

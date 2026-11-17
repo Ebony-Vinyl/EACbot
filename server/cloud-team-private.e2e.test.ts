@@ -119,8 +119,8 @@ it("Bob reads and writes his own private chat, with its words, its file, his sea
   const recolour = await team.as(bob, "PATCH", `/api/bots/${bot.id}`, { color: "blue" });
   expect(recolour.status).toBe(403);
   expect(recolour.body.error).toContain("\"color\"");
-  const mausBot = ((await team.as(bob, "GET", "/api/bots")).body.bots as Array<{ id: string; name: string }>).find((entry) => entry.name === "EACbot")!;
-  expect((await team.as(bob, "PATCH", `/api/bots/${mausBot.id}`, { color: "blue" })).status).toBe(200);
+  const eacbotBot = ((await team.as(bob, "GET", "/api/bots")).body.bots as Array<{ id: string; name: string }>).find((entry) => entry.name === "EACbot")!;
+  expect((await team.as(bob, "PATCH", `/api/bots/${eacbotBot.id}`, { color: "blue" })).status).toBe(200);
   // The session says which conversations are his.
   expect((await team.as(bob, "GET", "/api/auth/session")).body.openedThreads).toContain(bobThread);
 }, hostTimeout(60_000));

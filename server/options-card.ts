@@ -3,12 +3,12 @@ import {
   WATCHER_OPTIONS_CARD_BOT_ID,
   type OptionsCardInput,
 } from "../shared/options-card.ts";
-import type { MausColor } from "../shared/wire.ts";
+import type { BotColor } from "../shared/wire.ts";
 
 interface OptionsCardBot {
   id: string;
   name: string;
-  color: MausColor;
+  color: BotColor;
 }
 
 export interface OptionsCardStore {
@@ -17,7 +17,7 @@ export interface OptionsCardStore {
     message: {
       role: "bot";
       kind: "options";
-      from: { botId: string; name: string; color: MausColor };
+      from: { botId: string; name: string; color: BotColor };
       card: OptionsCardInput;
     },
   ): { id: string };

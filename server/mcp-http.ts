@@ -4,6 +4,7 @@ import { request as httpsRequest } from "node:https";
 import { Readable } from "node:stream";
 
 import type { RemoteMcpSpec } from "./contracts.ts";
+import { remoteMcpUrlError } from "./mcp-url.ts";
 
 export type McpHttpFailure = "network" | "status" | "protocol";
 
@@ -258,6 +259,8 @@ export class RemoteMcpClient {
   }
 
   private headers(): Headers {
+    const badUrl = remoteMcpUrlError(this.target.url);
+    if (badUrl) throw new McpHttpError("protocol", `Refusing to send MCP headers to an insecure address. ${badUrl}`);
     const headers = new Headers();
     for (const [name, value] of Object.entries(this.target.headers)) headers.set(name, value);
     headers.set("accept", "application/json, text/event-stream");

@@ -128,11 +128,11 @@ describe("eacbot sentinel", () => {
   it("--check-install reports a schedule whose node or script has moved", () => {
     const lines: string[] = [];
     const io = { log: (line: string) => lines.push(line), error: (line: string) => lines.push(line) };
-    const unit = "/Users/maus/Library/LaunchAgents/com.eacbot.sentinel.plist";
+    const unit = "/Users/eacbot/Library/LaunchAgents/com.eacbot.sentinel.plist";
     const plist = `<key>ProgramArguments</key>\n<array>\n<string>/old/node</string>\n<string>/Applications/EACbot.app/Contents/Resources/server/eacbot.js</string>\n<string>sentinel</string>\n</array>`;
-    const host = (present: string[]) => ({ platform: "darwin" as const, home: "/Users/maus", exists: (path: string) => path === unit || present.includes(path), read: () => plist });
+    const host = (present: string[]) => ({ platform: "darwin" as const, home: "/Users/eacbot", exists: (path: string) => path === unit || present.includes(path), read: () => plist });
     expect(runSentinelCli(["--check-install"], io, {}, host(["/Applications/EACbot.app/Contents/Resources/server/eacbot.js"]))).toBe(1);
-    expect(lines.join("\n")).toContain("stale install: /Users/maus/Library/LaunchAgents/com.eacbot.sentinel.plist needs /old/node, which no longer exists; rerun eacbot service install --sentinel");
+    expect(lines.join("\n")).toContain("stale install: /Users/eacbot/Library/LaunchAgents/com.eacbot.sentinel.plist needs /old/node, which no longer exists; rerun eacbot service install --sentinel");
     lines.length = 0;
     expect(runSentinelCli(["--check-install", "--json"], io, {}, host(["/old/node", "/Applications/EACbot.app/Contents/Resources/server/eacbot.js"]))).toBe(0);
     expect(JSON.parse(lines[0]!)).toMatchObject({ ok: true, status: "ok", node: "/old/node" });

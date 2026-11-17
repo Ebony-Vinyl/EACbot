@@ -18,6 +18,7 @@ import { withOneChief } from "../../shared/bot-owner";
 import { DATA_ROUTES, type DataSheet, type DataTable } from "../../shared/data-surface";
 import type { NotificationLogEntry } from "../../shared/notification";
 import type { Announcement } from "../../shared/announcement";
+import type { PlatformId } from "../../shared/plugins/accounts";
 import { isNotificationFeedAction, reduceNotificationFeed, type NotificationFeedAction } from "./notification-feed";
 import { bumpThreadUpdatedAt, mergeTaskStamps, rewindThreadUpdatedAt } from "./thread-stamps";
 import { botOpensTo, closeTrayUnlessShown, closeUnpinnedTray, openBot, openThread, visibleNotificationThread, withRememberedTrayPin } from "./thread-navigation";
@@ -32,7 +33,7 @@ export { awayFromMainThread, botOpensTo, markedThread, openBot, openBotRow, open
 import type { TurnDigest } from "../../shared/digest";
 import type { ToolScope } from "../../shared/tool-scope";
 import type { ModelVariantOption, RuntimeEvent } from "../../shared/runtime-events";
-import type { MausColor, MausMotion } from "@/lib/mascot";
+import type { BotColor, MascotMotion } from "@/lib/mascot";
 import type { BotAvatarCrop } from "../../shared/bot-avatar";
 import { approvalModeFor, type ApprovalMode } from "../../shared/approval-mode";
 import { askResetBridge, desktopCapabilitiesNow } from "@/lib/desktop"; import { isBotLimitRefusal, stoppedAtBotLimit } from "@/lib/bot-limit";
@@ -76,7 +77,7 @@ import { unlessRefused } from "@/lib/admin-scope";
 import { olderRunsSince, ROUTINE_RUNS_WINDOW_MS, trimRoutineRuns, withOlderRoutineRuns } from "./routine-runs";
 import { reconcileSnapshotQueues, rememberConsumedQueueId, replaceBotQueues } from "./queue-receipts";
 
-export type { MausColor } from "@/lib/mascot";
+export type { BotColor } from "@/lib/mascot";
 export type { RoutineRunCardData } from "../../shared/routine-run";
 
 export interface OptionCardData extends Pick<WireOptionCard, "fixedOptions" | "lendingLift" | "webhookRequest" | "appTriggerRequest" | "yourComputer" | "computerAsk" | "waitRequest" | "stopped" | "accessRequest" | "mcpRequest" | "summaryCode" | "summaryParams"> {
@@ -150,12 +151,12 @@ export interface Message extends Pick<import("../../shared/wire").WireMessage, "
   parentId?: string | null;
   replyToId?: string;
   sendId?: string;
-  from?: { botId: string; name: string; color: MausColor };
+  from?: { botId: string; name: string; color: BotColor };
   peerAsk?: { botId: string; name: string; unattended?: boolean };
   roomRequest?: { id: string; phase: "request" | "result" };
   reactions?: import("../../shared/wire").WireMessage["reactions"];
   reaction?: string;
-  comm?: { groupId: string; threadId?: string; withBotId: string; withName: string; withColor: MausColor };
+  comm?: { groupId: string; threadId?: string; withBotId: string; withName: string; withColor: BotColor };
   threadRef?: { botId: string; threadId: string; title: string };
   dataResult?: import("../../shared/wire").WireMessage["dataResult"];
   queued?: boolean;
@@ -286,7 +287,7 @@ export interface Bot extends DefaultBotFields, Pick<WireBot, "mascotFaceColor" |
   soul?: string;
   soulDrift?: boolean;
   notifications: boolean;
-  color: MausColor;
+  color: BotColor;
   mascotExpression?: string | null;
   mascotBody?: BotBodyId | null;
   avatarUrl?: string | null;
@@ -511,6 +512,7 @@ export interface InstanceInfo extends InstanceEndpointInfo {
 }
 
 export type AppSettingsSection =
+  | "resources"
   | "general"
   | "desktopWorkspaces"
   | "organization"
@@ -557,6 +559,23 @@ export interface ModelVariantSession {
   variants?: { options: ModelVariantOption[]; currentValue?: string };
 }
 
+/** The pages EACbot's own command centre adds to the shell. They are views of
+ * the same window, not a second application: the rail, the background layer and
+ * the skins are the ones the rest of the app uses. */
+export const NEW_PAGES = ["herdr", "hermes", "missions", "computers", "agents", "terminals"] as const;
+
+export type NewPage = (typeof NEW_PAGES)[number];
+
+/** The skin token and label each new page goes by in the rail and the tab. */
+export const NEW_PAGE_LABELS: Readonly<Record<NewPage, string>> = {
+  herdr: "Herdr",
+  hermes: "Hermes",
+  missions: "Tasks",
+  computers: "Computers",
+  agents: "Agents",
+  terminals: "Terminals",
+};
+
 export interface AppState {
   bots: Bot[];
   groups: Group[];
@@ -568,7 +587,9 @@ export interface AppState {
   liveCallVersion: number;
   liveCallLookupSeq: number;
   selectedId: string;
-  activeView: "chat" | "team-map" | "routines" | "files" | "web-panel";
+  activeView: "chat" | "task-center" | "team-map" | "routines" | "files" | "web-panel" | "health" | "home" | "platforms" | "platform" | NewPage;
+  /** Which platform board is open when `activeView` is "platform". */
+  platformId?: PlatformId;
   /** Folders a finished move left on this computer, for Files to offer sharing. */
   filesSuggest: string[] | null; webPanelId?: string;
   routines: Routine[];
@@ -621,7 +642,7 @@ export interface AppState {
   mascotMotion: {
     botId: string;
     nonce: number;
-    kind: Exclude<MausMotion, "none">;
+    kind: Exclude<MascotMotion, "none">;
   } | null;
   pendingQueued: Record<string, Array<{ queueId: string; text: string; reason?: SteerQueueReason }>>;
   consumedQueueIds: Record<string, true>;
@@ -653,7 +674,11 @@ export type Action =
   | { type: "showRoutines"; section?: "schedule" | "logs"; view?: "calendar" | "list"; botId?: string; routineId?: string; runStatus?: RoutineRunStatusFilter }
   | { type: "showTeamMap" } | { type: "showWebPanel"; id: string }
   | { type: "showFiles"; suggest?: string[] }
+  | { type: "showHealth" } | { type: "showHome" }
+  | { type: "showPlatforms" } | { type: "showPlatform"; platform: PlatformId }
   | { type: "showChat" }
+  | { type: "showTaskCenter" }
+  | { type: "showNewPage"; page: NewPage }
   | { type: "routinesHydrated"; routines: Routine[]; runs: RoutineRun[]; since?: number }
   | { type: "routinesLoadFailed" } | { type: "routineRunsLoaded"; runs: RoutineRun[]; from?: number; to?: number }
   | { type: "routinePatched"; routine: Routine }
@@ -850,7 +875,7 @@ function updateBot(state: AppState, botId: string, fn: (b: Bot) => Bot): AppStat
 function withMascotMotion(
   state: AppState,
   botId: string,
-  kind: Exclude<MausMotion, "none">,
+  kind: Exclude<MascotMotion, "none">,
 ): AppState {
   return {
     ...state,
@@ -996,7 +1021,33 @@ export function reducer(state: AppState, action: Action): AppState {
       };
     case "showChat":
       return state.activeView === "chat" ? state : { ...state, activeView: "chat" };
+    case "showNewPage":
+      // A command-centre page closes the same panels every other destination
+      // closes, so one page's side sheet never follows a person to the next.
+      return state.activeView === action.page ? state : {
+        ...state,
+        activeView: action.page,
+        filesSuggest: null,
+        settingsOpen: false, computerOpen: false, inspectorOpen: false, activityOpen: false, appSettingsOpen: false, pluginsOpen: false,
+      };
+    case "showTaskCenter":
     case "showTeamMap":
+    case "showHealth":
+    case "showHome":
+      return {
+        ...state,
+        activeView: action.type === "showTaskCenter" ? "task-center" : action.type === "showHealth" ? "health" : action.type === "showHome" ? "home" : "team-map",
+        filesSuggest: null,
+        settingsOpen: false, computerOpen: false, inspectorOpen: false, activityOpen: false, appSettingsOpen: false, pluginsOpen: false,
+      };
+    case "showPlatforms":
+    case "showPlatform":
+      return {
+        ...state,
+        activeView: action.type === "showPlatform" ? "platform" : "platforms",
+        platformId: action.type === "showPlatform" ? action.platform : state.platformId,
+        settingsOpen: false, computerOpen: false, inspectorOpen: false, activityOpen: false, appSettingsOpen: false, pluginsOpen: false,
+      };
     case "showFiles": case "showWebPanel":
       return {
         ...state,
@@ -2261,7 +2312,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     };
 
     const wrapped: React.Dispatch<Action> = (action) => {
-      if (["select", "newTask", "switchTask", "newGroupTask", "switchGroupTask", "showChat", "showRoutines", "showTeamMap", "showFiles", "showWebPanel"].includes(action.type)) selectionRevision.current++;
+      if (["select", "newTask", "switchTask", "newGroupTask", "switchGroupTask", "showChat", "showTaskCenter", "showRoutines", "showTeamMap", "showFiles", "showWebPanel", "showHealth", "showHome", "showPlatforms", "showPlatform", "showNewPage"].includes(action.type)) selectionRevision.current++;
       // Pin before any await or optimistic state change.
       action = pinBotThreadAction(action, stateRef.current.bots);
       if (action.type === "taskSwitched") action = { ...action, bot: withTaskWrites(action.bot) as Bot };

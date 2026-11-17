@@ -63,7 +63,7 @@ afterAll(async () => {
 });
 
 it("shows a jsx page, takes what the person pointed at to the bot as records, replaces the page, and publishes it as static HTML", async () => {
-  const cli = (...args: string[]) => runControlOmb(args, { env: { OPENMAUSBOT_URL: fixture.info.url } }) as Promise<any>;
+  const cli = (...args: string[]) => runControlOmb(args, { env: { EACBOT_URL: fixture.info.url } }) as Promise<any>;
   const api = async (path: string, init: RequestInit = {}) => {
     const response = await fetch(`${fixture.info.url}${path}`, { ...init, headers: { "content-type": "application/json" } });
     return { status: response.status, body: await response.json() as any };
@@ -95,7 +95,7 @@ it("shows a jsx page, takes what the person pointed at to the bot as records, re
   expect(first.status).toBe(200);
   expect(String(first.body.srcdoc).startsWith(`${CSP_META_PREFIX}${BOT_HTML_CSP}">`)).toBe(true);
   expect(first.body.srcdoc).toContain("<script type=\"importmap\">");
-  expect(first.body.srcdoc).toContain("data-mausbot-point");
+  expect(first.body.srcdoc).toContain("data-eacbot-point");
   expect(first.body.srcdoc).toContain(JSON.stringify(PRICING).replace(/</g, "\\u003c"));
 
   plan([{ tool: "update_html", arguments: { app_id: appId, jsx: PRICING_V2 } }]);
@@ -126,11 +126,11 @@ it("shows a jsx page, takes what the person pointed at to the bot as records, re
   const [pageId] = [...stub.service.pages.keys()];
   const html = stub.service.pages.get(pageId!)!.files.get("index.html")!;
   expect(html.startsWith("<!DOCTYPE html>")).toBe(true);
-  expect(html).toContain("window.__mausbotPage=function(require,module,exports){");
+  expect(html).toContain("window.__eacbotPage=function(require,module,exports){");
   expect(html).toContain("_react.useState.call(void 0, \"Pro\")");
   expect(html).not.toContain("useState(\"Pro\")");
   expect(html).not.toContain("Content-Security-Policy");
-  expect((await transcript()).find((message) => message.id === appId).publishedPage).toMatchObject({ state: "live", pageId, url: `https://${pageId}.mausbot.page/` });
+  expect((await transcript()).find((message) => message.id === appId).publishedPage).toMatchObject({ state: "live", pageId, url: `https://${pageId}.eacbot.page/` });
   const again = await api(`/api/threads/${threadId}/messages/${appId}/app/publish`, { method: "POST", body: "{}" });
   expect(again.body.card.pageId).toBe(pageId);
   expect(stub.service.pages.size).toBe(1);

@@ -10,9 +10,12 @@ import { z } from "zod";
 import { BOT_PROFILE_LIMITS, fitsOnOneLine } from "./bot-profile.ts";
 import { redactSecretsInText } from "./redact.ts";
 import { normalizeCronSchedule } from "./routine-schedule.ts";
-import { MAUS_COLOR_NAMES } from "./wire.ts";
+import { MASCOT_COLOR_NAMES } from "./wire.ts";
 import { isSkillName, parseSkillMd, scanSkillText, SKILL_FILE_MAX_BYTES } from "./skill-md.ts";
 
+/** The file format's own identifier, written into every package. It is a compatibility marker, not a product name:
+ * changing it would make every package already on disk unreadable, so it keeps the spelling the format was shipped
+ * with. */
 export const PACKAGE_FORMAT = "openmaus.package";
 /** The newest version this module reads and writes. */
 export const PACKAGE_VERSION = 2;
@@ -199,7 +202,7 @@ const exampleSchema = z.object({
 });
 
 const packageDocumentV1Schema = z.object({
-  format: z.literal(PACKAGE_FORMAT, { error: "This is not an OpenMaus package" }),
+  format: z.literal(PACKAGE_FORMAT, { error: "This is not an EACbot package" }),
   version: z.literal(PACKAGE_V1_VERSION, { error: "Package version is not supported" }),
   package: z.object({
     id: requiredText(80).regex(/^[a-z0-9][a-z0-9-]*$/, { message: "must be a lowercase slug" }),
@@ -222,7 +225,7 @@ const packageDocumentV1Schema = z.object({
       description: optionalText(4_000),
       soul: soulSchema.optional(),
       appearance: z.object({
-        color: z.enum(MAUS_COLOR_NAMES, { error: "is not supported" }),
+        color: z.enum(MASCOT_COLOR_NAMES, { error: "is not supported" }),
         mascotExpression: optionalText(80),
         mascotBody: optionalText(40),
       }),
@@ -310,7 +313,7 @@ const avatarSchema = z.object({
 });
 
 const appearanceSchema = z.object({
-  color: z.enum(MAUS_COLOR_NAMES, { error: "is not supported" }),
+  color: z.enum(MASCOT_COLOR_NAMES, { error: "is not supported" }),
   mascotExpression: optionalText(80),
   mascotBody: optionalText(40),
   avatar: avatarSchema.optional(),
@@ -426,7 +429,7 @@ const connectionSchema = z.object({
 });
 
 export const packageDocumentSchema = z.object({
-  format: z.literal(PACKAGE_FORMAT, { error: "This is not an OpenMaus package" }),
+  format: z.literal(PACKAGE_FORMAT, { error: "This is not an EACbot package" }),
   version: z.literal(PACKAGE_VERSION, { error: "Package version is not supported" }),
   package: z.object({
     /** The package slug: its identity across releases. */
@@ -760,7 +763,7 @@ export function parsePackageDocument(value: unknown, options: { trust?: PackageT
     document = upgradeV1(parsePackageV1(value));
   } else {
     if (!value || typeof value !== "object" || Array.isArray(value) || (value as { format?: unknown }).format !== PACKAGE_FORMAT) {
-      throw new PackageFormatError("not_a_package", "This is not an OpenMaus package");
+      throw new PackageFormatError("not_a_package", "This is not an EACbot package");
     }
     const version = (value as { version?: unknown }).version;
     if (typeof version === "number" && Number.isInteger(version) && version > PACKAGE_VERSION) {

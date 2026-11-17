@@ -566,7 +566,7 @@ it("R8 runs a chained @mention as a root of its own, with the hop recorded", () 
   expect((await f.roomView(room.id))).toMatchObject({ working: false, busyBotId: null });
 }), hostTimeout(60_000));
 
-const goalDone = (detail: string) => `<openmaus-goal>${JSON.stringify({ status: "completed", detail })}</openmaus-goal>`;
+const goalDone = (detail: string) => `<eacbot-goal>${JSON.stringify({ status: "completed", detail })}</eacbot-goal>`;
 const sendGoal = (f: any, bot: { id: string; threadId: string }, text: string) =>
   f.api("POST", `/api/bots/${bot.id}/messages`, { text, mode: "goal", threadId: bot.threadId });
 

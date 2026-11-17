@@ -495,12 +495,9 @@ engine can mount custom MCP servers gets the enabled tools on its next task.
 - **Proxies.** Where EACbot's own remote proxy connects to a URL
   server, an `https://` server goes through your `HTTPS_PROXY` /
   `HTTP_PROXY` (CONNECT), with this computer's loopback names always added
-  to `NO_PROXY` (`[::1]` included). An `http://` server goes through your
-  `http_proxy` / `HTTP_PROXY`, sent by the connector itself in absolute form
-  (Node's own env-proxy switch stays off, `NODE_USE_ENV_PROXY=0`, since
-  Node 24's fetch hangs on a plain http request sent through it); loopback
-  and `NO_PROXY` hosts are reached directly. Proxies set only in macOS
-  System Settings are not read.
+  to `NO_PROXY` (`[::1]` included). Plain `http://` is accepted only on
+  loopback, and loopback is reached directly rather than through a proxy.
+  Proxies set only in macOS System Settings are not read.
 - **Testing is bounded.** A command is stopped after the handshake (or eight
   seconds), its output is capped, and its stderr is never sent to the UI. It
   inherits none of EACbot's workspace or provider credentials; only the
@@ -510,9 +507,13 @@ engine can mount custom MCP servers gets the enabled tools on its next task.
   test and in an API-model bot's turn alike. A test
   reads at most 32 MB (Whop's tool list alone is 1.2 MB), and a URL test
   reports only the HTTP status of a refusal.
-- **Addresses are checked.** A URL server needs a full `http://` or
-  `https://` address with no credentials in it; header names must be valid
-  HTTP field names and values a single line.
+- **Addresses are checked.** A URL server needs a full `https://` address
+  with no credentials in it, except on this computer's loopback (`localhost`,
+  `127.0.0.1`, `::1`, and IPv4-mapped loopback addresses), where plain
+  `http://` is allowed for local development. Header names must be valid HTTP
+  field names and values a single line. An older entry that still points at a
+  remote host over `http://` stays in the list switched off, with the reason
+  shown; change it to `https://` or remove it.
 - **The result gate covers commands.** An oversized tool result from a stdio
   server never reaches the model whole (`EAC_MCP_RESULT_BUDGET`, 8,000
   characters by default). A JSON result is *shaped*: the gate keeps the whole

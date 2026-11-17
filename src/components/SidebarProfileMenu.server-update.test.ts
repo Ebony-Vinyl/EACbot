@@ -63,3 +63,12 @@ it("keeps today's row in a browser on that server and in the app on this compute
   expect(await checkedRow({ location: { host: "bots.example.test" } })).toEqual(today);
   expect(await checkedRow({ ogb: { app: { version: "0.1.127", ownPage: true } }, location: { host: "127.0.0.1:8799" } })).toEqual(today);
 });
+
+it("says the server checked nothing instead of calling it up to date", async () => {
+  f.check = { current: "0.1.116", install: "docker", available: false, checked: false };
+  expect(await checkedRow({ location: { host: "bots.example.test" } })).toEqual({
+    label: "Update check is off",
+    subtitle: undefined,
+    attention: false,
+  });
+});

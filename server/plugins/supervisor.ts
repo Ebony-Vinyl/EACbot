@@ -60,6 +60,13 @@ function line(value: unknown): string {
   return `${JSON.stringify(value)}\n`;
 }
 
+/** A plugin's own words reach the person: a board that cannot say why is a board that hides a failure. */
+function pluginErrorMessage(error: unknown): string {
+  if (typeof error === "string") return error.slice(0, 800);
+  const said = (error as { message?: unknown } | null)?.message;
+  return typeof said === "string" && said.trim() ? said.slice(0, 800) : "the plugin returned an error";
+}
+
 function waitForExit(child: ChildProcessWithoutNullStreams, ms: number): Promise<boolean> {
   if (child.exitCode !== null || child.signalCode !== null) return Promise.resolve(true);
   return new Promise((resolve) => {
@@ -196,7 +203,7 @@ export class StdioPluginSupervisor implements PluginRuntime {
           const waiter = state.pending.get(reply.id)!;
           state.pending.delete(reply.id);
           clearTimeout(waiter.timer);
-          if (reply.error !== undefined) waiter.reject(new Error("the plugin returned an error"));
+          if (reply.error !== undefined) waiter.reject(new Error(pluginErrorMessage(reply.error)));
           else waiter.resolve(reply.result);
           return;
         }

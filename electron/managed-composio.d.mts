@@ -6,6 +6,10 @@ export interface ManagedComposioCredentials {
 
 export interface ManagedComposioAccess { url: string; token: string }
 
+export declare const MANAGED_COMPOSIO_REGISTER_ENV: "EAC_CONNECTED_APPS_REGISTER";
+export declare function managedComposioRegistrationEnabled(
+  environment?: Record<string, string | undefined>,
+): boolean;
 export declare const DEFAULT_MANAGED_COMPOSIO_BROKER_URL: string;
 export declare function managedComposioBrokerUrl(configured: string | undefined, shipped: boolean): string;
 export declare function normalizeManagedComposioBrokerUrl(value: unknown): string;

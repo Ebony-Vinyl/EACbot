@@ -1,8 +1,9 @@
 import { join, sep } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 
-import { createUpdateChecker, installKind, isNewerVersion, LATEST_RELEASE_URL } from "./update-check.ts";
+import { createUpdateChecker, installKind, isNewerVersion, updateCheckUrl } from "./update-check.ts";
 
+const RELEASE_URL = "https://updates.example/releases/latest";
 const release = (tag: string) =>
   ({ ok: true, status: 200, json: async () => ({ tag_name: tag, html_url: `https://github.com/milind-soni/EACbot/releases/tag/${tag}` }) }) as Response;
 
@@ -40,7 +41,7 @@ describe("server update check", () => {
 
   it("reports a newer release with the update command for this install", async () => {
     const fetch = vi.fn(async () => release("v0.1.93"));
-    const check = createUpdateChecker({ current: "0.1.92", install: "docker", fetch });
+    const check = createUpdateChecker({ current: "0.1.92", install: "docker", url: RELEASE_URL, fetch });
     expect(await check()).toEqual({
       current: "0.1.92",
       install: "docker",
@@ -50,13 +51,13 @@ describe("server update check", () => {
       command: "docker compose pull omb && docker compose up -d",
       restart: false,
     });
-    expect(fetch).toHaveBeenCalledWith(LATEST_RELEASE_URL, expect.anything());
+    expect(fetch).toHaveBeenCalledWith(RELEASE_URL, expect.anything());
   });
 
-  it("says up to date, and asks GitHub at most once an hour", async () => {
+  it("says up to date, and asks the release source at most once an hour", async () => {
     let now = 0;
     const fetch = vi.fn(async () => release("v0.1.92"));
-    const check = createUpdateChecker({ current: "0.1.92", install: "npm", fetch, now: () => now });
+    const check = createUpdateChecker({ current: "0.1.92", install: "npm", url: RELEASE_URL, fetch, now: () => now });
     expect(await check()).toMatchObject({ available: false, latest: "0.1.92", command: "npm install -g eacbot@latest", restart: true });
     now = 59 * 60_000;
     await check();
@@ -69,15 +70,34 @@ describe("server update check", () => {
   it("does not look anything up for a desktop or hosted server", async () => {
     const fetch = vi.fn();
     for (const install of ["desktop", "managed"] as const) {
-      expect(await createUpdateChecker({ current: "0.1.92", install, fetch })()).toEqual({ current: "0.1.92", install, available: false });
+      expect(await createUpdateChecker({ current: "0.1.92", install, url: RELEASE_URL, fetch })()).toEqual({ current: "0.1.92", install, available: false });
     }
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it("fails clearly when GitHub cannot be reached, and tries again next time", async () => {
+  it("asks nothing when no release source is configured", async () => {
+    const fetch = vi.fn();
+    expect(await createUpdateChecker({ current: "0.1.92", install: "docker", url: "", fetch })()).toEqual({
+      current: "0.1.92", install: "docker", available: false,
+      command: "docker compose pull omb && docker compose up -d", restart: false, checked: false,
+    });
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("reads EAC_UPDATE_CHECK_URL, and treats an unset or invalid one as off", () => {
+    expect(updateCheckUrl({})).toBe("");
+    expect(updateCheckUrl({ EAC_UPDATE_CHECK_URL: " " })).toBe("");
+    expect(updateCheckUrl({ EAC_UPDATE_CHECK_URL: RELEASE_URL })).toBe(RELEASE_URL);
+    expect(updateCheckUrl({ EAC_UPDATE_CHECK_URL: "http://127.0.0.1:4400/latest" })).toBe("http://127.0.0.1:4400/latest");
+    for (const value of ["http://updates.example/latest", "https://user:pw@updates.example/latest", "not an address"]) {
+      expect(updateCheckUrl({ EAC_UPDATE_CHECK_URL: value }), value).toBe("");
+    }
+  });
+
+  it("fails clearly when the release source cannot be reached, and tries again next time", async () => {
     const fetch = vi.fn(async () => ({ ok: false, status: 403, json: async () => ({}) }) as Response);
-    const check = createUpdateChecker({ current: "0.1.92", install: "git", fetch });
-    await expect(check()).rejects.toThrow("GitHub answered 403");
+    const check = createUpdateChecker({ current: "0.1.92", install: "git", url: RELEASE_URL, fetch });
+    await expect(check()).rejects.toThrow("The release source answered 403");
     fetch.mockImplementation(async () => release("v0.1.93"));
     expect(await check()).toMatchObject({ available: true, command: "git pull && pnpm install", restart: true });
   });

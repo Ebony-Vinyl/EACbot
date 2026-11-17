@@ -52,7 +52,7 @@ export const UPDATE_HEALTH_WINDOW_MS = 10 * 60_000;
 
 /** The only images a home may run, and the only ones the connector may become: our registry, pinned by digest. */
 export const HOME_IMAGE = /^ghcr\.io\/milind-soni\/eacbot-cloud-home@sha256:[0-9a-f]{64}$/;
-export const CONNECTOR_IMAGE = /^ghcr\.io\/milind-soni\/mausbot-connector@sha256:[0-9a-f]{64}$/;
+export const CONNECTOR_IMAGE = /^ghcr\.io\/milind-soni\/eacbot-connector@sha256:[0-9a-f]{64}$/;
 
 export interface ConnectorIdentity {
   version: string;
@@ -429,7 +429,7 @@ function checkArgs(type: JobType, args: Record<string, unknown>): Checked<JobArg
     case "self-update": {
       const extra = only(args, ["image"]);
       if (extra) return { ok: false, message: extra };
-      if (typeof args.image !== "string" || !CONNECTOR_IMAGE.test(args.image)) return { ok: false, message: "image must be ghcr.io/milind-soni/mausbot-connector@sha256:<digest>" };
+      if (typeof args.image !== "string" || !CONNECTOR_IMAGE.test(args.image)) return { ok: false, message: "image must be ghcr.io/milind-soni/eacbot-connector@sha256:<digest>" };
       return { ok: true, value: { image: args.image } };
     }
     case "restore": {

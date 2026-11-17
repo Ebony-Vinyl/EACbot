@@ -39,6 +39,8 @@ const memoryStorage = {
 
 beforeEach(() => {
   storage.clear();
+  // These cases describe an install the person opted in; the never-chosen case removes this key.
+  storage.set("omb-analytics-opt-out", "0");
   ph.captured = [];
   vi.stubGlobal("localStorage", memoryStorage);
 });
@@ -167,7 +169,7 @@ function hostileSources(overrides: Partial<UsageSources> = {}): UsageSources & {
           status: "connected", account: { id: HOSTILE, email: `${HOSTILE}@example.com` }, deviceId: HOSTILE,
           entitlement: { plan: "pro", tier: "max", status: "active", expiresAt: null, version: 1 },
           trial: { state: "active", tier: "max", endsAt: 1, amount: 9900, chargeAt: 1, holdUntil: null },
-          machine: { status: "ready", origin: `https://${HOSTILE}.mausbot.cloud` },
+          machine: { status: "ready", origin: `https://${HOSTILE}.eacbot.cloud` },
         } as never;
       },
     },
@@ -210,7 +212,7 @@ describe("the daily usage snapshot", () => {
     expect(Object.keys(sent!).sort()).toEqual([...DOCUMENTED].sort());
     expectOnlyCountsFlagsAndWords(sent!);
     const wire = JSON.stringify(ph.captured);
-    for (const fragment of [HOSTILE, "HOSTILE", "example.com", "mausbot.cloud", "iPhone", "Owner", "3f0c2b1e", "/Users/"]) expect(wire).not.toContain(fragment);
+    for (const fragment of [HOSTILE, "HOSTILE", "example.com", "eacbot.cloud", "iPhone", "Owner", "3f0c2b1e", "/Users/"]) expect(wire).not.toContain(fragment);
   });
 
   it("sends once per UTC day, writing the day before it gathers, and again after midnight", async () => {
@@ -238,7 +240,9 @@ describe("the daily usage snapshot", () => {
   });
 
   it("sends once per page load when storage throws, through the page's own memory", async () => {
-    const { snapshot } = await freshModules();
+    const { analytics, snapshot } = await freshModules();
+    // No storage is left to hold the choice, so this page's memory keeps the explicit opt-in.
+    analytics.setAnalyticsEnabled(true);
     vi.stubGlobal("localStorage", { getItem: () => { throw new Error("denied"); }, setItem: () => { throw new Error("denied"); } });
     expect(await snapshot.sendDailySnapshot(hostileState(), hostileSources(), DAY)).toBe(true);
     expect(await snapshot.sendDailySnapshot(hostileState(), hostileSources(), DAY + 1_000)).toBe(false);
@@ -293,6 +297,17 @@ describe("the daily usage snapshot", () => {
 describe("an opted-out install", () => {
   it("captures nothing and asks no server, bridge or provider anything", async () => {
     storage.set("omb-analytics-opt-out", "1");
+    const { snapshot } = await freshModules();
+    const sources = hostileSources();
+    const spies = [vi.spyOn(sources, "request"), vi.spyOn(sources, "connectedApps"), vi.spyOn(sources.companion!, "state"), vi.spyOn(sources.cloudAccount!, "state"), vi.spyOn(sources.cloudPlan!, "state")];
+    expect(await snapshot.sendDailySnapshot(hostileState(), sources, DAY)).toBe(false);
+    for (const spy of spies) expect(spy).not.toHaveBeenCalled();
+    expect(ph.captured).toEqual([]);
+    expect(storage.has("omb-analytics-snapshot-day")).toBe(false);
+  });
+
+  it("does the same when no choice was ever made", async () => {
+    storage.delete("omb-analytics-opt-out");
     const { snapshot } = await freshModules();
     const sources = hostileSources();
     const spies = [vi.spyOn(sources, "request"), vi.spyOn(sources, "connectedApps"), vi.spyOn(sources.companion!, "state"), vi.spyOn(sources.cloudAccount!, "state"), vi.spyOn(sources.cloudPlan!, "state")];

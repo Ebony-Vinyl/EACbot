@@ -17,8 +17,8 @@ export const HEADLESS_USAGE = `Drive a running workspace (scripts, CI, other age
   eacbot token create NAME --out FILE [--expires 90d]    a token for CI that ends on its date (token list, token revoke ID)
   eacbot new-bot | new-channel | set-model | edit | mcp
 
-  Server: --url URL (or OPENMAUSBOT_URL), --port N (or EAC_PORT), else this computer's.
-  Token: OPENMAUSBOT_TOKEN or --token-file FILE. --json prints one JSON document;
+  Server: --url URL (or EACBOT_URL), --port N (or EAC_PORT), else this computer's.
+  Token: EACBOT_TOKEN or --token-file FILE. --json prints one JSON document;
   progress goes to stderr (--quiet drops it). eacbot help VERB for the details.`;
 
 export const USAGE = `eacbot — your team of AI bots, ready in a few steps

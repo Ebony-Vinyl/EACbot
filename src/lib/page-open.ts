@@ -5,10 +5,13 @@ import { useOptionalStoreRef } from "@/state/store-ref";
 import { openExternalLink } from "./app-links";
 import { browserAvailable, builtInBrowserEnabled, type FeatureFlagConfig } from "./feature-flags";
 
-export const PAGES_DOMAIN = "mausbot.page";
+/** The domain the pages service publishes under. This build ships no such service, so it is configured rather than
+ * assumed: with none set, no link counts as a published page and every one opens outside the chat. */
+export const PAGES_DOMAIN = (import.meta.env.VITE_EAC_PAGES_DOMAIN as string | undefined)?.trim().replace(/^\.+|\.+$/g, "") ?? "";
 
-/** A link to a page a bot published: https://<page id>.mausbot.page/… Never an app, chat or prompt link. */
+/** A link to a page a bot published: https://<page id>.<PAGES_DOMAIN>/… Never an app, chat or prompt link. */
 export function isPublishedPageUrl(value: string | null | undefined): value is string {
+  if (!PAGES_DOMAIN) return false;
   if (typeof value !== "string") return false;
   let url: URL;
   try { url = new URL(value); } catch { return false; }

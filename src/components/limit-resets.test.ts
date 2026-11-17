@@ -304,9 +304,9 @@ describe("the calendar", () => {
     const onCreate = vi.fn();
     const container = grid(onDropOnReset, onCreate);
     const shown = container.querySelector('[data-limit-marker="claude"]')!;
-    drop(shown, "application/x-openmaus-bot", "scout");
+    drop(shown, "application/x-eacbot-bot", "scout");
     expect(onDropOnReset).toHaveBeenLastCalledWith({ botId: "scout" }, marker);
-    drop(shown, "application/x-openmaus-calendar-event", JSON.stringify({ kind: "routine", id: "brief", at: NOW + HOUR }));
+    drop(shown, "application/x-eacbot-calendar-event", JSON.stringify({ kind: "routine", id: "brief", at: NOW + HOUR }));
     expect(onDropOnReset).toHaveBeenLastCalledWith({ event: { kind: "routine", id: "brief", at: NOW + HOUR } }, marker);
     expect(onCreate).not.toHaveBeenCalled();
   });

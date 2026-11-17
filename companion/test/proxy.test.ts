@@ -391,7 +391,7 @@ describe("the sidecar in front of an unmodified harness", () => {
     const { body } = await device("GET", "/api/bots");
     const bot = body.bots[0];
     const refused = await device("PATCH", `/api/bots/${bot.id}`, {
-      headers: { "x-openmausbot-companion": "0" },
+      headers: { "x-eacbot-companion": "0" },
       body: { color: "coral", autoApprove: true },
     });
     expect(refused.status).toBe(403);

@@ -35,7 +35,9 @@ runMcpBridge({
   args,
   env: { ...childEnv, PATH: augmentedPath() },
   label: "Local Cua Driver",
-  gate: { url: url!, token: token!, describe: localComputerCallQuery },
+  // `required` changes nothing here (the checks above already refuse to start without the pair) and keeps the contract
+  // explicit: this computer is never mounted ungated.
+  gate: { url: url!, token: token!, required: true, describe: localComputerCallQuery },
   ...(journal === "1" ? { journal: { url: journalUrl(url!), token: token! } } : {}),
   rewriteResponse: localComputerResultLine,
   relay: localComputerRelay(platform ?? process.platform),

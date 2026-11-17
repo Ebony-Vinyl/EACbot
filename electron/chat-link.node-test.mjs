@@ -31,7 +31,7 @@ test("leaves every other link to its own handler", () => {
 // A published page's Open in the desktop app reaches main as desktop:open-external or window.open: both go to the
 // system browser through externalWebUrl, and no page link is ever taken for a chat link, so it never opens a chat.
 test("a published page's link opens in the browser, never as a chat", () => {
-  for (const page of ["https://abcdefghijklmnopqrstuvwxyz.mausbot.page/", "https://abcdefghijklmnopqrstuvwxyz.mausbot.page/thread/abc?bot=pepper"]) {
+  for (const page of ["https://abcdefghijklmnopqrstuvwxyz.eacbot.page/", "https://abcdefghijklmnopqrstuvwxyz.eacbot.page/thread/abc?bot=pepper"]) {
     assert.equal(chatLinkFrom(page), null);
     assert.equal(chatLinkFromCommandLine(["/usr/bin/eacbot", page]), null);
     assert.equal(externalWebUrl(page), page);

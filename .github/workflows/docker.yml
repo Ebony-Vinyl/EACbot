@@ -73,7 +73,7 @@ jobs:
       - name: Prove the non-root user can browse with the baked-in Chrome
         run: |
           set -euo pipefail
-          test "$(docker exec omb id -un)" = maus
+          test "$(docker exec omb id -un)" = eacbot
           timeout 45 docker exec omb agent-browser --session ci-browser open 'data:text/html,<title>OMB browser smoke</title><h1>Browser ready</h1>'
           timeout 15 docker exec omb agent-browser --session ci-browser get title | grep -Fx 'OMB browser smoke'
           # Chrome for Testing's page is 1280x577 until sized; the harness sizes
@@ -159,11 +159,11 @@ jobs:
           docker compose -f deploy/docker-compose.yml down -v
       - name: Cloud Pro home image (--target cloud-home) boots, stays private and pairs on a signed request
         # The Fly home machine, built from the same runtime as the image above, with the environment
-        # openmaus-cloud's provisioner writes (docs/cloud-pro.md): Caddy on
+        # eacbot-cloud's provisioner writes (docs/cloud-pro.md): Caddy on
         # :8080 is the only listener, a forwarded request is never the
         # loopback owner, a bad boot contract never serves, the launcher stays
         # root (and runs only root's code) while the server and the edge run as
-        # maus with no secret in their environment, and only an HMAC-signed,
+        # eacbot with no secret in their environment, and only an HMAC-signed,
         # fresh, unreplayed request opens a
         # single-use pairing window, also after a restart. Cloud Pro includes
         # no AI: the machine boots without any model gateway, serves no
@@ -200,38 +200,38 @@ jobs:
           grep -qF "bots run on the engines the person signs in to here" <<<"$logs"
           if grep -qF "ignoring EAC_HOSTED" <<<"$logs"; then echo "a model gateway reached the boot contract"; exit 1; fi
           if grep -qF "$secret" <<<"$logs"; then echo "the bootstrap secret reached the log"; exit 1; fi
-          # The launcher stays root; the server and the edge run as maus. Chosen
+          # The launcher stays root; the server and the edge run as eacbot. Chosen
           # by command line (a node process's comm is not always "node"), from
           # outside the container so no probe matches itself.
-          maus=$(docker exec home id -u maus)
+          eacbot=$(docker exec home id -u eacbot)
           procs=$(docker top home -eo pid,uid,args)   # docker top needs the pid column
           echo "$procs"
           uids() { awk -v pat="$1" 'NR > 1 && index($0, pat) { print $2 }' <<<"$procs" | sort -u | tr '\n' ' '; }
           test "$(uids dist-server/cloud-home-start.js)" = "0 "
-          test "$(uids dist-server/index.js)" = "$maus "
-          test "$(uids 'caddy run')" = "$maus "
-          # No secret in the server's starting environment, read as any maus process (an
+          test "$(uids dist-server/index.js)" = "$eacbot "
+          test "$(uids 'caddy run')" = "$eacbot "
+          # No secret in the server's starting environment, read as any eacbot process (an
           # engine's shell) can read it: root in the container lacks CAP_SYS_PTRACE for that.
           spid=$(docker exec home sh -c 'for p in /proc/[0-9]*; do case "$(tr "\0" " " < "$p/cmdline" 2>/dev/null)" in *"dist-server/in""dex.js"*) echo "${p#/proc/}";; esac; done')
           test -n "$spid"
-          docker exec -u maus home grep -qaF EAC_CLOUD_ROLE=home "/proc/$spid/environ"         # the probe reads it
+          docker exec -u eacbot home grep -qaF EAC_CLOUD_ROLE=home "/proc/$spid/environ"         # the probe reads it
           # Out of memory, the kernel takes the engines first and the server and the edge (the health check) last.
           test "$(docker exec home cat "/proc/$spid/oom_score_adj")" = -800
           epid=$(docker exec home sh -c 'for p in /proc/[0-9]*; do case "$(tr "\0" " " < "$p/cmdline" 2>/dev/null)" in *"caddy r""un"*) echo "${p#/proc/}";; esac; done')
           test "$(docker exec home cat "/proc/$epid/oom_score_adj")" = -900
           for value in "$secret" "box_omb_$relay"; do
-            if docker exec -u maus home grep -qaF -- "$value" "/proc/$spid/environ"; then echo "a secret is in the server's environment"; exit 1; fi
+            if docker exec -u eacbot home grep -qaF -- "$value" "/proc/$spid/environ"; then echo "a secret is in the server's environment"; exit 1; fi
           done
-          # The root launcher runs only code maus cannot change; maus owns only the volume.
-          docker exec -u maus home sh -c 'for f in /app /app/dist-server /app/dist-server/index.js /app/dist-server/cloud-home-start.js /app/cloud/Caddyfile /app/cloud/Caddyfile.tls /app/cloud/Caddyfile.tunnel /app/cloud/edge-routes.caddy /usr/local/bin/caddy /usr/local/bin/cloudflared; do if test -w "$f"; then echo "maus can write $f"; exit 1; fi; done; test -w /data'
+          # The root launcher runs only code eacbot cannot change; eacbot owns only the volume.
+          docker exec -u eacbot home sh -c 'for f in /app /app/dist-server /app/dist-server/index.js /app/dist-server/cloud-home-start.js /app/cloud/Caddyfile /app/cloud/Caddyfile.tls /app/cloud/Caddyfile.tunnel /app/cloud/edge-routes.caddy /usr/local/bin/caddy /usr/local/bin/cloudflared; do if test -w "$f"; then echo "eacbot can write $f"; exit 1; fi; done; test -w /data'
           test "$(docker exec home stat -c %U /app/dist-server/index.js)" = root
           # The shell tools bots use on a Cloud, as the user their engines run as.
-          docker exec -u maus home sh -c 'python3 -c "import json, sqlite3, zipfile, csv" && pdftotext -v 2>&1 | grep -q pdftotext && unzip -v | grep -q UnZip'
+          docker exec -u eacbot home sh -c 'python3 -c "import json, sqlite3, zipfile, csv" && pdftotext -v 2>&1 | grep -q pdftotext && unzip -v | grep -q UnZip'
           code() { curl -s -o /dev/null -w '%{http_code}' --max-time 5 "$@"; }
           H=(-H "Host: $host")
           test "$(code "${H[@]}" $E/api/bots)" = 403                       # through the edge: never the owner
           test "$(code -H 'Host: localhost' $E/api/bots)" = 403            # another name is refused at the edge
-          # The Admin's request (openmaus-cloud cloudPairingSignature).
+          # The Admin's request (eacbot-cloud cloudPairingSignature).
           pair() { # body key timestamp nonce -> prints the HTTP status, keeps the reply in $reply
             local body=$1 key=$2 ts=$3 nonce=$4 bh sig
             bh=$(printf %s "$body" | openssl dgst -sha256 -binary | b64url)
@@ -370,7 +370,7 @@ jobs:
           docker rm -f tls >/dev/null
           docker volume rm omb-tls-ci >/dev/null
 
-          # No inbound port: the home runs its tunnel's connector itself, as omb-tunnel, whose environment (the token) maus
+          # No inbound port: the home runs its tunnel's connector itself, as omb-tunnel, whose environment (the token) eacbot
           # cannot read. Only the tunnel's loopback listener, :8812, believes Cf-Connecting-IP. The token here is well
           # formed but names no tunnel, so Cloudflare refuses it and cloudflared keeps trying.
           token=$(printf '{"a":"0123456789abcdef0123456789abcdef","t":"11111111-2222-3333-4444-555555555555","s":"%s"}' "$(openssl rand -base64 32)" | base64 -w0)
@@ -381,10 +381,10 @@ jobs:
           for i in $(seq 1 15); do cpid=$(docker exec tunnel sh -c 'for p in /proc/[0-9]*; do case "$(tr "\0" " " < "$p/cmdline" 2>/dev/null)" in *"cloudflared tun""nel"*) echo "${p#/proc/}";; esac; done'); [ -n "$cpid" ] && break; sleep 1; done
           test -n "$cpid"
           test "$(docker exec tunnel stat -c %u "/proc/$cpid")" = "$(docker exec tunnel id -u omb-tunnel)"
-          if docker exec -u maus tunnel cat "/proc/$cpid/environ" >/dev/null 2>&1; then echo "maus can read the tunnel's token"; exit 1; fi
+          if docker exec -u eacbot tunnel cat "/proc/$cpid/environ" >/dev/null 2>&1; then echo "eacbot can read the tunnel's token"; exit 1; fi
           if docker exec tunnel sh -c "tr '\\0' ' ' < /proc/$cpid/cmdline" | grep -qF "$token"; then echo "the token is in cloudflared's command line"; exit 1; fi
           for p in $(docker exec tunnel sh -c 'for p in /proc/[0-9]*; do case "$(tr "\0" " " < "$p/cmdline" 2>/dev/null)" in *"dist-server/in""dex.js"*|*"caddy r""un"*) echo "${p#/proc/}";; esac; done'); do
-            if docker exec -u maus tunnel grep -qaF "$token" "/proc/$p/environ"; then echo "the token is in a maus process's environment"; exit 1; fi
+            if docker exec -u eacbot tunnel grep -qaF "$token" "/proc/$p/environ"; then echo "the token is in a eacbot process's environment"; exit 1; fi
           done
           if docker logs tunnel 2>&1 | grep -qF "$token"; then echo "the token reached the log"; exit 1; fi
           from_tunnel() { # port [curl options...]: as cloudflared reaches the edge, from the home's loopback
@@ -433,7 +433,7 @@ jobs:
       - name: Prove each image ships its files once, no build cache, and a Caddy without capabilities
         # A pull downloads every layer, so a file written twice or a cache left
         # in a layer costs every machine that pulls the image. The Cloud home's
-        # Caddy must not carry the privileged-port capability (it runs as maus
+        # Caddy must not carry the privileged-port capability (it runs as eacbot
         # on :8080), which Docker's default capabilities would hide at runtime.
         # Its Grok is one root-owned binary, with nothing from the installer's
         # throwaway home left in the image.
@@ -495,7 +495,7 @@ jobs:
           done
           docker exec omb curl -sf http://127.0.0.1:8799/ | grep -qi "<html" || { docker logs omb; echo "UI not served"; exit 1; }
           docker exec -w /app/duckdb omb node --input-type=module -e "const { DuckDBInstance } = await import('@duckdb/node-api'); const c = await (await DuckDBInstance.create()).connect(); const r = await c.runAndReadAll('select 42 as x'); if (Number(r.getRows()[0][0]) !== 42) process.exit(1)"
-          test "$(docker exec omb id -un)" = maus
+          test "$(docker exec omb id -un)" = eacbot
           timeout 90 docker exec omb agent-browser --session ci-browser open 'data:text/html,<title>OMB browser smoke</title><h1>Browser ready</h1>'
           timeout 15 docker exec omb agent-browser --session ci-browser get title | grep -Fx 'OMB browser smoke'
           timeout 15 docker exec omb agent-browser --session ci-browser close

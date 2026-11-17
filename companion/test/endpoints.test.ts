@@ -10,18 +10,18 @@ import { lanAddresses } from "../src/listener.ts";
 
 describe("hostedCompanionUrl", () => {
   it("normalizes one explicit HTTPS origin", () => {
-    expect(hostedCompanionUrl("  https://Maus.Example/  ")).toBe("https://maus.example");
+    expect(hostedCompanionUrl("  https://Eacbot.Example/  ")).toBe("https://eacbot.example");
     expect(hostedCompanionUrl(undefined)).toBeNull();
     expect(hostedCompanionUrl("  ")).toBeNull();
   });
 
   it("refuses insecure or ambiguous hosted routes", () => {
     for (const value of [
-      "http://maus.example",
-      "https://user:secret@maus.example",
-      "https://maus.example/companion",
-      "https://maus.example?device=one",
-      "https://maus.example#pair",
+      "http://eacbot.example",
+      "https://user:secret@eacbot.example",
+      "https://eacbot.example/companion",
+      "https://eacbot.example?device=one",
+      "https://eacbot.example#pair",
       "not a URL",
     ]) {
       expect(() => hostedCompanionUrl(value)).toThrow(/EAC_COMPANION_HOSTED_URL/);

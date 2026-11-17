@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { parseSemVer, validSemVerRange } from "./semver.ts";
+import { PLATFORM_IDS } from "./accounts.ts";
 
 export const PLUGIN_EFFECTS = ["read", "draft", "control", "write", "send", "delete", "financial", "security"] as const;
 export type PluginEffect = (typeof PLUGIN_EFFECTS)[number];
@@ -85,8 +86,22 @@ const modelContribution = z.object({
   entry: packagePath,
 }).strict();
 
+/**
+ * A plugin that serves one platform account: its board, its account capabilities and the transport
+ * it drives. The host routes `/api/platform-boards/:platform` to whichever active plugin declares it.
+ */
+const platformContribution = z.object({
+  id: z.enum(PLATFORM_IDS),
+  label: nonEmpty(80),
+  /** What this adapter can actually do for the account, in the plugin's own words. */
+  accountCapabilities: stringList(40, 120),
+  /** How it reaches the platform, so the board can say which line is live. */
+  transports: z.array(z.enum(["protocol", "web", "bridge"])).min(1).max(3),
+}).strict();
+
 const contributesSchema = z.object({
   tools: z.union([packagePath, z.array(toolContribution).max(64)]).optional(),
+  platform: platformContribution.optional(),
   panels: z.array(panelContribution).max(32).optional(),
   themes: z.array(themeContribution).max(16).optional(),
   layouts: z.array(layoutContribution).max(16).optional(),

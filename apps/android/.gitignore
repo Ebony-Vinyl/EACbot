@@ -1,0 +1,10 @@
+# Android build outputs and local machine settings. The SDK path is per
+# machine, so it is never checked in; scripts/android/build.sh reads it.
+local.properties
+.gradle/
+build/
+app/build/
+core/build/
+*.iml
+.idea/
+captures/

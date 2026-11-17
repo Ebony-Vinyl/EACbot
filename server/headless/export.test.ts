@@ -104,7 +104,7 @@ const run = async (argv: string[]) => {
   const out: string[] = [];
   const err: string[] = [];
   const io: HeadlessIo = { out: (text) => out.push(text), err: (text) => err.push(text), readStdin: async () => "" };
-  const code = await runHeadless(argv, { io, env: { OPENMAUSBOT_URL: origin } });
+  const code = await runHeadless(argv, { io, env: { EACBOT_URL: origin } });
   return { code, result: out.length ? JSON.parse(out.join("\n")) : undefined, err };
 };
 

@@ -62,7 +62,7 @@ export function WelcomeFlow({
   hosted?: boolean;
 }) {
   const { state, dispatch } = useStore();
-  const maus = myDefaultBot(state.bots, useViewerEmail());
+  const eacbot = myDefaultBot(state.bots, useViewerEmail());
   // A first run keeps its screen in this browser, so a reload resumes it; a replay starts over. A hosted place's
   // browser may hold another person's draft.
   const keepsDraft = !replay && !embedded && !hosted;
@@ -95,7 +95,8 @@ export function WelcomeFlow({
       if (keepsDraft) clearWelcomeDraft();
       onDone(botId);
       try {
-        const patch = replay ? completionPatch() : firstRunPatch(record.current, new Date());
+        // Skipping the Chief step completes the first run without claiming the Chief was met.
+        const patch = replay || reason === "skipped" ? completionPatch() : firstRunPatch(record.current, new Date());
         const config = await api("/api/config", { method: "PUT", body: JSON.stringify(patch), signal: AbortSignal.timeout(10_000) });
         dispatch({ type: "configStatus", config });
       } catch {
@@ -106,7 +107,7 @@ export function WelcomeFlow({
 
   // The first screen fades away before the Chief step comes up; a timer moves on, since a hidden window runs no
   // animation to its end.
-  const toChief = beats.includes("chief") && chiefStepFits(state.bots, maus);
+  const toChief = beats.includes("chief") && chiefStepFits(state.bots, eacbot);
   const leaving = useRef(false);
   const next = useCallback(() => {
     if (finishing.current || leaving.current) return;
@@ -167,7 +168,8 @@ export function WelcomeFlow({
       )}
     >
       {chief ? (
-        <ChiefIntro replay={replay} onLeave={fadeScrim} onDone={(botId) => void finish("completed", botId)} />
+        <ChiefIntro replay={replay} onLeave={fadeScrim} onDone={(botId) => void finish("completed", botId)}
+          onLater={() => void finish("skipped", null)} />
       ) : (
         <MeetScreen hosted={hosted} onNext={next} />
       )}

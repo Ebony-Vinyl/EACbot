@@ -1,0 +1,46 @@
+/* The conversation as a floating card.
+   The chat column keeps its width (`--chat-column-max`, untouched); what changes is the pane around it: inset from the
+   window's edges, rounded, and lifted off the ground so the picture behind shows between the cards.
+   Loaded by src/App.tsx, so nothing here reaches the preview pages.
+
+   `[data-chat-pane]` is set on ChatView, GroupView and the loading pane — a marker rather than a class list, so the
+   tests that pin those class lists keep passing. */
+
+@media (min-width: 768px) {
+  [data-chat-pane] {
+    /* The conversation meets the window's top, bottom and right edges; its only gap is on the left, toward the sidebar,
+       and its only rounded corners are the two on that side. That gap is what separates the two surfaces — a gap at the
+       window's own edges would make them read as chips floating in a picture rather than as the window itself. */
+    margin: 0 0 0 8px;
+    border-radius: 16px 0 0 16px;
+    overflow: hidden;
+  }
+}
+
+/* A ground that is a picture needs the panes to let it through; without one they stay the skin's own colour and only
+   the rounding shows. `data-background-live` is set by AppBackground only while a picture is drawn. Colour only: the
+   ground is already blurred, and a second blur here would hide the picture. */
+:root[data-background-live] [data-chat-pane] {
+  background-color: color-mix(in srgb, var(--color-app) 40%, transparent);
+}
+
+/* The composer paints a plain canvas behind itself so the transcript can end at it with no fade. Over a picture that
+   canvas is a visible dark rectangle with square corners — the box the composer sits in. It has nothing to fade into,
+   so it goes away. */
+:root[data-background-live] [data-composer-backdrop] {
+  display: none;
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  :root[data-background-live] [data-chat-pane] {
+    background-color: var(--color-app);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+@media (forced-colors: active) {
+  [data-chat-pane] {
+    border: 1px solid CanvasText;
+  }
+}

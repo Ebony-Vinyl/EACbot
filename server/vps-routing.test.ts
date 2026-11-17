@@ -593,7 +593,7 @@ createServer(socket => socket.end()).listen(port, '127.0.0.1');
         schedule: { type: "interval", everyMinutes: 60, anchorAt: Date.now() + 3_600_000 },
       });
       expect(created.status, JSON.stringify(created.body)).toBe(201);
-      expect(created.body.routine.runOn).toBe("maus");
+      expect(created.body.routine.runOn).toBe("eacbot");
       rmSync(`${acpDump}.mcp.json`, { force: true });
       const started = await api("POST", `/api/routines/${created.body.routine.id}/run`);
       expect(started.status, JSON.stringify(started.body)).toBe(201);

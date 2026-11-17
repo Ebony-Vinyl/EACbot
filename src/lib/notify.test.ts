@@ -17,9 +17,9 @@ import {
 const frame: NotifyFrame = {
   kind: "done",
   botId: "bot-1",
-  botName: "Maus",
+  botName: "Mascot",
   threadId: "thread-1",
-  title: "Maus finished",
+  title: "Mascot finished",
   body: "All done",
 };
 
@@ -240,7 +240,7 @@ describe("notification titles", () => {
   it.each(["en", "pt-br"] as const)("displays the server's title unchanged with client language %s", (language) => {
     const { notices } = installNotification("granted");
     setLocale(language);
-    for (const title of ["Maus em Launch tem uma pergunta", "Maus in Launch has a question", "Maus in Launch hat eine Frage"]) {
+    for (const title of ["Mascot em Launch tem uma pergunta", "Mascot in Launch has a question", "Mascot in Launch hat eine Frage"]) {
       showNotification({ ...frame, kind: "question", groupId: "g1", title }, vi.fn());
       expect(notices.at(-1)?.title).toBe(title);
     }

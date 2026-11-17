@@ -1,6 +1,6 @@
-// A shell exporting EAC_* / OPENMAUSBOT_* leaks them into every child and import-time env snapshot.
+// A shell exporting EAC_* / EACBOT_* leaks them into every child and import-time env snapshot.
 
-const AMBIENT_PREFIXES = ["EAC_", "OPENMAUSBOT_"] as const;
+const AMBIENT_PREFIXES = ["EAC_", "EACBOT_"] as const;
 
 export function isAmbientOmbKey(key: string): boolean {
   return AMBIENT_PREFIXES.some((prefix) => key.startsWith(prefix));

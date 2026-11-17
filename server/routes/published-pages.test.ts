@@ -6,7 +6,7 @@ import { PASS, type RouteContext } from "./table.ts";
 
 function fakePublisher() {
   return {
-    publish: vi.fn(async () => ({ status: 200, text: "Published “Bake sale” at https://abcdefghijklmnopqrstuvwxyz.mausbot.page/" })),
+    publish: vi.fn(async () => ({ status: 200, text: "Published “Bake sale” at https://abcdefghijklmnopqrstuvwxyz.eacbot.page/" })),
     unpublish: vi.fn(async () => ({ status: 200, text: "Unpublished.", card: { state: "unpublished" as const, title: "Bake sale" } })),
     publishFiles: vi.fn(async () => ({ status: 200, text: "Published." })),
   } satisfies PagePublisher;
@@ -53,8 +53,8 @@ describe("the page tools' internal routes", () => {
     const publisher = fakePublisher(), handler = createPagesInternalRoutes(publisher);
     expect(await internal(handler, { body: { path: 3, title: "x" } })).toMatchObject({ status: 400 });
     expect(publisher.publish).not.toHaveBeenCalled();
-    publisher.publish.mockResolvedValueOnce({ status: 403, text: "Publishing a page needs a EACbot account." });
-    expect(await internal(handler, { body: { path: "site", title: "x" } })).toMatchObject({ status: 403, body: { error: "Publishing a page needs a EACbot account." } });
+    publisher.publish.mockResolvedValueOnce({ status: 403, text: "Publishing a page needs an EACbot account." });
+    expect(await internal(handler, { body: { path: "site", title: "x" } })).toMatchObject({ status: 403, body: { error: "Publishing a page needs an EACbot account." } });
   });
 
   it("unpublishes by page id or path, as the capability's bot", async () => {

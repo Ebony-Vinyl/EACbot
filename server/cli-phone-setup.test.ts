@@ -47,8 +47,8 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe("phone origin validation", () => {
   it.each([
-    ["https://maus.example", "https://maus.example"],
-    ["  https://MAUS.example:443/  ", "https://maus.example"],
+    ["https://eacbot.example", "https://eacbot.example"],
+    ["  https://EACBOT.example:443/  ", "https://eacbot.example"],
     ["https://mini.tail1234.ts.net:8443", "https://mini.tail1234.ts.net:8443"],
     ["https://[2001:db8::1]:8443/", "https://[2001:db8::1]:8443"],
   ])("normalizes an HTTPS origin without claiming reachability: %s", (input, expected) => {
@@ -56,14 +56,14 @@ describe("phone origin validation", () => {
   });
 
   it.each([
-    "", "not a url", "http://maus.example", "https:maus.example", "https:///maus.example", "https://@maus.example",
+    "", "not a url", "http://eacbot.example", "https:eacbot.example", "https:///eacbot.example", "https://@eacbot.example",
     "https://localhost", "https://localhost.",
     "https://mini.localhost", "https://127.0.0.1:8799", "https://127.1", "https://2130706433",
     "https://0.0.0.0", "https://[::]", "https://[::1]", "https://[::ffff:127.0.0.1]",
-    "https://[::ffff:0.0.0.0]", "https://user:password@maus.example", "https://maus.example/pair",
-    "https://maus.example/?token=secret", "https://maus.example/#code=ABCD-EFGH-JKLM",
-    "https://maus.example/?", "https://maus.example/#", "https://maus.\nexample",
-    "https://maus.example\\private", "eacbot://pair?token=secret",
+    "https://[::ffff:0.0.0.0]", "https://user:password@eacbot.example", "https://eacbot.example/pair",
+    "https://eacbot.example/?token=secret", "https://eacbot.example/#code=ABCD-EFGH-JKLM",
+    "https://eacbot.example/?", "https://eacbot.example/#", "https://eacbot.\nexample",
+    "https://eacbot.example\\private", "eacbot://pair?token=secret",
   ])("rejects a local, credential-bearing or non-origin input: %s", (input) => {
     expect(normalizePhoneOrigin(input)).toBeNull();
   });
@@ -151,9 +151,9 @@ describe("optional phone setup", () => {
 
   it("rejects a pasted secret without echoing it, then accepts an advanced HTTPS origin", async () => {
     const deps = dependencies();
-    const ui = prompts({ choices: [2, 2, 2], answers: ["https://user:secret@example.com/#code=credential", "https://maus.example/"] });
+    const ui = prompts({ choices: [2, 2, 2], answers: ["https://user:secret@example.com/#code=credential", "https://eacbot.example/"] });
     expect(await runPhoneSetup(options, ui.io, deps)).toEqual({
-      phone: "android", options: { ...options, publicUrl: "https://maus.example", client: true, pair: true },
+      phone: "android", options: { ...options, publicUrl: "https://eacbot.example", client: true, pair: true },
     });
     expect(ui.lines.join("\n")).not.toContain("user:secret");
     expect(ui.lines.join("\n")).not.toContain("code=credential");
@@ -170,7 +170,7 @@ describe("optional phone setup", () => {
   });
 
   it.each([
-    { publicUrl: "https://maus.example/" }, { tailscale: true }, { tunnel: true },
+    { publicUrl: "https://eacbot.example/" }, { tailscale: true }, { tunnel: true },
   ])("reuses explicit existing route options without a nested chooser: %j", async (route) => {
     const deps = dependencies();
     deps.accountReady.mockReturnValue(true);
@@ -213,13 +213,13 @@ describe("optional phone setup", () => {
 
 describe("phone pairing instructions", () => {
   it.each(["ios", "android"] as const)("refuses phone instructions for an unready %s route", (phone) => {
-    const text = phonePairingInstructions(phone, { origin: "https://maus.example", ready: false }).join("\n");
+    const text = phonePairingInstructions(phone, { origin: "https://eacbot.example", ready: false }).join("\n");
     expect(text).toContain("not ready");
-    expect(text).not.toContain("https://maus.example");
+    expect(text).not.toContain("https://eacbot.example");
     expect(text).not.toContain("already connected");
   });
 
-  it.each(["https://localhost", "https://maus.example/#code=secret", null])("never repeats a local or credential-bearing origin: %s", (origin) => {
+  it.each(["https://localhost", "https://eacbot.example/#code=secret", null])("never repeats a local or credential-bearing origin: %s", (origin) => {
     const text = phonePairingInstructions("ios", { origin, ready: true }).join("\n");
     expect(text).toContain("not ready");
     expect(text).not.toContain("secret");
@@ -227,20 +227,20 @@ describe("phone pairing instructions", () => {
   });
 
   it("describes iOS browser/native options without claiming an app-store release", () => {
-    const text = phonePairingInstructions("ios", { origin: "https://maus.example", ready: true }).join("\n");
+    const text = phonePairingInstructions("ios", { origin: "https://eacbot.example", ready: true }).join("\n");
     expect(text).toContain("Safari");
     expect(text).toContain("already have");
-    expect(text).toContain("https://maus.example/pair");
+    expect(text).toContain("https://eacbot.example/pair");
     expect(text).toContain("does not mean the phone is paired");
     expect(text).toContain("not settings or pairing administration");
     expect(text).not.toMatch(/apps\.apple|testflight|play\.google/);
   });
 
   it("sends an Android phone to the app first, and still offers the browser", () => {
-    const text = phonePairingInstructions("android", { origin: "https://maus.example", ready: true }).join("\n");
+    const text = phonePairingInstructions("android", { origin: "https://eacbot.example", ready: true }).join("\n");
     expect(text).toContain("open the EACbot app and scan the QR with its pairing scanner");
     expect(text).toContain("Camera will not open it in a browser");
-    expect(text).toContain("https://maus.example/pair");
+    expect(text).toContain("https://eacbot.example/pair");
     expect(text).not.toContain("not the Android native pairing scanner");
     expect(text).toContain("five minutes");
   });

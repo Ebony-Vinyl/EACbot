@@ -12,7 +12,7 @@ export interface XIncludedUsage {
 /** `GET /api/x/status`, the Apps page's X card. Never a key or a token.
  * `using`: the credential the X tools use now, the person's own treg key before the plan's included calls; null when
  * neither is held, and then no bot is shown the X tools.
- * `included`: this server holds a EACbot Cloud plan's included X calls. `unavailable`: the Admin said this desktop's
+ * `included`: this server holds an EACbot Cloud plan's included X calls. `unavailable`: the Admin said this desktop's
  * paid sign-in gets none. `usage`: the included calls this month, when the relay answered. */
 export interface XConnectorStatus {
   using: "own" | "included" | null;

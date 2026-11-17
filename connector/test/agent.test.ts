@@ -262,12 +262,12 @@ describe("the connector's connection to EACbot", () => {
     cleanups.push(() => new Promise<void>((resolve) => home.close(() => resolve())));
     let port = (home.address() as AddressInfo).port;
     const { admin, audits } = await connected({ accepted: true, homePort: () => port });
-    expect(await admin.fetch("/api/cloud/health?x=1", { host: "mausbot.acme.example" })).toEqual({ status: 204, body: "" });
+    expect(await admin.fetch("/api/cloud/health?x=1", { host: "eacbot.acme.example" })).toEqual({ status: 204, body: "" });
     const claim = JSON.stringify({ label: "Ada's laptop", member: { email: "ada@acme.example", role: "admin" } });
-    expect(await admin.fetch("/api/cloud/pairing", { method: "POST", body: claim, host: "mausbot.acme.example" })).toEqual({ status: 200, body: '{"code":"SECRET-PAIRING-CODE"}' });
+    expect(await admin.fetch("/api/cloud/pairing", { method: "POST", body: claim, host: "eacbot.acme.example" })).toEqual({ status: 200, body: '{"code":"SECRET-PAIRING-CODE"}' });
     expect(seen).toEqual([
-      { method: "GET", url: "/api/cloud/health?x=1", host: "mausbot.acme.example", body: "" },
-      { method: "POST", url: "/api/cloud/pairing", host: "mausbot.acme.example", body: claim },
+      { method: "GET", url: "/api/cloud/health?x=1", host: "eacbot.acme.example", body: "" },
+      { method: "POST", url: "/api/cloud/pairing", host: "eacbot.acme.example", body: claim },
     ]);
     port = 9;
     expect(await admin.fetch("/api/cloud/health")).toEqual({ status: 502, body: "" });
@@ -307,7 +307,7 @@ describe("the connector's connection to EACbot", () => {
     expect(connectUrl("https://cloud.example.test")).toBe("wss://cloud.example.test/api/cloud/box/v1/connect");
     expect(connectUrl("http://127.0.0.1:8123")).toBe("ws://127.0.0.1:8123/api/cloud/box/v1/connect");
     expect(adminOrigin("https://cloud.example.test/")).toBe("https://cloud.example.test");
-    expect(() => adminOrigin("http://cloud.example.test")).toThrow("is not a EACbot address this connector may use.");
+    expect(() => adminOrigin("http://cloud.example.test")).toThrow("is not an EACbot address this connector may use.");
     expect(() => adminOrigin(undefined)).toThrow("The install command did not say which EACbot to connect to.");
   });
 

@@ -51,6 +51,9 @@ export default defineConfig({
   },
   define: {
     __APP_VERSION__: JSON.stringify(version),
+    // The pages service's domain is configured rather than assumed. The suite names one so a published-page link is
+    // testable; a deployment sets VITE_EAC_PAGES_DOMAIN to the domain it actually serves.
+    "import.meta.env.VITE_EAC_PAGES_DOMAIN": JSON.stringify(process.env.VITE_EAC_PAGES_DOMAIN ?? "eacbot.page"),
   },
   test: {
     environment: "node",

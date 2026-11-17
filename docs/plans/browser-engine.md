@@ -68,7 +68,7 @@ capability. Native session identity and encryption keys stay in the server.
   "desktop" | "headless" | "unavailable"` (+ reason), and the Settings toggle
   and the per-bot switch key off it instead of `window.ogb.browser`.
 - Docker: `npm install -g agent-browser@<pinned>` and `agent-browser install
-  --with-deps` at build time, as root, before `USER maus`.
+  --with-deps` at build time, as root, before `USER eacbot`.
 - Tests: resolver and download pinning (stub server), the integration spec
   (mutation-check the guards), an e2e turn against a fake `agent-browser`
   binary that speaks MCP.

@@ -144,8 +144,8 @@ describe("a Starter Cloud's bots, on a real server", () => {
   it("makes five beside its EACbot, says so in config, then refuses each way of making one and writes nothing", async () => {
     await starter();
     expect(await cloud.config()).toMatchObject({ cloudStarter: true, botLimit: 5 });
-    const mausBot = (await cloud.bots()).filter((bot) => bot.defaultBot);
-    expect(mausBot).toHaveLength(1);
+    const eacbotBot = (await cloud.bots()).filter((bot) => bot.defaultBot);
+    expect(eacbotBot).toHaveLength(1);
     await cloud.fill(5);
     const held = (await cloud.bots()).map((bot) => bot.id).sort();
     expect(held).toHaveLength(6);

@@ -1,4 +1,4 @@
-// mausbot-connector: `run` (the service), `enroll` (the code on stdin), `status`, `probe`, `job` (one job from root on this
+// eacbot-connector: `run` (the service), `enroll` (the code on stdin), `status`, `probe`, `job` (one job from root on this
 // server), `audit` (the audit log, checked), `version`.
 import { existsSync, readFileSync, statfsSync } from "node:fs";
 import { join } from "node:path";
@@ -43,7 +43,7 @@ const reader: HostReader = {
 };
 
 const auditLog = () => new AuditLog(join(PATHS.audit, AUDIT_FILE));
-const identity = (): ConnectorIdentity => ({ version: CONNECTOR_VERSION, protocol: PROTOCOL_VERSION, image: process.env.MAUSBOT_CONNECTOR_IMAGE || null });
+const identity = (): ConnectorIdentity => ({ version: CONNECTOR_VERSION, protocol: PROTOCOL_VERSION, image: process.env.EACBOT_CONNECTOR_IMAGE || null });
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function seccomp(): string {
@@ -62,7 +62,7 @@ function hostReporter(docker: SocketDocker, admin: () => string | null) {
     return info.value;
   };
   const probe = async (fresh: boolean) => {
-    const image = process.env.MAUSBOT_CONNECTOR_IMAGE;
+    const image = process.env.EACBOT_CONNECTOR_IMAGE;
     if (!image) return null;
     if (fresh || !box || Date.now() - box.at > 6 * 60 * 60_000) {
       let value: BoxProbeResult | null;
@@ -100,7 +100,7 @@ function hostReporter(docker: SocketDocker, admin: () => string | null) {
 async function run(): Promise<void> {
   const state = new StateStore(PATHS.state);
   const docker = new SocketDocker(PATHS.docker);
-  const instance = process.env.MAUSBOT_INSTANCE || "unknown";
+  const instance = process.env.EACBOT_INSTANCE || "unknown";
   log(`EACbot connector ${CONNECTOR_VERSION} starting`);
   const audit = auditLog();
   const note = (event: Parameters<AuditLog["append"]>[0]) => {
@@ -130,7 +130,7 @@ async function run(): Promise<void> {
   const home = new Home({
     docker, state, log, readHealth, seccomp, transfer: httpTransfer,
     diskFree: () => reader.disk().free,
-    updateWindowMs: envSeconds("MAUSBOT_UPDATE_WAIT_S", 600, 60, 3600) * 1000,
+    updateWindowMs: envSeconds("EACBOT_UPDATE_WAIT_S", 600, 60, 3600) * 1000,
     onStep: ({ id, type, step, detail }) => note({ event: "step", id, type, step, ...(detail ? { detail } : {}) }),
   });
   const updater = new SelfUpdater({ docker, state, log, instance, identity });
@@ -227,7 +227,7 @@ async function readStdin(): Promise<string> {
 }
 
 async function enrollCommand(): Promise<void> {
-  const admin = adminOrigin(process.env.MAUSBOT_ADMIN_URL);
+  const admin = adminOrigin(process.env.EACBOT_ADMIN_URL);
   const code = (await readStdin()).trim();
   const state = new StateStore(PATHS.state);
   const docker = new SocketDocker(PATHS.docker);
@@ -264,7 +264,7 @@ async function probeCommand(): Promise<void> {
     process.exitCode = 1;
     return;
   }
-  const image = process.env.MAUSBOT_CONNECTOR_IMAGE;
+  const image = process.env.EACBOT_CONNECTOR_IMAGE;
   let box: BoxProbeResult | null = null;
   try { box = image ? await probeBox(docker, image, seccomp()) : null; } catch (error) { box = { ok: false, fix: errorText(error) }; }
   const checks = hostChecks(await docker.info(), reader, { clockSkewS: null, box });
@@ -277,7 +277,7 @@ async function probeCommand(): Promise<void> {
 /** `job <type> [args as JSON]`: one job, run by the running connector; prints its reply, exits 1 when it failed. */
 async function jobCommand(): Promise<void> {
   const [type, args] = process.argv.slice(3);
-  if (!type) throw new Error("usage: mausbot-connector job <type> [args as JSON], e.g. job update '{\"image\":\"ghcr.io/…@sha256:…\"}'");
+  if (!type) throw new Error("usage: eacbot-connector job <type> [args as JSON], e.g. job update '{\"image\":\"ghcr.io/…@sha256:…\"}'");
   let parsed: unknown = {};
   if (args) {
     try { parsed = JSON.parse(args); } catch { throw new Error("the job's arguments are not JSON"); }
@@ -314,7 +314,7 @@ const commands: Record<string, () => Promise<void> | void> = {
 
 const command = commands[process.argv[2] ?? "run"];
 if (!command) {
-  console.error("usage: mausbot-connector run | enroll | status | probe [--json] | job <type> [args] | audit [--tail N | --verify] | version");
+  console.error("usage: eacbot-connector run | enroll | status | probe [--json] | job <type> [args] | audit [--tail N | --verify] | version");
   process.exitCode = 2;
 } else {
   Promise.resolve().then(command).catch((error) => {

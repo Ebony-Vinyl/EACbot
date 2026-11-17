@@ -5,7 +5,7 @@ import { normalizeConnectorScopes } from "../../shared/connector-scopes.ts";
 import { normalizeOutboundPolicy } from "../../shared/outbound.ts";
 import { normalizePhoneApps } from "../../shared/phone-apps.ts";
 import { parseToolScope, toolScopeWidens } from "../../shared/tool-scope.ts";
-import { isMausColor, MAUS_COLOR_NAMES, type WireBot, type WireGroup } from "../../shared/wire.ts";
+import { isBotColor, MASCOT_COLOR_NAMES, type WireBot, type WireGroup } from "../../shared/wire.ts";
 import { validateBotCwd } from "../bot-cwd.ts";
 import { parseBotProfilePatch } from "../bot-profile.ts";
 import { accessFromVisibility } from "../../shared/bot-access.ts";
@@ -15,12 +15,12 @@ import type { BrowserRuntime } from "../browser-runtime.ts";
 import type { CacheKeepWarm } from "../cache-keepwarm.ts";
 import { cloudBackendChangeError, vpsBotAliasChangeError, vpsLeftBehindNotice, VPS_BOT_ALIAS_CHANGE_ERROR, VPS_BOT_ALIAS_LIFECYCLE_ERROR, VPS_BOT_ALIAS_RESOURCES_ERROR } from "../cloud-backend.ts";
 import * as composio from "../composio.ts";
-import { isValidSshAlias, type AppConfig } from "../config.ts";
+import { isValidSshAlias, maxBotsPerWorkspace, type AppConfig } from "../config.ts";
 import type { ModelSelection } from "../contracts.ts";
 import type { createApprovalModeSupport } from "../harness-capabilities.ts";
 import type { ProviderRegistry } from "../harness/registry.ts";
 import type { hostedModelPolicy } from "../hosted-models.ts";
-import { MAX_MCP_SERVERS, mcpServerNameError } from "../mcp-registry.ts";
+import { maxMcpServers, mcpServerNameError } from "../mcp-registry.ts";
 import type { MemoryUpkeep } from "../memory-upkeep.ts";
 import { phoneAppsFor } from "../phones/access.ts";
 import { profileSnapshot } from "../profile-revision.ts";
@@ -84,7 +84,7 @@ export interface BotPatchRouteDeps {
 export function createBotPatchRoutes(deps: BotPatchRouteDeps): RouteHandler {
   const {
     store, cfg, registry, sessions, browserRuntime, browserLive, memoryUpkeep, cacheKeepWarm, hostedModels, supportsApprovalMode, activeVpsThreads,
-    hostedWorkspace: HOSTED_WORKSPACE, hostedFullAccessRefusal: HOSTED_FULL_ACCESS_REFUSAL, desktopManaged: DESKTOP_MANAGED, maxWorkspaceBots: MAX_WORKSPACE_BOTS,
+    hostedWorkspace: HOSTED_WORKSPACE, hostedFullAccessRefusal: HOSTED_FULL_ACCESS_REFUSAL, desktopManaged: DESKTOP_MANAGED,
     broadcast, wireBot, publicGroupState, audienceChanged, storedAvatarExists, requestedTaskBot, threadBusy, activeGroupTurnForBot,
     checkedModelSelection, engineSwitchNeedsAsk, currentBrowserSession, interruptAllDirectThreads, cancelGroupTurnOperations,
     revokeInternalCapabilitiesForThread, runningTurnInstance, closeOpenApprovals, assertTeamComputerChangeIdle, forgetTemporaryBrowser,
@@ -100,7 +100,7 @@ export function createBotPatchRoutes(deps: BotPatchRouteDeps): RouteHandler {
       if (!body || typeof body !== "object" || Array.isArray(body)) {
         return json(res, 400, { error: "body must be a JSON object" });
       }
-      const pairedDevice = req.headers["x-openmausbot-companion"] === "1";
+      const pairedDevice = req.headers["x-eacbot-companion"] === "1";
       if ((auth.kind === "session" && !auth.scopes.includes("admin")) || pairedDevice) {
         const session = auth.kind === "session" ? auth.session : undefined;
         const level = pairedDevice ? "chat" : deps.levelOf(auth, m[1]);
@@ -115,8 +115,8 @@ export function createBotPatchRoutes(deps: BotPatchRouteDeps): RouteHandler {
           });
         }
       }
-      if (body.color !== undefined && !isMausColor(body.color)) {
-        return json(res, 400, { error: `color must be ${MAUS_COLOR_NAMES.slice(0, -1).join(", ")}, or ${MAUS_COLOR_NAMES.at(-1)}` });
+      if (body.color !== undefined && !isBotColor(body.color)) {
+        return json(res, 400, { error: `color must be ${MASCOT_COLOR_NAMES.slice(0, -1).join(", ")}, or ${MASCOT_COLOR_NAMES.at(-1)}` });
       }
       if (body.mascotExpression !== undefined && body.mascotExpression !== null &&
         (typeof body.mascotExpression !== "string" || body.mascotExpression.length > 80)) {
@@ -270,6 +270,22 @@ export function createBotPatchRoutes(deps: BotPatchRouteDeps): RouteHandler {
         if (typeof body.composio !== "boolean") return json(res, 400, { error: "composio must be true or false" });
         patch.composio = body.composio;
       }
+      if (body.healthTools !== undefined) {
+        if (typeof body.healthTools !== "boolean") return json(res, 400, { error: "healthTools must be true or false" });
+        patch.healthTools = body.healthTools;
+      }
+      if (body.homeAccess !== undefined) {
+        if (body.homeAccess === null) patch.homeAccess = undefined;
+        else if (typeof body.homeAccess !== "string" || !["off", "read", "control", "full"].includes(body.homeAccess)) {
+          return json(res, 400, { error: "homeAccess must be off, read, control, full or null" });
+        } else patch.homeAccess = body.homeAccess as "off" | "read" | "control" | "full";
+      }
+      if (body.homeZones !== undefined) {
+        if (body.homeZones === null) patch.homeZones = undefined;
+        else if (!Array.isArray(body.homeZones) || body.homeZones.length > 64 || body.homeZones.some((zone: unknown) => typeof zone !== "string" || !/^[a-z][a-z0-9_-]{0,63}$/.test(zone))) {
+          return json(res, 400, { error: "homeZones must be a list of up to 64 zone ids, e.g. [\"living-room\"]" });
+        } else patch.homeZones = body.homeZones as string[];
+      }
       // An admin decision, so not on the client-writable profile surface.
       if (body.voiceNotes !== undefined) {
         if (typeof body.voiceNotes !== "boolean") return json(res, 400, { error: "voiceNotes must be true or false" });
@@ -327,8 +343,8 @@ export function createBotPatchRoutes(deps: BotPatchRouteDeps): RouteHandler {
           return json(res, 400, { error: "mcpServers must be a list of server names, or null" });
         } else {
           requestedMcpServers = [...new Set(body.mcpServers as string[])];
-          if (requestedMcpServers.length > MAX_MCP_SERVERS) {
-            return json(res, 400, { error: `Select at most ${MAX_MCP_SERVERS} MCP servers.` });
+          if (requestedMcpServers.length > maxMcpServers()) {
+            return json(res, 400, { error: `Select at most ${maxMcpServers()} MCP servers.` });
           }
         }
         patch.mcpServers = requestedMcpServers;
@@ -554,7 +570,7 @@ export function createBotPatchRoutes(deps: BotPatchRouteDeps): RouteHandler {
         ) {
           return json(res, 400, { error: "peers must be a list of bot ids, or null for every bot" });
         } else {
-          nextPeers = [...new Set<string>(body.peers)].slice(0, MAX_WORKSPACE_BOTS);
+          nextPeers = [...new Set<string>(body.peers)].slice(0, maxBotsPerWorkspace(cfg));
         }
         const currentPeers = existingBot?.peers;
         const widensReach =

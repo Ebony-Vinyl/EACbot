@@ -42,6 +42,8 @@ export type RoutineScheduleInput =
     endsAt?: number | null;
   };
 
+/** Where a routine runs. `"maus"` is the value already written into saved routines and schedules, so it keeps that
+ * spelling: renaming it would make every stored routine unreadable. */
 export type RoutineRunOn = "maus" | "cloud";
 
 export type RoutineTarget = "bot" | "room-goal";

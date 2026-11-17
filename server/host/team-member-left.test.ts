@@ -18,7 +18,7 @@ function fixture() {
   const messages = new Map<string, unknown[]>();
   const bots = [
     { id: "scout", tasks: [{ threadId: "scout-main" }, { threadId: "bob-private" }] },
-    { id: "bobs-mausbot", defaultBot: { person: BOB }, tasks: [{ threadId: "mausbot-main" }, { threadId: "mausbot-second" }] },
+    { id: "bobs-eacbot", defaultBot: { person: BOB }, tasks: [{ threadId: "eacbot-main" }, { threadId: "eacbot-second" }] },
   ];
   const deleted: string[] = [];
   const deletedBots: string[] = [];
@@ -56,22 +56,22 @@ function fixture() {
 describe("createTeamMemberLeft", () => {
   it("deletes the departing member's own EACbot with its chats, and counts them", async () => {
     const fx = fixture();
-    fx.messages.set("mausbot-main", [{ role: "user", text: "LC-L2-MAIN-9081" }]);
+    fx.messages.set("eacbot-main", [{ role: "user", text: "LC-L2-MAIN-9081" }]);
     const result = await createTeamMemberLeft(fx.deps)(BOB);
-    expect(fx.deletedBots).toEqual(["bobs-mausbot"]);
+    expect(fx.deletedBots).toEqual(["bobs-eacbot"]);
     expect(fx.bots.map((bot) => bot.id)).toEqual(["scout"]);
     expect(result).toMatchObject({ chats: 3, bots: 1 });
   });
 
   it("stops the departing member's EACbot at work (a routine, a room turn) before deleting it", async () => {
     const fx = fixture();
-    fx.working.add("bobs-mausbot");
+    fx.working.add("bobs-eacbot");
     const result = await createTeamMemberLeft(fx.deps)(BOB);
-    expect(fx.deletedBots).toEqual(["bobs-mausbot"]);
+    expect(fx.deletedBots).toEqual(["bobs-eacbot"]);
     expect(result).toMatchObject({ bots: 1, botsKept: 0 });
   });
 
-  it("reports a EACbot it could not delete", async () => {
+  it("reports an EACbot it could not delete", async () => {
     const fx = fixture();
     const result = await createTeamMemberLeft({ ...fx.deps, deleteBot: async () => false })(BOB);
     expect(result).toMatchObject({ bots: 0, botsKept: 1 });

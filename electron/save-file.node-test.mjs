@@ -261,9 +261,9 @@ describe("Show in folder for a file outside the workspace", () => {
   it("accepts a Windows drive path like the one in the report", async () => {
     const { shown, reveal } = shell();
     const fsp = { stat: async () => ({ isFile: () => true, isDirectory: () => false }) };
-    const rawPath = "C:\\Users\\Maus\\_draft\\..\\_draft\\ollama-gen.js";
+    const rawPath = "C:\\Users\\Mascot\\_draft\\..\\_draft\\ollama-gen.js";
     assert.equal(await revealInFolder(rawPath, { reveal, fsp, pathApi: path.win32 }), "shown");
-    assert.deepEqual(shown, ["C:\\Users\\Maus\\_draft\\ollama-gen.js"]);
+    assert.deepEqual(shown, ["C:\\Users\\Mascot\\_draft\\ollama-gen.js"]);
   });
 });
 

@@ -65,7 +65,7 @@ beforeEach(() => {
   f.dispatch = action => { dispatched.push(action); };
   f.state = {
     connected: true, instances: [signedOut], activeView: "chat", selectedId: "b1",
-    bots: [{ id: "b1", threadId: "t1", name: "Maus" }], routines: [],
+    bots: [{ id: "b1", threadId: "t1", name: "Mascot" }], routines: [],
     config: { cloudHome: true, onboarding: { ...EMPTY_ONBOARDING } },
   };
   vi.stubGlobal("window", { ogb: { platform: "darwin" }, addEventListener: vi.fn(), removeEventListener: vi.fn() });
@@ -277,7 +277,7 @@ it("opens the chat the job went to as the bot's row does: with threads hidden at
   f.state.instances = [ready];
   markIntentSent("b1");
   f.state.activeView = "routines";
-  f.state.bots = [{ id: "b1", threadId: "t1", mainThreadId: "main", name: "Maus",
+  f.state.bots = [{ id: "b1", threadId: "t1", mainThreadId: "main", name: "Mascot",
     tasks: [{ threadId: "t1", title: "Routine report", createdAt: 1 }, { threadId: "main", title: "Set up", createdAt: 2 }] }];
   await mount();
   button("Open the chat")!.props.onClick!();

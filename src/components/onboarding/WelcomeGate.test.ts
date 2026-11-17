@@ -24,7 +24,7 @@ vi.mock("@/state/store", () => ({ api: store.api, useStore: () => ({ state: stor
 vi.mock("@/lib/analytics", () => ({ emailGateDone: () => false }));
 // The gate's job is choosing; the flow itself has its own recipe.
 vi.mock("./WelcomeFlow", () => ({ WelcomeFlow: () => null }));
-vi.mock("@/components/Avatar", () => ({ MausAvatar: () => null }));
+vi.mock("@/components/Avatar", () => ({ MascotAvatar: () => null }));
 import { SharedWorkspaceHint } from "./SharedWorkspaceHint";
 import { useWelcomeViewer, WelcomeGate } from "./WelcomeGate";
 import { WelcomeFlow } from "./WelcomeFlow";
@@ -85,7 +85,7 @@ describe("who gets the welcome flow", () => {
 
   it("lands in the chat with the bot the person chose on the Chief screen", () => {
     vi.stubGlobal("window", LOCAL_PAGE);
-    store.state = { ...store.state, bots: [{ id: "maus", chiefOfStaff: true }, { id: "research" }] };
+    store.state = { ...store.state, bots: [{ id: "eacbot", chiefOfStaff: true }, { id: "research" }] };
     gate(LOCAL_VIEWER).tree!.props.onDone!("research");
     expect(store.dispatch).toHaveBeenCalledWith({ type: "select", id: "research" });
     expect(store.dispatch).toHaveBeenCalledWith({ type: "toggleWelcome", open: false });

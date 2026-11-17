@@ -91,6 +91,7 @@ function videoCard(card) {
 }
 
 const TOOLS = {
+  // Every tool below counts itself: the board's numbers come from what actually ran.
   "bili-search-videos": async (args) => {
     const keyword = String(args.keyword ?? "").trim();
     if (!keyword) throw new ToolError("invalid-keyword", "keyword is required", false);
@@ -157,6 +158,98 @@ function failure(error) {
   return { status: "failed", code: "internal", message: String(error instanceof Error ? error.message : error).slice(0, 2000), retryable: false };
 }
 
+// The board: what this plugin can actually do for the account, in the shared contract's shape. A capability
+// that is not production says why, so the entry point never promises something the upstream refuses.
+const ACTIVITY = { searches: 0, reads: 0, writes: 0, lastAt: null, lastError: null };
+
+function note(what) {
+  ACTIVITY[what] = (ACTIVITY[what] ?? 0) + 1;
+  ACTIVITY.lastAt = new Date().toISOString();
+}
+
+/** Which counter a tool feeds: searching, reading, or acting on the account. */
+function effectOf(toolId) {
+  if (toolId.includes("search") || toolId.includes("popular")) return "searches";
+  if (toolId.includes("like") || toolId.includes("comment")) return "writes";
+  return "reads";
+}
+
+function buildBoard() {
+  const config = (() => {
+    try {
+      return loadConfig();
+    } catch {
+      return {};
+    }
+  })();
+  const cookie = String(config.cookie ?? "").trim();
+  const signedIn = cookie.includes("SESSDATA");
+  const writable = signedIn && cookie.includes("bili_jct");
+  return {
+    schemaVersion: 1,
+    platform: "bilibili",
+    generatedAt: new Date().toISOString(),
+    account: config.accountId
+      ? {
+        id: String(config.accountId),
+        displayName: String(config.selfName ?? "") || "B站账户",
+        status: signedIn ? "connected" : "unavailable",
+      }
+      : null,
+    headline: [
+      { key: "searches", label: "搜索次数", value: String(ACTIVITY.searches) },
+      { key: "reads", label: "内容读取", value: String(ACTIVITY.reads) },
+      { key: "writes", label: "写入动作", value: String(ACTIVITY.writes) },
+    ],
+    sections: [
+      {
+        id: "transport",
+        kind: "notice",
+        title: "账号状态",
+        notices: [{
+          tone: signedIn ? "info" : "warning",
+          text: signedIn
+            ? writable ? "已配置登录 Cookie，读取与写入均可用。" : "已配置登录 Cookie（只读）：写入还需要 bili_jct。"
+            : "尚未配置登录 Cookie：搜索与热门榜可用，账号相关能力不可用。",
+        }],
+      },
+      {
+        id: "capability",
+        kind: "table",
+        title: "能力矩阵",
+        columns: [{ key: "name", label: "能力" }, { key: "state", label: "状态" }, { key: "why", label: "说明" }],
+        rows: [
+          ["搜索视频", "可用", "使用 B站公开搜索接口。"],
+          ["视频信息与热门榜", "可用", "使用公开接口。"],
+          ["点赞", writable ? "可用" : "需 Cookie", writable ? "使用已登录 Cookie。" : "需要 SESSDATA 与 bili_jct。"],
+          ["发表评论", writable ? "可用" : "需 Cookie", writable ? "按权限逐次授权。" : "需要 SESSDATA 与 bili_jct。"],
+          ["弹幕 / 投币 / 收藏 / 关注", "未开放", "接口未核实，不实现，不假装可用。"],
+          ["字幕抓取与总结", "未开放", "需要额外授权与解析，未实现。"],
+        ].map(([name, state, why], index) => ({
+          id: `cap-${index}`,
+          cells: {
+            name: { kind: "text", value: name },
+            state: { kind: "status", value: state, tone: state === "可用" ? "accent" : state === "未开放" ? "warning" : "muted" },
+            why: { kind: "text", value: why, tone: "muted" },
+          },
+        })),
+      },
+    ],
+    actions: [
+      { id: "refresh", label: "刷新状态", effect: "read", mode: "manual", available: true },
+    ],
+    limits: [],
+    capability: [
+      { id: "search", label: "搜索与热门榜", state: "production" },
+      { id: "info", label: "视频信息", state: "production" },
+      { id: "like", label: "点赞", state: writable ? "experimental" : "unavailable", reason: writable ? "非公开接口，可能随时变更。" : "需要配置已登录 Cookie。" },
+      { id: "comment", label: "发表评论", state: writable ? "experimental" : "unavailable", reason: writable ? "非公开接口，建议逐次授权。" : "需要配置已登录 Cookie。" },
+      { id: "danmaku", label: "弹幕 / 投币 / 收藏 / 关注", state: "unavailable", reason: "接口未核实，不实现。" },
+      { id: "subtitle", label: "字幕抓取与总结", state: "unavailable", reason: "需要额外授权与解析，未实现。" },
+    ],
+  };
+}
+
 function answer(id, value) {
   process.stdout.write(`${JSON.stringify({ jsonrpc: "2.0", id, result: value })}\n`);
 }
@@ -168,9 +261,47 @@ lines.on("line", (text) => {
   if (!frame || typeof frame !== "object" || frame.id === undefined || frame.id === null) return;
   if (frame.method === "initialize") { answer(frame.id, { ok: true, pluginId: process.env.EAC_PLUGIN_ID ?? "eac.bilibili" }); return; }
   if (frame.method === "shutdown") { answer(frame.id, { ok: true }); process.exit(0); }
+  if (frame.method === "board") {
+    try {
+      answer(frame.id, buildBoard());
+    } catch (error) {
+      answer(frame.id, { error: { code: -32000, message: String(error instanceof Error ? error.message : error) } });
+    }
+    return;
+  }
+  if (frame.method === "operate") {
+    // Reading a board needs no bot grant, so a refresh is a host method too.
+    if (String(frame.params?.action ?? "") === "refresh") answer(frame.id, { ok: true });
+    else answer(frame.id, { error: { code: -32000, message: "this platform has no board actions beyond refresh" } });
+    return;
+  }
+  if (frame.method === "audit") { answer(frame.id, []); return; }
+  if (frame.method === "status") {
+    const config = (() => { try { return loadConfig(); } catch { return {}; } })();
+    const cookie = String(config.cookie ?? "");
+    answer(frame.id, {
+      connected: cookie.includes("SESSDATA"),
+      signedIn: cookie.includes("SESSDATA"),
+      writable: cookie.includes("bili_jct"),
+      searches: ACTIVITY.searches,
+      reads: ACTIVITY.reads,
+      writes: ACTIVITY.writes,
+      lastError: ACTIVITY.lastError ?? "",
+    });
+    return;
+  }
   if (frame.method !== "tools/call") { process.stdout.write(`${JSON.stringify({ jsonrpc: "2.0", id: frame.id, error: { code: -32601, message: "unknown method" } })}\n`); return; }
   const params = frame.params ?? {};
   const tool = TOOLS[params.toolId];
   if (!tool) { answer(frame.id, { status: "failed", code: "unknown-tool", message: `no tool ${String(params.toolId).slice(0, 60)}`, retryable: false }); return; }
-  Promise.resolve(tool(params.arguments ?? {})).then(result, failure).then((value) => answer(frame.id, value));
+  Promise.resolve(tool(params.arguments ?? {}))
+    .then((value) => {
+      note(effectOf(String(params.toolId)));
+      return value;
+    }, (error) => {
+      ACTIVITY.lastError = String(error instanceof Error ? error.message : error).slice(0, 200);
+      throw error;
+    })
+    .then(result, failure)
+    .then((value) => answer(frame.id, value));
 });

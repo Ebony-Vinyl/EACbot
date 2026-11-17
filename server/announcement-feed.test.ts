@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { createAnnouncementFeed } from "./announcement-feed.ts";
 
@@ -55,10 +55,12 @@ describe("createAnnouncementFeed", () => {
       expect(feed.list()).toMatchObject([{ id: "keep" }]);
       expect(warns).toContain("the announcement source answered HTTP 500");
 
-      const silent = createAnnouncementFeed({ url: "", fetch: async () => json({ version: 1, announcements: [] }), refreshMs: 0, startDelayMs: 1 });
+      const silentFetch = vi.fn(async () => json({ version: 1, announcements: [] }));
+      const silent = createAnnouncementFeed({ url: "", fetch: silentFetch, refreshMs: 0, startDelayMs: 1 });
       silent.stop();
       await new Promise((done) => setTimeout(done, 20));
       expect(silent.list()).toEqual([]);
+      expect(silentFetch).not.toHaveBeenCalled();
     } finally {
       feed.stop();
     }

@@ -113,7 +113,7 @@ export interface PersonInboxDeps {
   representative?: Representative;
   /** A bot's shared notes (its team layer). */
   notes(botId: string): string;
-  /** Gives a member who has neither a Chief nor a EACbot yet the EACbot every member gets. */
+  /** Gives a member who has neither a Chief nor an EACbot yet the EACbot every member gets. */
   ensureOwnBot?(email: string): void;
   /** What waits on this inbox's person may have changed: its bot goes out to them again. */
   changed?(threadId: string): void;

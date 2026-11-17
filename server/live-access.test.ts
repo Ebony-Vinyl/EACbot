@@ -63,11 +63,11 @@ describe("an Azure Live call", () => {
       expect(verdict({ ...LOCAL, "x-eacbot-desktop-owner": "desktop-secret" }, place)).toBe(CALL);
     });
     it("goes to the owner's phone, through the companion that authenticated it", () => {
-      expect(verdict({ ...LOCAL, "x-openmausbot-companion": "1", "x-openmausbot-companion-device": "phone-1", "x-openmausbot-companion-auth": "relay-secret" }, place)).toBe(CALL);
+      expect(verdict({ ...LOCAL, "x-eacbot-companion": "1", "x-eacbot-companion-device": "phone-1", "x-eacbot-companion-auth": "relay-secret" }, place)).toBe(CALL);
     });
     it("is refused to a bot's shell and to a forged companion", () => {
       expect(verdict(LOCAL, place)).toMatch(/^sign-in gate 403: forbidden: this change must come from the desktop app/);
-      expect(verdict({ ...LOCAL, "x-openmausbot-companion": "1", "x-openmausbot-companion-device": "phone-1", "x-openmausbot-companion-auth": "guessed" }, place)).toMatch(/^sign-in gate 403: forbidden: invalid companion/);
+      expect(verdict({ ...LOCAL, "x-eacbot-companion": "1", "x-eacbot-companion-device": "phone-1", "x-eacbot-companion-auth": "guessed" }, place)).toMatch(/^sign-in gate 403: forbidden: invalid companion/);
     });
     it("is refused to a remote device paired chat-only", () => {
       expect(verdict(device(["client"]), place)).toBe(AT_SIGN_IN);

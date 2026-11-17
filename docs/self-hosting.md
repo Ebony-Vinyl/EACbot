@@ -6,8 +6,11 @@ The npm CLI supports a managed public tunnel, Tailscale, or your own proxy.
 
 > **Security first:** by default a self-hosted server trusts loopback as its
 > owner — any process that can reach `127.0.0.1:8799` has full control,
-> including the shell your bots can use. A browser is the exception: even on
-> this machine it signs in once (see [A browser signs in](#a-browser-signs-in)).
+> including the shell your bots can use. Outside the development-only
+> override below, a browser gets that trust only from this server's own
+> same-origin page; a request from another page, another port or a top-level
+> navigation still needs a session (see
+> [A browser signs in](#a-browser-signs-in)).
 > **Never expose that port directly and never bind it to a public interface.** Reach it through an SSH tunnel, a
 > private network you trust, or an authenticated remote path below. Requests
 > through the managed tunnel or a correctly configured proxy require a paired
@@ -43,6 +46,38 @@ Runs fully on a server:
 Desktop-only for now (needs the Mac/Linux app):
 
 - dictation/voice, controlling the host desktop
+
+## Outbound calls that are off until you set a destination
+
+Three server features make no request until you name where they go. Leave a
+variable unset or empty and nothing is sent, including at start-up:
+
+- `EAC_UPDATE_CHECK_URL`: the release source `GET /api/updates/check` reads.
+  Unset or invalid, the route answers `checked: false` and makes no request.
+  It must be an `https://` address, or `http://` on `127.0.0.1`, `[::1]` or
+  `localhost` for a local fixture.
+- `EAC_BUG_REPORT_URL`: where an `@devs` report and its later status question
+  go. Unset, empty or invalid, reports are off and nothing is sent; there is
+  no built-in or Cloud fallback. It must be an `https://` address, or
+  `http://` on one of those loopback names.
+- `EAC_ANNOUNCEMENTS_URL`: a JSON announcement feed this server reads about a
+  second after start and then every ten minutes. Unset, no timer is scheduled
+  and nothing is fetched. Use an `http://` or `https://` URL.
+
+Set them in the server's environment before it starts, for example:
+
+```sh
+EAC_UPDATE_CHECK_URL=https://releases.example.com/eacbot/latest.json \
+EAC_BUG_REPORT_URL=https://bugs.example.com/api/bug-reports \
+EAC_ANNOUNCEMENTS_URL=https://example.com/eacbot/announcements.json \
+  npx eacbot serve
+```
+
+Restart after changing them. A successful update answer is cached for an
+hour, and a failed announcement poll keeps the last good list. Model
+providers, engines, Cloud, connected apps and the other integrations on this
+page have their own settings; these three variables do not turn them on or
+off.
 
 ## Quickest: one command with Node
 
@@ -109,7 +144,7 @@ is present. Three ways to make the server reachable from elsewhere:
 - **Your own domain, still one command:**
 
   ```sh
-  npx eacbot serve --domain maus.example.com
+  npx eacbot serve --domain eacbot.example.com
   ```
 
   Point the domain's A record at this machine and open ports 80 and 443.
@@ -119,7 +154,7 @@ is present. Three ways to make the server reachable from elsewhere:
   and 443 as a normal user needs one privilege grant; when Caddy reports the
   refusal, `serve` prints the exact `setcap` command to run once.
 - **Behind your own proxy or domain:** `npx eacbot serve --public-url
-  https://maus.example.com`, with the proxy rules from "Putting a proxy in
+  https://eacbot.example.com`, with the proxy rules from "Putting a proxy in
   front".
 
 Later: `npx eacbot pair --label "Kitchen iPad"` for another device
@@ -281,7 +316,7 @@ EAC_DATA_DIR="$HOME/.eacbot" EAC_PORT=8799 \
 For something durable, let the CLI write the service for you:
 
 ```sh
-npx eacbot service install --domain maus.example.com   # or --tunnel, --tailscale, or nothing
+npx eacbot service install --domain eacbot.example.com   # or --tunnel, --tailscale, or nothing
 ```
 
 It renders a systemd unit (Linux) or a launchd agent (macOS) that runs the
@@ -420,7 +455,7 @@ docker compose exec omb node dist-server/eacbot.js pair   # Docker
 
 It prints a 12-character code (single use, five minutes) and, when the
 server knows its public address (`EAC_PUBLIC_URL`, set by the Docker stack),
-a link like `https://maus.example.com/pair#code=XXXX-XXXX-XXXX`. Open the
+a link like `https://eacbot.example.com/pair#code=XXXX-XXXX-XXXX`. Open the
 link, or open `/pair` on the address you use and type the code. The browser
 gets a session cookie (30 days, renewed on use up to 180 days from pairing, revocable) and the app loads. Sessions are
 listed and revoked at `GET`/`DELETE /api/auth/sessions` for now; a Settings
@@ -500,8 +535,8 @@ bots or conversations. If sign-out cannot reach the server, the app warns you;
 revoke its session there when reachable again, or if the device is gone.
 
 What this changes about the trust model: the server still binds loopback
-and still trusts programs on loopback as the owner, though never a browser
-(below). A **paired session** is the second way in: a bearer token or the cookie, same-origin only, with a scope (`admin`
+and still trusts programs on loopback as the owner; a browser is the owner
+only on this server's own same-origin page (below). A **paired session** is the second way in: a bearer token or the cookie, same-origin only, with a scope (`admin`
 by default, `--client` for a device that may chat but not change settings or
 pair others). Five bad codes from one address lock that address out for ten
 minutes. Over plain HTTP (a LAN address without TLS) the cookie is not
@@ -526,21 +561,29 @@ ssh -L 8799:localhost:8799 you@your-server
 # then run `eacbot pair` on the server and open the "this computer:" link it prints
 ```
 
-The browser signs in once through the tunnel, like any browser on the server
-itself.
+Through the tunnel the browser is on this server's own loopback origin, so it
+gets the same own-page treatment as a browser on the server itself; any other
+page still signs in once.
 
 ### A browser signs in
 
-A browser never gets loopback trust, on any server: a request that carries
-the `Sec-Fetch-Site` or `Sec-Fetch-Dest` header (every browser sends them to a
-loopback address, and a page cannot remove them), or a WebSocket handshake
-with an `Origin`, needs a session: a web page is not the person who owns the
-server, even when it runs on the same machine. Programs are unaffected: the
-CLI, scripts, `curl` and the companion send neither header.
+A browser is not the owner merely because it runs on the server's machine.
+On a self-hosted server with owner trust, the page this server itself serves
+is the owner without a cookie: its API requests prove the same origin (a
+matching `Origin`, or `Sec-Fetch-Site: same-origin`), and its WebSocket
+handshakes carry the matching `Origin`. Everything else needs a session: a
+page on another site, another port or another scheme, a request with no
+same-origin proof, and a top-level navigation typed into the address bar
+(`Sec-Fetch-Site: none`, with no `Origin`) are refused loopback trust.
+Programs are unaffected: the CLI, scripts, `curl` and the companion send
+neither browser header.
 
-So the first time you open the web UI in a browser on the server's own
-machine, it shows the sign-in page. `eacbot serve` and `eacbot pair`
-print a link for it:
+A shared server (`service` trust, below) keeps its stricter rule: a browser
+there needs a session.
+
+The sign-in page is still used when the browser is not on this server's own
+page: from another device, another local port, or an API address opened
+directly. `eacbot serve` and `eacbot pair` print a link for it:
 
 ```
 this computer: http://127.0.0.1:8799/pair#code=XXXX-XXXX-XXXX
@@ -554,9 +597,10 @@ WebSocket it sends to its server, and no other Electron session may reach the
 server at all.
 
 For development, `pnpm dev:server` sets `EAC_DEV_TRUST_LOCAL_BROWSER=1`, so a
-browser on Vite's dev page (`pnpm dev`) is the owner as before. The server
-honours it only when it runs from source with owner trust, logs a warning, and
-ignores it in a build, the desktop app, a hosted workspace and EACbot Cloud.
+browser on Vite's dev page (`pnpm dev`) is the owner as before; that page
+comes from Vite's own origin, not this server's. The server honours it only
+when it runs from source with owner trust, logs a warning, and ignores it in
+a build, the desktop app, a hosted workspace and EACbot Cloud.
 Run `EAC_DEV_TRUST_LOCAL_BROWSER=0 pnpm dev:server` to try the sign-in.
 
 ### Loopback trust: owner or service
@@ -607,7 +651,7 @@ With `service` on a self-hosted server:
   in with their email (`eacbot access add you@example.com`, which edits
   the sign-in list on disk).
 - A browser on an SSH tunnel gets the sign-in page instead of the app.
-- The MCP server script works with `OPENMAUSBOT_TOKEN` set to a paired session.
+- The MCP server script works with `EACBOT_TOKEN` set to a paired session.
 
 **What `service` does not close yet.** Any bot's shell can still do
 everything the Slack worker does, and on a shared workspace that is a real
@@ -906,9 +950,9 @@ Owners can read the same over the API:
 
 ```sh
 curl -H "Authorization: Bearer $TOKEN" \
-  "https://maus.example.com/api/usage?from=2026-09-01&to=2026-09-30&groupBy=user"
+  "https://eacbot.example.com/api/usage?from=2026-09-01&to=2026-09-30&groupBy=user"
 curl -H "Authorization: Bearer $TOKEN" -o usage.csv \
-  "https://maus.example.com/api/usage.csv?from=2026-09-01&to=2026-09-30"
+  "https://eacbot.example.com/api/usage.csv?from=2026-09-01&to=2026-09-30"
 ```
 
 Dates are inclusive, UTC, at most a year apart; without them you get the
@@ -1021,9 +1065,9 @@ than the window. An older server's `decisions.ndjson` and `.1` are still read
 and age out the same way. Admins can read it back:
 
 ```sh
-curl -H "Authorization: Bearer $TOKEN" "https://maus.example.com/api/decisions?limit=200"
+curl -H "Authorization: Bearer $TOKEN" "https://eacbot.example.com/api/decisions?limit=200"
 curl -H "Authorization: Bearer $TOKEN" -o decisions.csv \
-  "https://maus.example.com/api/decisions.csv?from=2026-09-01&to=2026-09-30"
+  "https://eacbot.example.com/api/decisions.csv?from=2026-09-01&to=2026-09-30"
 ```
 
 The CSV has one line per decision (time, decision, source, bot, tool,
@@ -1117,9 +1161,9 @@ them as CSV. The same over the API:
 
 ```sh
 curl -H "Authorization: Bearer $TOKEN" \
-  "https://maus.example.com/api/admin-activity?from=2026-09-01&to=2026-09-30&what=visibility"
+  "https://eacbot.example.com/api/admin-activity?from=2026-09-01&to=2026-09-30&what=visibility"
 curl -H "Authorization: Bearer $TOKEN" -o activity.csv \
-  "https://maus.example.com/api/admin-activity.csv?who=ada@company.com"
+  "https://eacbot.example.com/api/admin-activity.csv?who=ada@company.com"
 ```
 
 `what` is `all` (admin changes and answered cards, the default), `approvals`,

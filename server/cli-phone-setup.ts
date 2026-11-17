@@ -102,7 +102,7 @@ export async function runPhoneSetup(
       if (!answer.trim()) continue;
       const origin = normalizePhoneOrigin(answer);
       if (!origin) {
-        io.log("Enter a non-localhost HTTPS origin, such as https://maus.example.com. The address was not saved.");
+        io.log("Enter a non-localhost HTTPS origin, such as https://eacbot.example.com. The address was not saved.");
         continue;
       }
       io.log("This does not create a proxy or open a LAN listener. Its connection will be checked before pairing.");

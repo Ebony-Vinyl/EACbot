@@ -378,7 +378,7 @@ git commit -m "feat(talk): the talk shortcut setting, its keys and registration"
 **Interfaces:**
 - Consumes: `select: false` (Task 1); prefs `quickAsksChat`/`setQuickAsksChat` (Task 4).
 - Produces:
-  - `QUICK_ASKS_TITLE = "Quick asks"`; `class TalkServerError extends Error` with `code: "server-down" | "no-mausbot" | "refused" | "lost"`.
+  - `QUICK_ASKS_TITLE = "Quick asks"`; `class TalkServerError extends Error` with `code: "server-down" | "no-eacbot" | "refused" | "lost"`.
   - `findEACbot(bots)` → the bot with `defaultBot` and an empty `defaultBot.person`, else the first `chiefOfStaff` bot that is not `hidden`, else `null`.
   - `readFrames(body: ReadableStream<Uint8Array>, onFrame: (frame: object) => void): Promise<void>` — SSE: frames end at a blank line, `data:` lines joined, `:` comments and unparsable JSON skipped.
   - `createReplyTracker({ threadId, sendId })` → `(frame) => TalkUpdate | null`, `TalkUpdate = { kind: "thinking" } | { kind: "reply", text } | { kind: "needs-you" } | { kind: "done", ok, text }`.
@@ -386,7 +386,7 @@ git commit -m "feat(talk): the talk shortcut setting, its keys and registration"
 
 Tracker rules (the algorithm the tests do not fully determine): frames for other threads, and every frame before `{ kind: "message", message: { role: "user", sendId } }` with this ask's `sendId`, return null; that frame returns `thinking`. After it: `runtime` `content.delta` (`streamKind: "assistant_text"`) appends to a buffer that restarts when `itemId` changes → `reply` with the buffer; `runtime` `item.completed` (`itemType: "assistant_text"`) and a `message` with `role: "bot", kind: "text"` replace the shown text → `reply`; a `message` with `role: "bot", kind: "options"` whose `card` is not `answered`, `dismissed` or `expired`, or a `runtime` `request.opened` → `needs-you`; `runtime` `turn.completed` → `done` with its `ok` and the last shown text.
 
-`prepare()`: `GET /api/bots?messages=0` (a rejected request or non-2xx → `server-down`; no EACbot → `no-mausbot`); reuse `prefs.quickAsksChat(serverKey())` when its `botId` is EACbot's and EACbot's `tasks` still list its `threadId`; else `POST /api/bots/:id/tasks` with exactly `{ title: QUICK_ASKS_TITLE, select: false }`, save and return it. One prepare in flight at a time: a second call while one runs gets the same promise.
+`prepare()`: `GET /api/bots?messages=0` (a rejected request or non-2xx → `server-down`; no EACbot → `no-eacbot`); reuse `prefs.quickAsksChat(serverKey())` when its `botId` is EACbot's and EACbot's `tasks` still list its `threadId`; else `POST /api/bots/:id/tasks` with exactly `{ title: QUICK_ASKS_TITLE, select: false }`, save and return it. One prepare in flight at a time: a second call while one runs gets the same promise.
 
 `ask()`: `GET /api/events?screens=off` first; wait for its `{ kind: "hello" }` frame; then `POST /api/bots/:botId/messages` with exactly `{ text, threadId, sendId }` (non-2xx → `refused`). Resolve on `done` (`"failed"` when `ok` is false and the text is empty) or `needs-you`; the stream ending first → `lost`; `signal` aborting → reject with `signal.reason` and cancel the stream. `content-type: application/json` on both POSTs.
 
@@ -407,7 +407,7 @@ test("prepare makes a Quick asks chat without selecting it when the saved one is
   assert.deepEqual(server.saves, [["server-a", { botId: "m", threadId: "t-new" }]]);
 });
 test("two prepares at once make one chat");                                   // Promise.all([prepare(), prepare()]) → one POST
-test("prepare says why it cannot ask");                                       // request rejects → code "server-down"; 503 → "server-down"; bots [] → "no-mausbot"
+test("prepare says why it cannot ask");                                       // request rejects → code "server-down"; 503 → "server-down"; bots [] → "no-eacbot"
 test("the reply tracker follows only this ask", () => {
   const track = createReplyTracker({ threadId: "t1", sendId: "s1" });
   for (const early of [delta("t1", "i0", "old answer"), completed("t1", true), userMessage("t1", "s0"), userMessage("t2", "s1")]) assert.equal(track(early), null);
@@ -600,7 +600,7 @@ git commit -m "feat(talk): the floating box that never takes focus"
 | sending, thinking | ignored | abort ask, `openChat(chat)`, close box | abort ask, close box |
 | reply, needs-you, still-working, error | abort ask, close box, start a new ask as from idle | abort ask, `openChat(chat ?? null)`, close box | abort ask, close box |
 
-Each press makes a new sink and `AbortController`; callbacks from an older one are ignored. Sink: `transcript(line)` → render `listening` with `line.text`; `replaced()` → close box; `end(info)`: reason `speech-not-authorized`, `mic-failed` or `recognizer-unavailable` → error `permission`; `dictation-disabled` → `dictationOff`; `helper-build-failed`, `helper-start-failed` or `unsupported-platform` → `unavailable` (these three hide in `noticeHideMs`); otherwise nothing heard → close box silently; otherwise render `sending` with the words and ask. `prepare()` failing (`server-down`, `no-mausbot`) while listening stops speech and shows `serverDown`; at send time it shows the same. The ask: `thinking` → render `thinking` with the words; `reply` → render `reply`; `done` → render `reply`, hide in `replyHideMs`; `needs-you` → render `needs-you` with the last reply text, hide in `replyHideMs`; `"failed"` or `refused` → error `failed`, hide in `replyHideMs`; `lost`, or `stillWorkingMs` after sending with no outcome → abort, render `still-working` with the last reply text, hide in `replyHideMs`. Hiding: when the timer fires and `panel.hovered()`, check again every `hoverRecheckMs`.
+Each press makes a new sink and `AbortController`; callbacks from an older one are ignored. Sink: `transcript(line)` → render `listening` with `line.text`; `replaced()` → close box; `end(info)`: reason `speech-not-authorized`, `mic-failed` or `recognizer-unavailable` → error `permission`; `dictation-disabled` → `dictationOff`; `helper-build-failed`, `helper-start-failed` or `unsupported-platform` → `unavailable` (these three hide in `noticeHideMs`); otherwise nothing heard → close box silently; otherwise render `sending` with the words and ask. `prepare()` failing (`server-down`, `no-eacbot`) while listening stops speech and shows `serverDown`; at send time it shows the same. The ask: `thinking` → render `thinking` with the words; `reply` → render `reply`; `done` → render `reply`, hide in `replyHideMs`; `needs-you` → render `needs-you` with the last reply text, hide in `replyHideMs`; `"failed"` or `refused` → error `failed`, hide in `replyHideMs`; `lost`, or `stillWorkingMs` after sending with no outcome → abort, render `still-working` with the last reply text, hide in `replyHideMs`. Hiding: when the timer fires and `panel.hovered()`, check again every `hoverRecheckMs`.
 
 - [ ] **Step 1: Write the failing tests**
 

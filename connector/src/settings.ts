@@ -1,25 +1,51 @@
 // Names, paths and limits the connector, install.sh and the e2e share. install.sh repeats the names it needs, and a
 // test holds them equal.
 
+/** Names an earlier release used, mapped to the name this one reads. The connector is built as its own image, so it
+ * carries its own copy rather than importing the server's. */
+const EARLIER_ENV_NAMES: Readonly<Record<string, string>> = {
+  MAUSBOT_CONNECTOR_IMAGE: "EACBOT_CONNECTOR_IMAGE",
+  MAUSBOT_UPDATE_WAIT_S: "EACBOT_UPDATE_WAIT_S",
+  MAUSBOT_INSTANCE: "EACBOT_INSTANCE",
+  MAUSBOT_ADMIN_URL: "EACBOT_ADMIN_URL",
+  MAUSBOT_STATE_DIR: "EACBOT_STATE_DIR",
+  MAUSBOT_DOCKER_SOCKET: "EACBOT_DOCKER_SOCKET",
+  MAUSBOT_HOST_CONFIG_DIR: "EACBOT_HOST_CONFIG_DIR",
+  MAUSBOT_PROFILES_DIR: "EACBOT_PROFILES_DIR",
+  MAUSBOT_AUDIT_DIR: "EACBOT_AUDIT_DIR",
+  MAUSBOT_JOBS_SOCKET: "EACBOT_JOBS_SOCKET",
+};
+
+/** Copies each earlier name onto its current one, so a container started before the rename keeps its settings. */
+export function adoptEarlierEnvNames(env: NodeJS.ProcessEnv = process.env): void {
+  for (const [earlier, current] of Object.entries(EARLIER_ENV_NAMES)) {
+    const value = env[earlier];
+    if (value === undefined || value === "") continue;
+    if (env[current] === undefined || env[current] === "") env[current] = value;
+  }
+}
+
+adoptEarlierEnvNames();
+
 export const CONNECTOR_VERSION = "1.0.0";
 
 /** Docker objects the connector owns. */
 export const NAMES = {
-  connector: "mausbot-connector",
-  connectorNext: "mausbot-connector-next",
-  home: "mausbot-home",
-  dataVolume: "mausbot-data",
-  stateVolume: "mausbot-connector",
-  snapshotVolume: "mausbot-snapshot",
-  backupPrefix: "mausbot-backup-",
+  connector: "eacbot-connector",
+  connectorNext: "eacbot-connector-next",
+  home: "eacbot-home",
+  dataVolume: "eacbot-data",
+  stateVolume: "eacbot-connector",
+  snapshotVolume: "eacbot-snapshot",
+  backupPrefix: "eacbot-backup-",
 } as const;
 
 export const LABELS = {
-  role: "com.mausbot.role",
-  instance: "com.mausbot.instance",
-  created: "com.mausbot.created",
-  image: "com.mausbot.image",
-  env: "com.mausbot.env",
+  role: "com.eacbot.role",
+  instance: "com.eacbot.instance",
+  created: "com.eacbot.created",
+  image: "com.eacbot.image",
+  env: "com.eacbot.env",
 } as const;
 
 /** Backups the connector keeps; a newer one replaces the oldest. */
@@ -27,16 +53,16 @@ export const BACKUPS_KEPT = 3;
 
 /** Inside the connector's container. */
 export const PATHS = {
-  state: process.env.MAUSBOT_STATE_DIR || "/state",
-  docker: process.env.MAUSBOT_DOCKER_SOCKET || "/var/run/docker.sock",
-  /** /etc/mausbot on the host, mounted read-only: the seccomp profile install.sh put there. */
-  hostConfig: process.env.MAUSBOT_HOST_CONFIG_DIR || "/etc/mausbot",
+  state: process.env.EACBOT_STATE_DIR || "/state",
+  docker: process.env.EACBOT_DOCKER_SOCKET || "/var/run/docker.sock",
+  /** /etc/eacbot on the host, mounted read-only: the seccomp profile install.sh put there. */
+  hostConfig: process.env.EACBOT_HOST_CONFIG_DIR || "/etc/eacbot",
   /** The connector's own copies, which install.sh installs from this image. */
-  profiles: process.env.MAUSBOT_PROFILES_DIR || "/app/profiles",
-  /** /var/log/mausbot on the host, mounted read-write: the audit log the server's owner reads. */
-  audit: process.env.MAUSBOT_AUDIT_DIR || "/var/log/mausbot",
-  /** In the container's own /tmp: `mausbot-connector job` reaches the running connector here. */
-  jobs: process.env.MAUSBOT_JOBS_SOCKET || "/tmp/mausbot-jobs.sock",
+  profiles: process.env.EACBOT_PROFILES_DIR || "/app/profiles",
+  /** /var/log/eacbot on the host, mounted read-write: the audit log the server's owner reads. */
+  audit: process.env.EACBOT_AUDIT_DIR || "/var/log/eacbot",
+  /** In the container's own /tmp: `eacbot-connector job` reaches the running connector here. */
+  jobs: process.env.EACBOT_JOBS_SOCKET || "/tmp/eacbot-jobs.sock",
 } as const;
 
 export const AUDIT_FILE = "audit.jsonl";
@@ -79,7 +105,7 @@ export const HOME_SECRET_ENV = [
   "EAC_CLOUD_CONNECTED_APPS_GRANT", "EAC_CLOUD_X_TOKEN", "EAC_CLOUD_TUNNEL_TOKEN",
 ] as const;
 /** In the home: a read-only folder holding only `secrets.json`, root's alone. The launcher reads it at start. */
-export const HOME_SECRETS_TARGET = "/run/mausbot";
+export const HOME_SECRETS_TARGET = "/run/eacbot";
 /** In the connector's state volume: the folder mounted at HOME_SECRETS_TARGET. */
 export const HOME_SECRETS_DIR = "home-secrets";
 export const HOME_SECRETS_FILE = "secrets.json";

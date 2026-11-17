@@ -19,7 +19,7 @@ export interface PublishedPageCard {
 export const PAGE_ID = /^[a-z0-9]{20,63}$/;
 
 /** What a page's files may be, by extension, and the Content-Type each is served with: the same list as the pages
- * Worker's (openmaus-cloud pages-worker/src/files.ts refuses the rest). */
+ * Worker's (eacbot-cloud pages-worker/src/files.ts refuses the rest). */
 export const PAGE_FILE_TYPES: Readonly<Record<string, string>> = {
   html: "text/html; charset=utf-8", htm: "text/html; charset=utf-8", css: "text/css; charset=utf-8", js: "text/javascript; charset=utf-8",
   mjs: "text/javascript; charset=utf-8", json: "application/json; charset=utf-8", txt: "text/plain; charset=utf-8", csv: "text/csv; charset=utf-8",

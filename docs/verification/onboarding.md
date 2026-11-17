@@ -5,7 +5,7 @@ The first run is two screens, then the chat (Oct 27 2026): "Meet EACbot"
 signs one in, with "Other ways to connect · Set up later" under it), then
 "Introducing your Chief of Staff" over an empty app (Create Chief of Staff, and
 Choose an existing bot where the person has bots). The Chief step shows only
-for a EACbot not yet introduced where no other bot is the Chief. It lands in
+for an EACbot not yet introduced where no other bot is the Chief. It lands in
 the Chief's chat, where EACbot's three lines, its follow-up (written once by
 the server, `POST /api/bots/:id/helper-followup`) and chips offer only what is
 still missing. The app tour starts only from Settings → Replay app tour.

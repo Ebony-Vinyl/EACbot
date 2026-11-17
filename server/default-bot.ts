@@ -65,7 +65,7 @@ function remember(dataDir: string, person: string, botId: string): void {
   writeFileAtomic(join(dataDir, LEDGER), JSON.stringify({ v: 1, places: { ...places, [person]: botId } }), { mode: 0o600 });
 }
 
-/** A member who left: should they join again, they are given a EACbot of their own again. */
+/** A member who left: should they join again, they are given an EACbot of their own again. */
 export function forgetDefaultBot(dataDir: string, person: string): void {
   const places = ledger(dataDir);
   if (!person || !Object.hasOwn(places, person)) return;
@@ -108,7 +108,7 @@ export function createDefaultBot(store: DefaultBotStore, options: { person?: str
 }
 
 /** Makes sure this place (no `person`) or this Team Cloud member has had its EACbot once: the one it has, the new
- * install's own adopted, or a new one. A EACbot that is gone is never made again. Two marked ones keep the oldest. A
+ * install's own adopted, or a new one. An EACbot that is gone is never made again. Two marked ones keep the oldest. A
  * place with no Chief of Staff at all gets EACbot as its Chief, so someone keeps an eye on the day; one that has a
  * Chief keeps it. */
 export function ensureDefaultBot(store: DefaultBotStore, options: { dataDir: string; person?: string; team?: string | null }): BotRecord | null {

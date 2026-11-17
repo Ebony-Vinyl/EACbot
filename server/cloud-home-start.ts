@@ -1,4 +1,4 @@
-// The Cloud home image's entry point: a root supervisor of two `maus` children, the server on 127.0.0.1:8799 and the Caddy
+// The Cloud home image's entry point: a root supervisor of two `eacbot` children, the server on 127.0.0.1:8799 and the Caddy
 // edge on 0.0.0.0:8080, the only listener the network reaches, always forwarding X-Forwarded-*, so no remote request gets
 // loopback trust. Secrets never ride a child's environment (/proc/<pid>/environ stays readable by the same user): the
 // server reads them from an inherited pipe. Root runs and trusts only the image's code, never the volume's.
@@ -17,7 +17,7 @@ import { clearRecordsFromOtherMachines } from "./data-dir-lease.ts";
 import { OOM_SCORE, protectSupervisor, spawnWithOomScore } from "./oom-score.ts";
 import { restartPolicy } from "./restart.ts";
 
-const SERVICE_USER = "maus";
+const SERVICE_USER = "eacbot";
 const SECRETS_FD = 3;
 
 /** uid/gid from /etc/passwd; Node has no getpwnam. */
@@ -143,7 +143,7 @@ export function tunnelRestartDelay(previousMs: number, ranForMs: number): number
 }
 
 /** The user cloudflared runs as. Its token rides its environment (TUNNEL_TOKEN), which only that user and root can read:
- * never `maus`, whose bots could otherwise copy it and serve the home's address elsewhere. cloudflared 2026.10 can't
+ * never `eacbot`, whose bots could otherwise copy it and serve the home's address elsewhere. cloudflared 2026.10 can't
  * read --token-file from an inherited socket, which is all Node's stdio gives a child. */
 export const TUNNEL_USER = "omb-tunnel";
 
@@ -173,7 +173,7 @@ const flockVolume: VolumeLock = (fd) => spawnSync("/usr/bin/flock", ["--exclusiv
  * Locks the volume for as long as this process lives, or refuses: a second home on the same volume must never start.
  * Docker lets any number of containers mount one volume, each in its own pid namespace, so no pid or lease record can
  * tell a live home from a dead one; a kernel lock on the volume can, and the kernel drops it when this process dies.
- * The lock is flock(2) on the volume's root, an inode `maus` cannot replace. flock(1) takes it on this process's own
+ * The lock is flock(2) on the volume's root, an inode `eacbot` cannot replace. flock(1) takes it on this process's own
  * open descriptor, which keeps it after flock exits.
  */
 export function holdVolume(home: string, lock: VolumeLock = flockVolume): void {
@@ -247,8 +247,8 @@ export interface HostHardening {
   dropCapabilities: boolean;
 }
 
-/** What root does to the machine before anything runs as `maus` (docs/bot-box.md, "What each layer stops"): /proc hides
- * other users' processes (`hidepid=invisible`), so no `maus` process lists root's, and Fly's local API socket folder is
+/** What root does to the machine before anything runs as `eacbot` (docs/bot-box.md, "What each layer stops"): /proc hides
+ * other users' processes (`hidepid=invisible`), so no `eacbot` process lists root's, and Fly's local API socket folder is
  * root's alone. Each step is one command; a failure is logged, never fatal, and EAC_CLOUD_HARDEN=0 skips them all.
  * CAP_SYS_ADMIN, which an own server's connector grants only for the remount, must not outlive it. */
 export function hardenHost(env: NodeJS.ProcessEnv, run: {
@@ -301,7 +301,7 @@ function dropCapabilities(env: NodeJS.ProcessEnv): string {
 }
 
 /** Where an own server's connector mounts the home's secrets, read-only, instead of putting them in its environment. */
-export const CLOUD_SECRETS_FILE = "/run/mausbot/secrets.json";
+export const CLOUD_SECRETS_FILE = "/run/eacbot/secrets.json";
 /** What the file may hold: the server's secrets, and the tunnel's token, which only cloudflared gets. */
 export const CLOUD_SECRETS_FILE_KEYS = [...CLOUD_HOME_SECRET_KEYS, "EAC_CLOUD_TUNNEL_TOKEN"] as const;
 
@@ -325,8 +325,8 @@ export function readCloudSecretsFile(home: string, file = CLOUD_SECRETS_FILE, fs
   return Object.fromEntries(CLOUD_SECRETS_FILE_KEYS.flatMap((key) => (typeof record[key] === "string" && record[key] ? [[key, record[key] as string]] : [])));
 }
 
-/** Each file and every folder above it must be root's and not writable by others, and never on the `maus`-owned volume:
- * otherwise `maus` could rewrite what runs as root at the next start. */
+/** Each file and every folder above it must be root's and not writable by others, and never on the `eacbot`-owned volume:
+ * otherwise `eacbot` could rewrite what runs as root at the next start. */
 export function codeTrustProblem(files: readonly string[], home: string, stat: (path: string) => Pick<Stats, "uid" | "mode"> = statSync): string | null {
   const volume = posix.join(home, "/");
   for (const file of files) {
@@ -381,7 +381,7 @@ export function startCloudHome(processEnv: NodeJS.ProcessEnv = process.env) {
     const stat = statSync(home);
     if (stat.uid !== ids.uid || stat.gid !== ids.gid) chownSync(home, ids.uid, ids.gid);
     process.setgroups?.([]);
-    // The volume is prepared as `maus`, so what it creates is theirs.
+    // The volume is prepared as `eacbot`, so what it creates is theirs.
     process.setegid!(ids.gid);
     process.seteuid!(ids.uid);
     try { prepared = prepare(); } finally {

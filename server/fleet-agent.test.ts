@@ -94,7 +94,7 @@ describe.skipIf(process.platform === "win32")("fleet agent over its socket", () 
   it("creates, lists with this month's usage, edits users, suspends, deletes, and audits every action", async () => {
     const m = machine(root);
     const layout = fleetLayout(root);
-    m.files.set(layout.registryFile, JSON.stringify({ ...emptyRegistry("agentada.cc"), operator: "maus" }));
+    m.files.set(layout.registryFile, JSON.stringify({ ...emptyRegistry("agentada.cc"), operator: "eacbot" }));
     const logs = await boot(m);
     expect(logs[0]).toContain("fleet agent listening");
     expect(fleetAvailable(socketPath)).toBe(true);
@@ -116,7 +116,7 @@ describe.skipIf(process.platform === "win32")("fleet agent over its socket", () 
     appendUsage(dataDir, { at: "2026-08-03T10:00:00.000Z", botId: "b", botName: "B", threadId: "t", instanceId: "claude", driverKind: "claudeAgent", model: "m", input: 10, output: 5, costUsd: 9, trigger: { kind: "owner" } });
     await flushUsageLedger(dataDir);
     const listed = await fleetRequest(socketPath, "GET", "/workspaces");
-    expect(listed).toMatchObject({ status: 200, body: { domain: "agentada.cc", operator: "maus", workspaces: [{ slug: "acme", host: "acme.agentada.cc", port: 8810, live: "active", usage: { month: "2026-09", turns: 1, costUsd: 0.25 } }] } });
+    expect(listed).toMatchObject({ status: 200, body: { domain: "agentada.cc", operator: "eacbot", workspaces: [{ slug: "acme", host: "acme.agentada.cc", port: 8810, live: "active", usage: { month: "2026-09", turns: 1, costUsd: 0.25 } }] } });
     expect(m.calls).toContain(`usage ${dataDir} as omb-acme`);
 
     const added = await fleetRequest(socketPath, "POST", "/workspaces/acme/users", { action: "add", email: "bob@acme.test", chatOnly: true });

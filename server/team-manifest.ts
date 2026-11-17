@@ -1,13 +1,15 @@
 import { z } from "zod";
 
 import { schemaIssue, type JsonValue } from "./schema.ts";
-import type { MausColor } from "./store.ts";
+import type { BotColor } from "./store.ts";
 import { botBodyId, type BotBodyId } from "../shared/bot-body.ts";
 import { takeImportName } from "../shared/import-name.ts";
-import { MAUS_COLOR_NAMES } from "../shared/wire.ts";
+import { MASCOT_COLOR_NAMES } from "../shared/wire.ts";
 import { BOT_PROFILE_LIMITS } from "../shared/bot-profile.ts";
 import { optionalText, requiredText } from "../shared/package-format.ts";
 
+/** The team file's own format identifier. Like the package format it is a compatibility marker, not a product name:
+ * team files already on disk and in shared repositories carry this spelling. */
 export const TEAM_MANIFEST_FORMAT = "openmaus.team" as const;
 export const TEAM_MANIFEST_VERSION = 2 as const;
 export const LEGACY_TEAM_MANIFEST_VERSION = 1 as const;
@@ -39,7 +41,7 @@ const memberSchema = z.object({
     error: "standing instructions must be at most 24000 bytes",
   }).optional(),
   appearance: z.object({
-    color: z.enum(MAUS_COLOR_NAMES, { error: "is not supported" }),
+    color: z.enum(MASCOT_COLOR_NAMES, { error: "is not supported" }),
     mascotExpression: optionalText(80),
     mascotBody: optionalText(40),
   }),
@@ -52,7 +54,7 @@ const membersSchema = z
 
 const manifestSchema = z.discriminatedUnion("version", [
   z.object({
-    format: z.literal(TEAM_MANIFEST_FORMAT, { error: "This is not an OpenMaus team file" }),
+    format: z.literal(TEAM_MANIFEST_FORMAT, { error: "This is not an EACbot team file" }),
     version: z.literal(LEGACY_TEAM_MANIFEST_VERSION),
     team: z.object({
       name: requiredText(100),
@@ -66,7 +68,7 @@ const manifestSchema = z.discriminatedUnion("version", [
     }),
   }),
   z.object({
-    format: z.literal(TEAM_MANIFEST_FORMAT, { error: "This is not an OpenMaus team file" }),
+    format: z.literal(TEAM_MANIFEST_FORMAT, { error: "This is not an EACbot team file" }),
     version: z.literal(TEAM_MANIFEST_VERSION),
     team: z.object({
       name: requiredText(100),
@@ -83,7 +85,7 @@ export interface TeamManifestMember {
   description: string;
   soul?: string;
   appearance: {
-    color: MausColor;
+    color: BotColor;
     mascotExpression?: string;
     mascotBody?: string;
   };
@@ -130,7 +132,7 @@ interface ExportableBot {
   title: string;
   description: string;
   soul?: string;
-  color: MausColor;
+  color: BotColor;
   mascotExpression?: string | null;
   mascotBody?: string | null;
 }
@@ -200,7 +202,7 @@ export interface ImportedMemberProfile {
   title: string;
   description: string;
   soul?: string;
-  color: MausColor;
+  color: BotColor;
   mascotExpression?: string;
   mascotBody?: BotBodyId;
 }

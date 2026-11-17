@@ -4,7 +4,7 @@ import type { SkillsLibrarySkillWire } from "../../shared/wire.ts";
 import type { AppConfig } from "../config.ts";
 import { setImportedSkillEnabled } from "../imported-skills.ts";
 import { botSkillTemplateSchema } from "../new-bot-defaults.ts";
-import { fetchSkillFromSource } from "../skill-fetch.ts";
+import { fetchSkillFromSource, SKILL_IMPORT_TRUNCATION_WARNING } from "../skill-fetch.ts";
 import { skillImportSummary } from "../skill-folder.ts";
 import { installLibrarySkill, listLibrarySkills, readLibrarySkillFile, readSkillLibraryIndex, setLibrarySkillEveryBot, setLibrarySkillReviewState, skillsLibraryEnabled } from "../skill-library.ts";
 import {
@@ -76,7 +76,12 @@ export function createBotSkillsRoutes(deps: BotSkillsRouteDeps): RouteHandler {
       const done = results.flatMap(({ skill, result }) => ("error" in result ? [] : [{ skill, installed: result }]));
       if (!done.length) return json(res, 422, { error: errors.join("; ") || "nothing importable found" });
       const imported = done.map(({ skill, installed }) => skillImportSummary(installed.name, skill.files, skill.skipped));
-      return json(res, 201, { installed: done.map(({ installed }) => installed), imported, errors });
+      return json(res, 201, {
+        installed: done.map(({ installed }) => installed),
+        imported,
+        errors,
+        ...(fetched.truncated ? { warning: SKILL_IMPORT_TRUNCATION_WARNING } : {}),
+      });
     }
     m = path.match(/^\/api\/bots\/([\w-]+)\/skills\/([a-z0-9-]+)$/);
     if (m && method === "GET") {

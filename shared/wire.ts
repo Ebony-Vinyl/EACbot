@@ -63,18 +63,18 @@ export type CloudBackend = "box" | "vps";
 /** A place a bot can act. `cloud` covers both cloud backends. */
 export type Surface = "cloud" | "vm" | "local" | "browser";
 
-export const MAUS_COLOR_NAMES = [
+export const MASCOT_COLOR_NAMES = [
   "green", "blue", "red", "orange", "purple", "cyan", "pink",
   "yellow", "teal", "coral", "silver", "chrome",
 ] as const;
-export type MausColor = (typeof MAUS_COLOR_NAMES)[number];
+export type BotColor = (typeof MASCOT_COLOR_NAMES)[number];
 
-export function isMausColor(value: unknown): value is MausColor {
-  return typeof value === "string" && (MAUS_COLOR_NAMES as readonly string[]).includes(value);
+export function isBotColor(value: unknown): value is BotColor {
+  return typeof value === "string" && (MASCOT_COLOR_NAMES as readonly string[]).includes(value);
 }
 
 /** The face a bot rests on, as one of the engine's state names. */
-export type MausExpression = string;
+export type MascotExpression = string;
 
 /** What the bot is doing right now, as the harness sees it. `parked.computer`
  * is task-level only: a turn that settled at the computer wait ceiling and
@@ -295,8 +295,8 @@ export interface WireBot extends DefaultBotFields, BotAccessFields {
   /** The SOUL.md mirror differed from soul at the last turn dispatch. */
   soulDrift?: boolean;
   notifications: boolean;
-  color: MausColor;
-  mascotExpression?: MausExpression | null;
+  color: BotColor;
+  mascotExpression?: MascotExpression | null;
   mascotBody?: BotBodyId | null;
   /** Overrides both eyes and mouth. Absent or null preserves the body's default inks. */
   mascotFaceColor?: MascotFaceColor | null;
@@ -386,6 +386,12 @@ export interface WireBot extends DefaultBotFields, BotAccessFields {
   outbound?: { policy: "ask" | "allow" };
   /** Which of a paired phone's apps this bot may use; absent: every bot may use what the phone allows (shared/phone-apps.ts). */
   phoneApps?: import("./phone-apps.ts").PhoneApps;
+  /** Whether this bot may read and record health readings. Absent: yes, for the person whose health this server holds. */
+  healthTools?: boolean;
+  /** What this bot may do with the home's devices; absent follows the workspace's `home.botAccess`. */
+  homeAccess?: "off" | "read" | "control" | "full";
+  /** Zones this bot may touch; absent: every zone. */
+  homeZones?: string[];
   /** Ordered backups used only by opt-in, pre-prompt startup recovery. */
   fallback?: Array<{ instanceId: string; model: string }>;
   /** Whether this bot gets the app's built-in browser. */

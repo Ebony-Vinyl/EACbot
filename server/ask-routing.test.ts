@@ -7,7 +7,7 @@ const key = (email: string) => `p_${email.replace(/\W/g, "").padEnd(22, "x").sli
 const ADA = key("ada"), BOB = key("bob"), OLIVE = key("olive");
 const bots: Record<string, { createdBy?: string; reportsTo?: string; defaultBot?: { person?: string } }> = {
   fox: { createdBy: "ada", reportsTo: "bob" },
-  "bobs-mausbot": { reportsTo: "ada", defaultBot: { person: "bob" } },
+  "bobs-eacbot": { reportsTo: "ada", defaultBot: { person: "bob" } },
   lead: { createdBy: "olive", reportsTo: "ada" },
   stray: {},
 };
@@ -30,7 +30,7 @@ describe("whose a bot's ask is on a Team Cloud", () => {
     expect([ada, bob, olive].map((viewer) => route.asks(viewer, "stray", "stray-main"))).toEqual([true, false, true]);
     expect(route.askedPerson("fox", "room-1")).toBe(BOB);
     // A member's own EACbot is theirs, whatever else it says.
-    expect(route.askedPerson("bobs-mausbot", "bobs-mausbot-main")).toBe(BOB);
+    expect(route.askedPerson("bobs-eacbot", "bobs-eacbot-main")).toBe(BOB);
   });
 
   it("goes to the Admins when the person a bot reports to has left the team", () => {

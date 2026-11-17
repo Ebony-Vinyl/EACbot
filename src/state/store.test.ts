@@ -138,7 +138,7 @@ describe("composer thread approval persistence", () => {
 
 describe("independent bot threads", () => {
   const bot: Bot = {
-    id: "thread-bot", threadId: "first", name: "Maus", title: "Helper", description: "",
+    id: "thread-bot", threadId: "first", name: "Mascot", title: "Helper", description: "",
     notifications: true, color: "green", unread: true, busy: true, activity: "waiting-on-you",
     modelSelection: { instanceId: "default", model: "default-model" }, approvalMode: "ask", alwaysAllow: [],
     messages: [{ id: "first-message", role: "user", kind: "text", text: "First conversation", at: 1 }],
@@ -401,7 +401,7 @@ describe("connector grants persistence", () => {
   const announcement = () => ({
     id: "bot-1",
     threadId: "thread-1",
-    name: "Maus",
+    name: "Mascot",
     title: "Helper",
     description: "",
     notifications: true,
@@ -432,7 +432,7 @@ describe("trusted approval-mode persistence", () => {
   const announcement = (approvalMode: Bot["approvalMode"] = "ask") => ({
     id: "bot-1",
     threadId: "thread-1",
-    name: "Maus",
+    name: "Mascot",
     title: "Helper",
     description: "",
     notifications: true,

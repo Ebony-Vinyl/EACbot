@@ -90,7 +90,7 @@ linuxBox("the box plan", () => {
     const own = join(dataDir, "engine-homes", "member-aaaaaaaaaaaaaaaa");
     const team = planBox(setup(), { command: "opencode", args: [], cwd, env: { HOME: own }, home: own });
     expect(visibleInBox(team, join(dataDir, "tools", "npm", "bin", "opencode"))).toBe("ro");
-    const apart = planBox({ ...setup(), dataDir: "/srv/omb", home: "/home/maus", engineRoots: engineInstallRoots("/srv/omb") }, { command: "opencode", args: [], cwd: "/srv/omb/task-workspaces/b/t", env: {} });
+    const apart = planBox({ ...setup(), dataDir: "/srv/omb", home: "/home/eacbot", engineRoots: engineInstallRoots("/srv/omb") }, { command: "opencode", args: [], cwd: "/srv/omb/task-workspaces/b/t", env: {} });
     expect(visibleInBox(apart, "/srv/omb/tools/npm/bin/opencode")).toBe("ro");
     expect(visibleInBox(apart, "/srv/omb/messages.db")).toBe("none");
   });
@@ -183,7 +183,7 @@ linuxBox("the box plan", () => {
   });
 
   it("a data folder outside HOME is simply not there", () => {
-    const plan = planBox({ ...setup(), dataDir: "/srv/omb", home: "/home/maus" }, { command: "/usr/bin/x", args: [], cwd: "/srv/omb/task-workspaces/b/t", env: {} });
+    const plan = planBox({ ...setup(), dataDir: "/srv/omb", home: "/home/eacbot" }, { command: "/usr/bin/x", args: [], cwd: "/srv/omb/task-workspaces/b/t", env: {} });
     expect(visibleInBox(plan, "/srv/omb/messages.db")).toBe("none");
     expect(visibleInBox(plan, "/srv/omb/task-workspaces/b/t")).toBe("rw");
     expect(visibleInBox(plan, "/srv/omb/workspaces/b")).toBe("rw");

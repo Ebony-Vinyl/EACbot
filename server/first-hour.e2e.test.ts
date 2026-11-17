@@ -121,7 +121,10 @@ await import(${JSON.stringify(pathToFileURL(join(SERVER_DIR, "testing", "fake-cl
       if (Date.now() > deadline) throw new Error(`the server did not start:\n${log}`);
       await new Promise((resolve) => setTimeout(resolve, 200));
     }
-    // The Cloud registers with the connected-apps service by itself, as its plan includes it.
+    const pairing = await signed("/api/cloud/pairing", "POST", JSON.stringify({ label: "EACbot app (Cloud)", ttlSeconds: 300 }));
+    token = (await api("POST", "/api/auth/pair", { code: pairing.code })).token;
+    // Opening Connected Apps is the first use: that request registers the Cloud's included service.
+    await api("GET", "/api/connectors/catalog");
     const registered = Date.now() + 30_000;
     let installation: string | undefined;
     while (!(installation = broker.installationIds().find((id) => broker.cloudMachine(id) === MACHINE))) {
@@ -129,8 +132,6 @@ await import(${JSON.stringify(pathToFileURL(join(SERVER_DIR, "testing", "fake-cl
       await new Promise((resolve) => setTimeout(resolve, 200));
     }
     person = broker.userFor(installation);
-    const pairing = await signed("/api/cloud/pairing", "POST", JSON.stringify({ label: "EACbot app (Cloud)", ttlSeconds: 300 }));
-    token = (await api("POST", "/api/auth/pair", { code: pairing.code })).token;
     const bots = (await api("GET", "/api/bots")).bots as any[];
     const found = bots.find((bot) => bot.defaultBot && !bot.defaultBot.person);
     chief = { id: found.id, threadId: found.mainThreadId ?? found.threadId };

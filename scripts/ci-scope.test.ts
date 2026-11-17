@@ -242,6 +242,9 @@ describe("CI outputs", () => {
       "server/plugins/tool-call.test.ts",
       "server/plugins/ui-contributions.test.ts",
       "server/routes/plugin-ui.test.ts",
+      "server/tasks/runtime.test.ts",
+      "server/tasks/task-center.e2e.test.ts",
+      "server/usage-metering.test.ts",
       "server/routes/plugins-grants.test.ts",
       "server/routes/plugins-market.test.ts",
       "server/routes/plugins.test.ts",
@@ -290,7 +293,7 @@ describe("CI outputs", () => {
       "server/question-routing.e2e.test.ts",
       "server/team-protocol.e2e.test.ts",
       "server/team-small-fixes.e2e.test.ts",
-      "server/team-mausbot-followup.e2e.test.ts",
+      "server/team-eacbot-followup.e2e.test.ts",
       "server/team-no-ai.e2e.test.ts",
       "server/team-refused-handoff.e2e.test.ts",
       "server/two-places.e2e.test.ts",
@@ -300,7 +303,7 @@ describe("CI outputs", () => {
       "server/place-inbox.e2e.test.ts",
       "server/bot-api-team.e2e.test.ts",
       "server/cloud-team-first-look.e2e.test.ts",
-      "server/cloud-team-mausbot-own-chat.e2e.test.ts",
+      "server/cloud-team-eacbot-own-chat.e2e.test.ts",
       "server/connector-stayed.e2e.test.ts",
       "server/email/host.test.ts",
       "server/host/outside-lineage.test.ts",
@@ -431,7 +434,7 @@ describe("Windows on a pull request", () => {
   });
 
   it.each([
-    "electron/main.mjs", "build/installer.nsh", "electron-builder.yml", "maus.ps1", "scripts/build-cua-win.mjs",
+    "electron/main.mjs", "build/installer.nsh", "electron-builder.yml", "eacbot.ps1", "scripts/build-cua-win.mjs",
     "scripts/smoke-cua-win-embedded.mjs", "server/win32-paths.ts", "server/shell/windows.ts", "server/foo.win32.test.ts",
     ".github/workflows/package-win.yml", "package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml", ".gitattributes", "vite.config.ts",
     "third_party/browser/agent-browser-windows-stdio.patch", ".github/workflows/ci.yml", "scripts/ci-scope.mjs",

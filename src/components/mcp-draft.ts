@@ -18,6 +18,8 @@ export interface RemoteMcpListing extends McpResultBudgetListing {
   enabled: boolean;
   auth?: "signed-in" | "needs-sign-in";
   oauth?: McpOAuthClientListing;
+  /** The saved entry cannot run as it stands; the sentence says what to fix. */
+  error?: string;
 }
 export interface McpOAuthClientListing {
   clientId: string;

@@ -25,10 +25,11 @@ const QQ = {
 
 describe("config schema", () => {
   it("accepts every bundled plugin's schema", async () => {
-    const { readFileSync, readdirSync, statSync } = await import("node:fs");
+    const { existsSync, readFileSync, readdirSync, statSync } = await import("node:fs");
     const { join } = await import("node:path");
     const root = join(import.meta.dirname, "..", "..", "plugins", "eac");
-    const packs = readdirSync(root).filter((name) => statSync(join(root, name)).isDirectory());
+    // A pack is a directory with a manifest; plugins/eac/shared holds code the packs import and is not one.
+    const packs = readdirSync(root).filter((name) => statSync(join(root, name)).isDirectory() && existsSync(join(root, name, "eac-plugin.json")));
     expect(packs.length).toBeGreaterThan(8);
     for (const pack of packs) {
       const file = join(root, pack, "config.schema.json");

@@ -1,5 +1,5 @@
 // The audit log on the server: one JSON line for each job and for each request EACbot's Admin makes to the home, written
-// by the connector to /var/log/mausbot/audit.jsonl on the host, root's, for the server's owner to read. It is only ever
+// by the connector to /var/log/eacbot/audit.jsonl on the host, root's, for the server's owner to read. It is only ever
 // appended to. Each line carries the SHA-256 of the line before it, so a line taken out or changed breaks the chain
 // (verifyAudit). It never holds a secret, an environment value or a pairing code.
 import { createHash } from "node:crypto";
@@ -8,7 +8,7 @@ import { dirname } from "node:path";
 
 import type { Job, JobError, JobErrorCode, JobType } from "./protocol.ts";
 
-/** Who asked: the Admin over the connector's connection, or root on this server through `mausbot-connector job`. */
+/** Who asked: the Admin over the connector's connection, or root on this server through `eacbot-connector job`. */
 export type AuditSource = "admin" | "local";
 
 export type AuditEvent =

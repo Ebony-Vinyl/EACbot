@@ -7,7 +7,7 @@ import { addressClass, listed, ownAddresses, type AddressClass } from "../../../
 
 export { addressClass, ownAddresses, type AddressClass };
 
-/** `desktop`: the app on someone's computer. `server`: self-hosted (Docker, npm). `cloud`: a EACbot Cloud home. */
+/** `desktop`: the app on someone's computer. `server`: self-hosted (Docker, npm). `cloud`: an EACbot Cloud home. */
 export type EgressHost = "desktop" | "server" | "cloud";
 
 /** `home-network` and `port` come from the person's own computer when My Cloud's browsing goes out through it. */

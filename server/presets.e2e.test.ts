@@ -44,7 +44,7 @@ it("shares New bot defaults as a preset, imports it, and creates bots from file 
     expect(existsSync(published)).toBe(false);
     expect(preview.summary).toMatchObject({ kind: "library", counts: { bots: 0, skills: 1, presets: 1 }, presetNames: ["Support agent"] });
     const saved = await ok("POST", "/api/teams/export", body);
-    expect(saved.filename).toBe("support-agent-1.0.0.openmaus.json");
+    expect(saved.filename).toBe("support-agent-1.0.0.eacbot.json");
     expect(saved.redacted).toEqual(["presets[new-bot-defaults].bot.soul"]);
     expect(existsSync(published)).toBe(true);
     const preset = saved.document.package.presets[0];
@@ -136,7 +136,7 @@ it("offers an organization library's presets in New bot until the publisher with
     writeFileSync(join(blobs, `${digest}.json`), bytes, { mode: 0o600 });
     const packageId = "44444444-4444-4444-8444-444444444444";
     const catalog = (withdrawn: boolean) => JSON.stringify({
-      format: "openmaus.org-library", version: 1, libraryVersion: withdrawn ? 2 : 1, organization: { id: "11111111-1111-4111-8111-111111111111", name: "Customer Co" },
+      format: "eacbot.org-library", version: 1, libraryVersion: withdrawn ? 2 : 1, organization: { id: "11111111-1111-4111-8111-111111111111", name: "Customer Co" },
       packages: [{
         packageId, ref: "acme/sales-skills", name: "Sales skills", tagline: document.package.tagline, kind: "library",
         publisher: { organizationId: "33333333-3333-4333-8333-333333333333", name: "Acme Partners", self: false }, mode: "available", offAction: "keep",

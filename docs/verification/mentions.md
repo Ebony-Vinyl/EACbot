@@ -25,7 +25,7 @@ stops the fixture servers and removes their temporary data directory.
 | Direct chat scope | Enter `@everyone @Atlas @Juniper` in Atlas's direct chat | Only Juniper is highlighted |
 | Responsive draft | Resize from desktop to 390px with the multiple-mention draft | Input grows to three lines; mirror and textarea both measure 80px |
 | Skins | Switch Dark → Light → Dark | Names remain legible in the composer and sent bubbles |
-| Bot identity colors | Compare Juniper (red) and Atlas (blue) with their avatars | Each mention uses its bot's MAUS_COLORS value; everyone remains neutral |
+| Bot identity colors | Compare Juniper (red) and Atlas (blue) with their avatars | Each mention uses its bot's MASCOT_COLORS value; everyone remains neutral |
 | Markdown | Run ChatMarkdown tests | Prose/lists/tables highlight known names; code, links and HTML safety are preserved |
 
 ## Recorded run

@@ -721,7 +721,7 @@ export function TeamLibraryPanel({
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept=".md,.json,.mausbackup.json,.mausteam.json,text/markdown,application/json"
+                    accept=".md,.json,.eacbotbackup.json,.eacbotteam.json,text/markdown,application/json"
                     className="hidden"
                     onChange={(event) => {
                       const file = event.currentTarget.files?.[0];

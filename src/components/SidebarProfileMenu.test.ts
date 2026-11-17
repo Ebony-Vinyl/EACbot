@@ -330,7 +330,7 @@ describe("choosing where the phone connects", () => {
 describe("Get the phone app", () => {
   it("offers iPhone and Android with the links the website and Cloud page use", () => {
     expect(PHONE_APPS.map((app) => [app.id, app.url])).toEqual([["ios", IOS_APP_STORE_URL], ["android", ANDROID_APK_URL]]);
-    expect(IOS_APP_STORE_URL).toBe("https://apps.apple.com/in/app/mausbot/id6803387923");
+    expect(IOS_APP_STORE_URL).toBe("https://apps.apple.com/in/app/eacbot/id6803387923");
     expect(ANDROID_APK_URL).toBe("https://github.com/milind-soni/EACbot/releases/download/android-v1.5.0/EACbot.apk");
   });
 

@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- Work only in `/Users/omkar/Desktop/openmaus/OpenGrokBot-learn-watch-talk` on `feat/learned-replay`. Never push. Every commit message ends with a blank line and `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
+- Work only in `/Users/omkar/Desktop/eacbot/OpenGrokBot-learn-watch-talk` on `feat/learned-replay`. Never push. Every commit message ends with a blank line and `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
 - Comments follow `AGENTS.md`: only what code cannot say (vendor facts with version, wire doc comments in `shared/`, security invariants, known open risks). No narration.
 - The server runs on type stripping: type-only imports are `import type` (or inline `type`).
 - `server/index.ts` is at 16170 lines against a file-size ratchet of 16173 (`scripts/testing/file-size-ratchet.test.ts`). This plan adds exactly three lines there and removes one. `server/config.ts` (1365/1365), `src/components/ChatView.tsx` (1348/1348) and `src/state/store.tsx` (3456/3456) may not grow at all: their edits extend existing lines.
@@ -29,7 +29,7 @@
 - Never address a replayed step by `x`/`y`. A recipe never holds `element_token`, `element_index`, `pid`, `window_id` or `session`; targets are resolved fresh.
 - Wire field: `WireMessage.savedSteps?: { recipeId: string; learned?: true; replayed?: true }`. Setting: `config.json` `features.savedSteps`, on unless `false`.
 - Copy (English, `src/locales/en.json`): chips "Saved these steps · next time no AI" / "Repeated saved steps · no AI" with a "Forget" button; setting title "Repeat computer tasks without AI".
-- Phones are untouched (no `mausbot-mobile` work); the forget route is not added to `CLIENT_ALLOW`.
+- Phones are untouched (no `eacbot-mobile` work); the forget route is not added to `CLIENT_ALLOW`.
 - Test commands: `pnpm exec vitest run <file>`; `pnpm typecheck`; `pnpm lint`; `pnpm i18n:check`.
 - Line numbers are those of commit `8a82b4a79`. A line an earlier task inserts shifts every later one, so find each edit by the code quoted beside it.
 

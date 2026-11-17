@@ -79,7 +79,7 @@ describe("connect", () => {
 
   it("needs a code for a workspace elsewhere, and never writes a token to the terminal", async () => {
     const remote = capture();
-    expect(await runHeadless(["connect", "https://maus.example.com", "--out", join(dir, "t")], { io: remote.io, env: {} })).toBe(2);
+    expect(await runHeadless(["connect", "https://eacbot.example.com", "--out", join(dir, "t")], { io: remote.io, env: {} })).toBe(2);
     expect(remote.err[0]).toBe("error: a workspace elsewhere needs a pairing code");
     expect(() => writeTokenFile("-", "x", false)).toThrow("never to the terminal");
     expect(() => writeTokenFile("/dev/stdout", "x", true)).toThrow("never to the terminal");

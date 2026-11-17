@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { mascotFaceColorSchema } from "./bot-avatar.ts";
 
-import { CONNECTOR_SLUG_PATTERN, CONNECTOR_TOOL_NAME_PATTERN, MAUS_COLOR_NAMES } from "./wire.ts";
+import { CONNECTOR_SLUG_PATTERN, CONNECTOR_TOOL_NAME_PATTERN, MASCOT_COLOR_NAMES } from "./wire.ts";
 import { parseToolScope, type ToolScope } from "./tool-scope.ts";
 
 export const MAX_TEAM_BACKUP_BYTES = 50 * 1024 * 1024;
@@ -11,7 +11,7 @@ export const TEAM_BACKUP_EXCLUSIONS = "Files, images, custom avatars, account co
 const key = z.string().min(1).max(200);
 const name = z.string().trim().min(1).max(200);
 const timestamp = z.number().finite().nonnegative();
-const color = z.enum(MAUS_COLOR_NAMES);
+const color = z.enum(MASCOT_COLOR_NAMES);
 export const goalHistoryWords = z.object({
   role: z.literal("bot"),
   text: z.string().max(2_000_000),
@@ -105,7 +105,7 @@ function knownRoomResponder(value: unknown): unknown {
 }
 
 const backupSchema = z.object({
-  format: z.literal("openmaus.backup"),
+  format: z.literal("eacbot.backup"),
   version: z.literal(1),
   name,
   exportedAt: timestamp,

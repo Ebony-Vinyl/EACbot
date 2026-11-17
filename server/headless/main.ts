@@ -82,7 +82,7 @@ eacbot doctor --host [--data-dir DIR] [--port 8799] [--domain HOST]
   connect: `eacbot connect [URL] [--code CODE] --out FILE [--label NAME] [--client] [--force]
   Get a token for a workspace you reach over the network, saved to FILE (only you can read it).
   On this computer's own server the code is made for you; elsewhere, get one from Settings → Phone.
-  Then use it: --url URL --token-file FILE (or OPENMAUSBOT_URL and OPENMAUSBOT_TOKEN).`,
+  Then use it: --url URL --token-file FILE (or EACBOT_URL and EACBOT_TOKEN).`,
   mcp: "eacbot mcp\n  Serve the EACbot MCP tools on stdin and stdout, for an agent (docs/mcp-server.md).",
   token: "eacbot token create NAME --out FILE … | token list | token revoke ID   (see help token create)",
   "token create": `eacbot token create NAME --out FILE [--scope client|admin] [--expires 90d] [--force]

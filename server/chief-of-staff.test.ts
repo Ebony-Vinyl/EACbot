@@ -141,10 +141,10 @@ describe("chiefOfStaffSystemPrompt", () => {
   });
 
   it("tells a place's EACbot that is not the Chief that the person's day and brief are its own, and a member's that they are not", () => {
-    const place = chiefOfStaffSystemPrompt("maus", [{ id: "maus", name: "EACbot", defaultBot: {} }], true);
+    const place = chiefOfStaffSystemPrompt("eacbot", [{ id: "eacbot", name: "EACbot", defaultBot: {} }], true);
     expect(place).toContain("but you are not the Chief: team incidents and escalations stay with the Chief.");
     expect(place).toContain("Keeping an eye on the person's day and their daily brief are yours.");
-    const member = chiefOfStaffSystemPrompt("maus", [{ id: "maus", name: "EACbot", defaultBot: { person: "ada@example.test" } }], true);
+    const member = chiefOfStaffSystemPrompt("eacbot", [{ id: "eacbot", name: "EACbot", defaultBot: { person: "ada@example.test" } }], true);
     expect(member).toContain("but you are not the Chief: the daily brief, team incidents and escalations stay with the Chief.");
     expect(member).not.toContain("daily brief are yours");
   });
@@ -170,9 +170,9 @@ describe("an @everyone line from the Team map", () => {
     expect(EVERYONE_ON_THE_MAP).toContain("never to all of them by default");
   });
 
-  it("says nothing of it to a Chief that cannot hand work on, or to a EACbot that only holds the tools", () => {
+  it("says nothing of it to a Chief that cannot hand work on, or to an EACbot that only holds the tools", () => {
     expect(chiefOfStaffSystemPrompt("chief", team, false)).not.toContain(EVERYONE_ON_THE_MAP);
-    const maus = [{ id: "maus", name: "EACbot", defaultBot: { person: "ada@example.test" } }, ...team.slice(1)];
-    expect(chiefOfStaffSystemPrompt("maus", maus, true)).not.toContain(EVERYONE_ON_THE_MAP);
+    const eacbot = [{ id: "eacbot", name: "EACbot", defaultBot: { person: "ada@example.test" } }, ...team.slice(1)];
+    expect(chiefOfStaffSystemPrompt("eacbot", eacbot, true)).not.toContain(EVERYONE_ON_THE_MAP);
   });
 });

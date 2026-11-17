@@ -66,13 +66,7 @@ describe("desktop companion endpoint", () => {
     expect(normalizeDesktopCompanionEndpoint(`${LABEL}.eacbot.com`)).toBe(
       `https://${LABEL}.eacbot.com`,
     );
-    // The control plane's second Cloudflare account gives addresses here.
-    expect(normalizeDesktopCompanionEndpoint(`https://${LABEL}.mausbot.si`)).toBe(
-      `https://${LABEL}.mausbot.si`,
-    );
-    expect(normalizeDesktopCompanionEndpoint(` ${LABEL.toUpperCase()}.Mausbot.SI/ `)).toBe(
-      `https://${LABEL}.mausbot.si`,
-    );
+    // This build issues addresses in one zone only; a deployment adds its own through the environment.
     for (const endpoint of [
       "https://unrelated.example.com",
       `http://${LABEL}.eacbot.com`,
@@ -84,32 +78,33 @@ describe("desktop companion endpoint", () => {
       "http://user@host.example-tailnet.ts.net",
       "http://host.example-tailnet.ts.net.evil.test",
       `https://${LABEL}.eacbot.com.evil.test`,
-      `http://${LABEL}.mausbot.si`,
-      `https://${LABEL}.mausbot.si/path`,
-      `https://${LABEL}.mausbot.si.evil.test`,
-      "https://mausbot.si",
-      "mausbot.si",
-      "https://evilmausbot.si",
-      `https://${LABEL}.evilmausbot.si`,
-      "https://www.mausbot.si",
-      "https://app.mausbot.si",
+      `https://${LABEL}.eacbot.si`,
+      `http://${LABEL}.eacbot.si`,
+      `https://${LABEL}.eacbot.si/path`,
+      `https://${LABEL}.eacbot.si.evil.test`,
+      "https://eacbot.si",
+      "eacbot.si",
+      "https://evileacbot.si",
+      `https://${LABEL}.evileacbot.si`,
+      "https://www.eacbot.si",
+      "https://app.eacbot.si",
       "https://accounts.eacbot.com",
       "https://c-opaque.eacbot.com",
-      "https://c-opaque.mausbot.si",
-      `https://${LABEL.slice(0, -1)}.mausbot.si`,
-      `https://${LABEL}0.mausbot.si`,
-      `https://${LABEL.replace("c-", "d-")}.mausbot.si`,
-      `https://${LABEL}.extra.mausbot.si`,
-      `https://www.${LABEL}.mausbot.si`,
+      "https://c-opaque.eacbot.si",
+      `https://${LABEL.slice(0, -1)}.eacbot.si`,
+      `https://${LABEL}0.eacbot.si`,
+      `https://${LABEL.replace("c-", "d-")}.eacbot.si`,
+      `https://${LABEL}.extra.eacbot.si`,
+      `https://www.${LABEL}.eacbot.si`,
     ]) {
       expect(normalizeDesktopCompanionEndpoint(endpoint), endpoint).toBe("");
     }
   });
 
   it("accepts one c-<32 hex> label under each listed domain, and only those", () => {
-    // The third domain is a one-line change; until the owner names it, nothing new is accepted.
+    // The next domain is a one-line change; until the owner names it, nothing new is accepted.
     expect(NEXT_MANAGED_COMPANION_HOST_SUFFIX).toBe("");
-    expect(MANAGED_COMPANION_HOST_SUFFIXES).toEqual(["eacbot.com", "mausbot.si"]);
+    expect(MANAGED_COMPANION_HOST_SUFFIXES).toEqual(["eacbot.com"]);
     expect(Object.isFrozen(MANAGED_COMPANION_HOST_SUFFIXES)).toBe(true);
     for (const suffix of MANAGED_COMPANION_HOST_SUFFIXES) {
       expect(suffix).toMatch(/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/);
@@ -127,7 +122,7 @@ describe("desktop companion endpoint", () => {
         expect(normalizeDesktopCompanionEndpoint(near), near).toBe("");
       }
     }
-    for (const unlisted of ["example.net", "eacbot.net", "mausbot.com", "si", "com", ""]) {
+    for (const unlisted of ["example.net", "eacbot.net", "si", "com", ""]) {
       expect(normalizeDesktopCompanionEndpoint(`https://${LABEL}.${unlisted}`), unlisted).toBe("");
     }
   });
@@ -137,12 +132,10 @@ describe("desktop companion endpoint", () => {
     expect(desktopCompanionAccess({ [DESKTOP_COMPANION_FIELD]: hostedAccess })).toEqual(
       hostedAccess,
     );
-    const secondDomain = { ...access, endpoint: `https://${LABEL}.mausbot.si` };
-    expect(desktopCompanionAccess({ [DESKTOP_COMPANION_FIELD]: secondDomain })).toEqual(
-      secondDomain,
-    );
+    const secondDomain = { ...access, endpoint: `https://${LABEL}.eacbot.si` };
+    expect(desktopCompanionAccess({ [DESKTOP_COMPANION_FIELD]: secondDomain })).toBeNull();
     expect(
-      desktopCompanionAccess({ [DESKTOP_COMPANION_FIELD]: { ...access, endpoint: "https://app.mausbot.si" } }),
+      desktopCompanionAccess({ [DESKTOP_COMPANION_FIELD]: { ...access, endpoint: "https://app.eacbot.si" } }),
     ).toBeNull();
 
     expect(desktopCompanionAccess({ [DESKTOP_COMPANION_FIELD]: access })).toEqual(access);
@@ -205,29 +198,24 @@ describe("desktop companion pairing", () => {
       expect.objectContaining({ method: "POST" }),
     );
 
-    const secondDomain = await pairDesktopCompanion({
-      endpoint: `${LABEL}.mausbot.si`,
+    await expect(pairDesktopCompanion({
+      endpoint: `${LABEL}.eacbot.si`,
       code: "654321",
       deviceName: "Desktop client",
       requestId: "request-https-02",
       fetchImpl,
-    });
-    expect(secondDomain).toEqual({ ...access, endpoint: `https://${LABEL}.mausbot.si` });
-    expect(fetchImpl).toHaveBeenLastCalledWith(
-      `https://${LABEL}.mausbot.si/api/pair`,
-      expect.objectContaining({ method: "POST" }),
-    );
+    })).rejects.toThrow(/HTTPS companion address or full Tailscale name/);
 
     await expect(
       pairDesktopCompanion({
-        endpoint: "https://app.mausbot.si",
+        endpoint: "https://app.eacbot.si",
         code: "654321",
         deviceName: "Desktop client",
         requestId: "request-https-03",
         fetchImpl,
       }),
     ).rejects.toThrow("EACbot HTTPS companion address");
-    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 
   it("rejects bad codes and surfaces a sidecar error without returning secrets", async () => {

@@ -2,7 +2,7 @@ import { chmodSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, utime
 import { join } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { botThreadLimitText, defaultBotThreads, maxConcurrentBotThreads, maxConcurrentChildThreads } from "./bot-thread-limits.ts";
+import { botThreadLimitText, defaultBotThreads, MAX_BOT_THREADS_SETTING, maxConcurrentBotThreads, maxConcurrentChildThreads } from "./bot-thread-limits.ts";
 import type { JsonValue } from "./schema.ts";
 import { imageSlots } from "./image-generation.ts";
 
@@ -151,7 +151,7 @@ describe("configuration boundaries", () => {
     expect(botThreadLimitText({ threads: { maxConcurrentPerBot: 5 } }, desktop(16))).toBe("this bot has reached its limit of 5 parallel threads — wait for one to finish");
     expect(parseStoredConfig({ threads: { maxConcurrentPerBot: 16 } })).toEqual({ threads: { maxConcurrentPerBot: 16 } });
     expect(maxConcurrentBotThreads(parseConfigPatch({ threads: { maxConcurrentPerBot: 1 } }))).toBe(1);
-    for (const value of [0, -1, 17, 1.5, "10", null]) {
+    for (const value of [0, -1, MAX_BOT_THREADS_SETTING + 1, 1.5, "10", null]) {
       expect(() => parseConfigPatch({ threads: { maxConcurrentPerBot: value } })).toThrow("threads.maxConcurrentPerBot");
     }
   });
@@ -1342,7 +1342,7 @@ describe("saving OpenCode provider keys", () => {
     expect(mergeOpenCodeProviderKeys({}, { ANTHROPIC_API_KEY: "sk-ant" })).toEqual({ ok: true, keys: { ANTHROPIC_API_KEY: "sk-ant" } });
   });
 
-  it("refuses names OpenCode does not read or that OpenMaus keeps, with the fix", () => {
+  it("refuses names OpenCode does not read or that EACbot keeps, with the fix", () => {
     const refused = (name: string) => {
       const result = mergeOpenCodeProviderKeys(saved, { [name]: "a-key" });
       expect(result.ok, name).toBe(false);
@@ -1354,7 +1354,7 @@ describe("saving OpenCode provider keys", () => {
     expect(refused("OPENCODE_API_KEY")).toContain("OpenCode API key box");
     for (const name of ["OPENCODE_SERVER_KEY", "EAC_CLOUD_BOAT_TOKEN", "EAC_LICENSE_KEY", "BOX_TOKEN", "COMPOSIO_API_KEY",
       "OPENAI_COMPAT_API_KEY", "XAI_API_KEY", "MISTRAL_API_KEY", "CURSOR_API_KEY", "FACTORY_API_KEY"]) {
-      expect(refused(name)).toBe(`OpenMaus keeps ${name} for itself, so OpenCode can't be given it here. Put this key in opencode.json instead.`);
+      expect(refused(name)).toBe(`EACbot keeps ${name} for itself, so OpenCode can't be given it here. Put this key in opencode.json instead.`);
     }
   });
 
@@ -1981,7 +1981,7 @@ describe("workspace credential env strip", () => {
     // What an engine deliberately receives (the hosted model token as its provider key), plus look-alike names.
     const engine = {
       PATH: "/usr/bin", ANTHROPIC_API_KEY: "hosted-token", ANTHROPIC_AUTH_TOKEN: "hosted-token",
-      ANTHROPIC_BASE_URL: "https://admin.example.test/api/gateway/w/anthropic", OPENMAUSBOT_COMPANY_API_KEY: "hosted-token",
+      ANTHROPIC_BASE_URL: "https://admin.example.test/api/gateway/w/anthropic", EACBOT_COMPANY_API_KEY: "hosted-token",
       EAC_MANAGED_CODEX_TOKEN: "hosted-token", CODEX_HOME: "/data/codex", EAC_HOOK_TOKEN_FILE: "/data/hook-tokens/a.token",
       EAC_CLOUDFLARED_PATH: "/usr/local/bin/cloudflared", EAC_CLOUD: "not-prefixed", MY_EAC_CLOUD_NOTE: "user",
     };
@@ -2129,6 +2129,16 @@ describe("customMcpServers with url entries", () => {
       docs: { type: "sse", url: "https://docs.example/sse", headers: { Authorization: "Bearer t" } },
       notes: { command: "npx", args: [], env: {} },
     });
+  });
+
+  it("never mounts an old plain-http remote server, so no engine can send its headers", () => {
+    const cfg = {
+      mcpServers: {
+        legacy: { type: "http", url: "http://mcp.example.com/mcp", headers: { Authorization: "Bearer legacy-secret" }, enabled: true },
+        local: { type: "http", url: "http://127.0.0.1:8123/mcp", headers: {}, enabled: true },
+      },
+    } as Parameters<typeof customMcpServers>[0];
+    expect(customMcpServers(cfg)).toEqual({ local: { type: "http", url: "http://127.0.0.1:8123/mcp", headers: {} } });
   });
 });
 

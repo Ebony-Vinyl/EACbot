@@ -17,7 +17,7 @@
     "EMAIL_FROM": "noreply@eacbot.com",
     "ALLOWED_ORIGINS": "",
     "CLOUDFLARE_ACCOUNT_ID": "0c92969a82eb9e173b013a7e7a02333d",
-    "CLOUDFLARE_ZONE_ID": "bae08399bb6f96eb7266c65ac0057eee",
+    "CLOUDFLARE_ZONE_ID": "<32-hex zone id of eacbot.com in your account>",
     "COMPANION_HOST_SUFFIX": "eacbot.com",
     // More Cloudflare accounts for managed endpoints (README "Several
     // Cloudflare accounts"). Unset: the account above is the only one. A new
@@ -26,25 +26,14 @@
     // accountId, zoneId or companionHostSuffix once it holds endpoints (add a
     // new entry instead). The same JSON may be a secret to keep the IDs out of
     // this file. Each entry's token is the secret named by apiTokenSecret
-    // (wrangler secret put CLOUDFLARE_API_TOKEN_MAUSBOT_SI), never a var, and
+    // (wrangler secret put CLOUDFLARE_API_TOKEN_EACBOT_SI), never a var, and
     // is listed in secrets.required below (as is this JSON when it is a
     // secret) so every deploy keeps it. To stop new endpoints going to an
     // account and keep its own, set its "newEndpoints": false.
-    // Supamaus account, zone mausbot.si. dnsRecordLimit 3500 is the Pro (upgraded Oct 21; was 200 on Free)
-    // plan's record quota for a zone added after Sep 2024; on Pro it is 3,500
-    // (set it here once the zone is on Pro), and the tunnel quota (1,000)
-    // binds first. Desktop apps accept mausbot.si hostnames from 0.1.104 (#2582).
-    "CLOUDFLARE_ENDPOINT_ACCOUNTS": [
-      {
-        "accountId": "bbb5305f06e28a6f2abaac299f3b09dc",
-        "zoneId": "4ded3da43e7b2c3a5f27b0fb33e5bd7a",
-        "companionHostSuffix": "mausbot.si",
-        "apiTokenSecret": "CLOUDFLARE_API_TOKEN_MAUSBOT_SI",
-        "tunnelLimit": 1000,
-        "dnsRecordLimit": 3500,
-        "minAppVersion": "0.1.104"
-      }
-    ],
+    // A second Cloudflare account is an entry here, with its own accountId,
+    // zoneId and companionHostSuffix. Leave the list empty while one account
+    // serves every endpoint.
+    "CLOUDFLARE_ENDPOINT_ACCOUNTS": [],
     // Managed endpoint capacity of the account above (see README "Tunnel
     // capacity and idle reclaim"): its tunnel quota and its zone's DNS record
     // quota. They drive the 90% usage alert and /healthz, rank accounts for
@@ -80,7 +69,7 @@
     "RELAY_CAPABLE_MIN_VERSION": ""
   },
   "secrets": {
-    "required": ["BETTER_AUTH_SECRET", "CLOUDFLARE_API_TOKEN", "CLOUDFLARE_API_TOKEN_MAUSBOT_SI", "RELAY_TOKEN_SIGNING_KEY"]
+    "required": ["BETTER_AUTH_SECRET", "CLOUDFLARE_API_TOKEN", "CLOUDFLARE_API_TOKEN_EACBOT_SI", "RELAY_TOKEN_SIGNING_KEY"]
   },
   "d1_databases": [
     {

@@ -13,7 +13,7 @@ vi.mock("../HelperIntro", () => ({ HELPER_ASK_KEYS: ["helperIntro.ask.overview",
 const { TryAsking } = await import("./TryAsking");
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
-const bot = (extra: Partial<Bot> = {}) => ({ id: "maus", threadId: "t", name: "EACbot", defaultBot: {}, ...extra }) as Bot;
+const bot = (extra: Partial<Bot> = {}) => ({ id: "eacbot", threadId: "t", name: "EACbot", defaultBot: {}, ...extra }) as Bot;
 let host: HTMLDivElement, root: Root;
 const show = async (target: Bot) => { await act(async () => { root.render(createElement(TryAsking, { bot: target })); }); };
 
@@ -37,7 +37,7 @@ describe("Try asking", () => {
     expect(host.textContent).toContain("Try asking");
     expect(asks.map((ask) => ask.textContent)).toEqual(["What are my bots up to?", "Set up a bot for my inbox", "Make me a morning routine", "How do I connect my email?"]);
     await act(async () => { asks[1]!.click(); });
-    expect(f.dispatch).toHaveBeenCalledWith({ type: "send", botId: "maus", text: "Set up a bot for my inbox", threadId: "t" });
+    expect(f.dispatch).toHaveBeenCalledWith({ type: "send", botId: "eacbot", text: "Set up a bot for my inbox", threadId: "t" });
   });
 
   it("is EACbot's alone, and Simple mode's", async () => {

@@ -333,7 +333,7 @@ describe("a folder page", () => {
 });
 
 describe("publish_page in the chat", () => {
-  const LIVE = { state: "live" as const, title: "Dash", pageId: "page000000000000000000001", url: "https://page000000000000000000001.mausbot.page/", usage: { pages: 1, limit: 5 } };
+  const LIVE = { state: "live" as const, title: "Dash", pageId: "page000000000000000000001", url: "https://page000000000000000000001.eacbot.page/", usage: { pages: 1, limit: 5 } };
 
   async function folder() {
     const base = realpathSync(mkdtempSync(join(tmpdir(), "omb-published-")));
@@ -430,7 +430,7 @@ describe("versions", () => {
 });
 
 describe("publishablePage", () => {
-  it("serves an HTML page with the theme colours and a quiet mausbot, and a jsx page as static HTML with its transpiled code", () => {
+  it("serves an HTML page with the theme colours and a quiet eacbot, and a jsx page as static HTML with its transpiled code", () => {
     const { call, store, docs } = setup();
     call({ tool: "show_html", html: PAGE, title: "Sales" });
     call({ tool: "show_html", jsx: JSX_PAGE, title: "Pricing" });
@@ -440,16 +440,16 @@ describe("publishablePage", () => {
     expect(html.files.map((file) => file.path)).toEqual(["index.html"]);
     const page = html.files[0]!.data.toString();
     expect(page).toMatch(/^<!DOCTYPE html><style>:root\{color-scheme:light dark;/);
-    expect(page).toContain("window.mausbot={theme:");
+    expect(page).toContain("window.eacbot={theme:");
     expect(page).not.toContain("Content-Security-Policy");
     expect(page.endsWith("<h1>Sales</h1><p>Up 12%</p><script>draw()</script></body></html>")).toBe(true);
     const jsx = publishablePage({ store, docs, threadId: THREAD, messageId: "m2" });
     if (!jsx.ok) throw new Error("not publishable");
     const shell = jsx.files[0]!.data.toString();
-    expect(shell).toContain("window.__mausbotPage=function(require,module,exports){");
+    expect(shell).toContain("window.__eacbotPage=function(require,module,exports){");
     expect(shell).toContain("_react.useState.call(void 0, \"Pro\")");
     expect(shell).not.toContain("useState(\"Pro\")");
-    expect(shell).toContain("page: window.__mausbotPage })");
+    expect(shell).toContain("page: window.__eacbotPage })");
     expect(shell).not.toContain(", source: ");
   });
 
@@ -533,7 +533,7 @@ describe("appDocument", () => {
     const doc = appDocument({ store, docs, threadId: THREAD, messageId: "m1" })!;
     expect(doc.csp).toContain("script-src 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' https://esm.sh;");
     expect(doc.csp).toContain("connect-src 'none'");
-    expect(doc.srcdoc).not.toContain("mausbot");
+    expect(doc.srcdoc).not.toContain("eacbot");
     expect(doc).toMatchObject({ tool: { name: "get-time" }, toolResult: { content: [{ type: "text", text: "12:00" }] }, network: { connect: [], resources: ["https://esm.sh"] } });
     expect(doc.can).toMatchObject({ serverTools: false, serverResources: false });
     expect(doc.blocked).toEqual({ reason: "server-removed", text: "Basic is no longer connected" });

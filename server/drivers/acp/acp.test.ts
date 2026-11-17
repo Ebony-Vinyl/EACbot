@@ -316,7 +316,7 @@ describe("ACP turns (fake CLI)", () => {
     delete process.env.FAKE_ACP_UPDATES_FILE;
     delete process.env.EAC_ACP_PLAN_LINES;
     delete process.env.FAKE_ACP_DUMP_PROMPT;
-    delete process.env.OPENMAUS_ACP_PROMPT_IDLE_TIMEOUT_MS;
+    delete process.env.EAC_ACP_PROMPT_IDLE_TIMEOUT_MS;
     delete process.env.EAC_ACP_QUIET_NOTICE_MS;
     delete process.env.EAC_ACP_QUIET_TICK_MS;
     delete process.env.FAKE_ACP_QUIET_MS;
@@ -2086,7 +2086,7 @@ describe("ACP turns (fake CLI)", () => {
   });
 
   it("does not expire an agent while a person is answering an approval", async () => {
-    process.env.OPENMAUS_ACP_PROMPT_IDLE_TIMEOUT_MS = "150";
+    process.env.EAC_ACP_PROMPT_IDLE_TIMEOUT_MS = "150";
     await create(GrokAgentDriver, "permission");
     await instance.adapter.sendTurn({ threadId: "t-idle-approval", text: "go", approvalMode: "ask" });
     const opened = await recorder.until(e => e.type === "request.opened");
@@ -2099,7 +2099,7 @@ describe("ACP turns (fake CLI)", () => {
   });
 
   it.each([GrokAgentDriver, QwenAgentDriver])("does not expire $driverKind while a tool it started is still running", async (driver) => {
-    process.env.OPENMAUS_ACP_PROMPT_IDLE_TIMEOUT_MS = "150";
+    process.env.EAC_ACP_PROMPT_IDLE_TIMEOUT_MS = "150";
     process.env.FAKE_ACP_TOOL_MS = "600";
     await create(driver, "slow-tool");
     await instance.adapter.sendTurn({ threadId: "t-slow-tool", text: "go" });
@@ -2140,7 +2140,7 @@ describe("ACP turns (fake CLI)", () => {
   });
 
   it.each([GrokAgentDriver, QwenAgentDriver])("still fails $driverKind when it goes silent once its tool has finished", async (driver) => {
-    process.env.OPENMAUS_ACP_PROMPT_IDLE_TIMEOUT_MS = "150";
+    process.env.EAC_ACP_PROMPT_IDLE_TIMEOUT_MS = "150";
     await create(driver, "stall-after-tool");
     await instance.adapter.sendTurn({ threadId: "t-stall-tool", text: "go" });
     expect(await recorder.until(e => e.type === "turn.completed")).toMatchObject({ ok: false, stopReason: "rpc_error" });
@@ -2182,7 +2182,7 @@ describe("ACP turns (fake CLI)", () => {
     vi.spyOn(quietStatus, "sampleProcessTree").mockResolvedValue({ cpuMs: 0, connections: 1 });
     process.env.QWEN_HOME = scratch;
     // Margins wide enough for a slow Windows runner: the log must be read well inside the idle guard.
-    process.env.OPENMAUS_ACP_PROMPT_IDLE_TIMEOUT_MS = "1500";
+    process.env.EAC_ACP_PROMPT_IDLE_TIMEOUT_MS = "1500";
     process.env.EAC_ACP_QUIET_NOTICE_MS = "150";
     process.env.EAC_ACP_QUIET_TICK_MS = "50";
     process.env.FAKE_ACP_QUIET_MS = "3500";
@@ -2256,7 +2256,7 @@ describe("ACP turns (fake CLI)", () => {
   });
 
   it("an agent that goes silent mid-answer is failed and closed by the prompt idle guard", async () => {
-    process.env.OPENMAUS_ACP_PROMPT_IDLE_TIMEOUT_MS = "150";
+    process.env.EAC_ACP_PROMPT_IDLE_TIMEOUT_MS = "150";
     await create(GrokAgentDriver, "stall-after-text");
     await instance.adapter.sendTurn({ threadId: "t-stall", text: "go" });
 
@@ -2266,7 +2266,7 @@ describe("ACP turns (fake CLI)", () => {
     expect(err?.message).toMatch(/no tool running/i);
     // Plain words for the person: no setting names.
     expect(err?.message).toMatch(/Send the message again to retry\.$/);
-    expect(err?.message).not.toContain("OPENMAUS_ACP_PROMPT_IDLE_TIMEOUT_MS");
+    expect(err?.message).not.toContain("EAC_ACP_PROMPT_IDLE_TIMEOUT_MS");
     expect(err).toMatchObject({ stalled: true });
     expect(recorder.events.some((e) => e.type === "content.delta")).toBe(true);
     expect(instance.adapter.hasSession("t-stall")).toBe(false);
@@ -2650,7 +2650,7 @@ describe("ACP turns (fake CLI)", () => {
     });
 
     it("acknowledges before a prompt timeout and never offers startup recovery afterward", async () => {
-      process.env.OPENMAUS_ACP_PROMPT_IDLE_TIMEOUT_MS = "100";
+      process.env.EAC_ACP_PROMPT_IDLE_TIMEOUT_MS = "100";
       await create(GrokAgentDriver, "stall-after-text");
       const ack = await instance.adapter.sendTurn({ threadId: "startup-prompt", text: "go", startupRecovery: true });
       expect(recorder.events.some((event) => event.type === "turn.completed")).toBe(false);
@@ -3088,7 +3088,7 @@ describe("ACP turns (fake CLI)", () => {
         return kill(child, timeout);
       });
       if (reason === "prompt stall") {
-        process.env.OPENMAUS_ACP_PROMPT_IDLE_TIMEOUT_MS = "100";
+        process.env.EAC_ACP_PROMPT_IDLE_TIMEOUT_MS = "100";
         process.env.FAKE_ACP_MODE = "stall-after-text";
       }
       instance = await QwenAgentDriver.create({

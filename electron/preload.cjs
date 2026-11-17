@@ -142,6 +142,7 @@ function invokeWithPlainError(channel, ...args) {
 }
 
 const bridge = {
+  ...(!desktopRemoteClient ? { taskCore: { connect: () => ipcRenderer.invoke("task-core:connect") } } : {}),
   platform: process.platform,
   /** This app's version, and whether this page is this app's own (served by this computer, not a server from the Server menu). */
   app: { version: appVersion, ownPage: isLocalPage },

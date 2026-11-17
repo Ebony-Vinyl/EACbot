@@ -34,7 +34,7 @@ describe("vpsDesktopOutdated", () => {
 });
 
 describe("createLocalVmUpdater", () => {
-  const target: LocalVmTarget = { key: "bot:abc", containerName: "openmausbot-computer-abc", workspaceDir: "/nonexistent", viewerPort: null, label: "abc" };
+  const target: LocalVmTarget = { key: "bot:abc", containerName: "eacbot-computer-abc", workspaceDir: "/nonexistent", viewerPort: null, label: "abc" };
   const setup = (opts: { held?: () => boolean } = {}) => {
     let current = status({ imageMatches: false, image: false });
     const calls: string[] = [];

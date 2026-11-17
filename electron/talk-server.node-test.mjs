@@ -85,7 +85,7 @@ test("prepare says why it cannot ask", async () => {
   await assert.rejects(server.talk.prepare(), { code: "server-down" });
   server.listing.status = 200;
   assert.deepEqual(await server.talk.prepare(), { botId: "m", threadId: "t-new" });
-  await assert.rejects(fakeServer({ bots: [] }).talk.prepare(), { code: "no-mausbot" });
+  await assert.rejects(fakeServer({ bots: [] }).talk.prepare(), { code: "no-eacbot" });
   await assert.rejects(fakeServer({ bots: [{ id: "m", defaultBot: {}, tasks: [] }], made: { status: 500, body: {} } }).talk.prepare(), { code: "refused" });
 });
 

@@ -120,9 +120,9 @@ describe("fake app-server shell policy", () => {
   };
 
   it("lets a `-c exclude` override drop the lower layers' filters but keep their include_only", async () => {
-    const policy = await readPolicy(["-c", 'shell_environment_policy.exclude=["OPENMAUSBOT_CHATGPT_TOKEN"]'],
+    const policy = await readPolicy(["-c", 'shell_environment_policy.exclude=["EACBOT_CHATGPT_TOKEN"]'],
       { filters: { "USER_SECRET_*": "exclude" }, include_only: ["PATH", "HOME"] });
-    expect(policy).toMatchObject({ exclude: ["OPENMAUSBOT_CHATGPT_TOKEN"], filters: null, include_only: ["PATH", "HOME"] });
+    expect(policy).toMatchObject({ exclude: ["EACBOT_CHATGPT_TOKEN"], filters: null, include_only: ["PATH", "HOME"] });
     expect(await readPolicy([], { filters: { "USER_SECRET_*": "exclude" } })).toMatchObject({ exclude: null, filters: { "USER_SECRET_*": "exclude" } });
   });
 });
@@ -140,7 +140,7 @@ describe("CodexDriver turns (fake app-server)", () => {
       instanceId: "codex-test",
       displayName: "Codex Test",
       environment: {
-        ...(opts.managed ? { HOME: scratch, USERPROFILE: scratch, CODEX_HOME: join(scratch, ".codex"), OPENMAUSBOT_COMPANY_API_KEY: "synthetic-company-fixture" } : {}),
+        ...(opts.managed ? { HOME: scratch, USERPROFILE: scratch, CODEX_HOME: join(scratch, ".codex"), EACBOT_COMPANY_API_KEY: "synthetic-company-fixture" } : {}),
         ...opts.environment,
       },
       enabled: true,
@@ -1463,7 +1463,7 @@ process.stdout.write(JSON.stringify({jsonrpc:'2.0',id:m.id,result})+'\\n');});`)
       expect(seen.argv).toContain('mcp_servers.notes.command="npx"');
       expect(seen.argv).toContain("features.shell_snapshot=false");
       const thread = seen.calls.find((call: { method: string }) => call.method === "thread/start");
-      expect(thread.params.config["shell_environment_policy.exclude"]).toEqual(["OPENMAUSBOT_CHATGPT_TOKEN", "EAC_REMOTE_MCP_CONFIG_*", "ELECTRON_RUN_AS_NODE"]);
+      expect(thread.params.config["shell_environment_policy.exclude"]).toEqual(["EACBOT_CHATGPT_TOKEN", "EAC_REMOTE_MCP_CONFIG_*", "ELECTRON_RUN_AS_NODE"]);
       expect(argv).not.toContain("mcp_servers.whop.default_tools_approval_mode");
     });
 
@@ -1540,8 +1540,8 @@ process.stdout.write(JSON.stringify({jsonrpc:'2.0',id:m.id,result})+'\\n');});`)
     });
 
     it.each([
-      ["list", { exclude: ["USER_SECRET_*"] }, "shell_environment_policy.exclude", ["USER_SECRET_*", "OPENMAUSBOT_CHATGPT_TOKEN"]],
-      ["filters", { filters: { "USER_SECRET_*": "exclude" } }, "shell_environment_policy.filters", { "USER_SECRET_*": "exclude", OPENMAUSBOT_CHATGPT_TOKEN: "exclude" }],
+      ["list", { exclude: ["USER_SECRET_*"] }, "shell_environment_policy.exclude", ["USER_SECRET_*", "EACBOT_CHATGPT_TOKEN"]],
+      ["filters", { filters: { "USER_SECRET_*": "exclude" } }, "shell_environment_policy.filters", { "USER_SECRET_*": "exclude", EACBOT_CHATGPT_TOKEN: "exclude" }],
     ] as const)("keeps the person's own shell %s and adds the plan token to it", async (_name, policy, key, expected) => {
       plan();
       await create({ mode: "resume", authMode: "chatgpt-plan", environment: { FAKE_CODEX_SHELL_ENVIRONMENT_POLICY: JSON.stringify(policy) } });
@@ -1803,7 +1803,7 @@ process.stdout.write(JSON.stringify({jsonrpc:'2.0',id:m.id,result})+'\\n');});`)
       integrations: {
         localComputer: {
           command: process.execPath,
-          args: ["/tmp/container-mcp.js", "podman", "openmausbot-computer", "/run/cua.sock"],
+          args: ["/tmp/container-mcp.js", "podman", "eacbot-computer", "/run/cua.sock"],
           env: { ELECTRON_RUN_AS_NODE: "1", EAC_VM_TOKEN: "vm-secret" },
         },
       },
@@ -1838,7 +1838,7 @@ process.stdout.write(JSON.stringify({jsonrpc:'2.0',id:m.id,result})+'\\n');});`)
     const seen = JSON.parse(readFileSync(dump, "utf8"));
     expect(seen.argv).toContain("model_providers.unsloth.base_url=\"http://127.0.0.1:8888/v1\"");
     expect(JSON.stringify(seen.argv)).not.toContain("unsloth-secret");
-    expect(seen.env.OPENMAUSBOT_LOCAL_UNSLOTH_API_KEY).toBe("unsloth-secret");
+    expect(seen.env.EACBOT_LOCAL_UNSLOTH_API_KEY).toBe("unsloth-secret");
   });
 
   it("streams agentMessage deltas without re-emitting the settled text", async () => {
@@ -1944,15 +1944,15 @@ process.stdout.write(JSON.stringify({jsonrpc:'2.0',id:m.id,result})+'\\n');});`)
       ["gpt-6.1-sol", "gpt-6.1-sol", "openai_chatgpt_plan"],
     ] },
     { name: "Company", opts: { managed: true }, selections: [
-      ["company-codex-model", "company-codex-model", "openmaus_company"],
-      ["company-codex-model", "company-codex-model", "openmaus_company"],
+      ["company-codex-model", "company-codex-model", "eacbot_company"],
+      ["company-codex-model", "company-codex-model", "eacbot_company"],
     ] },
   ])("reasserts the selected model and provider after $name app-server restarts", async ({ opts, selections }) => {
     const token = vi.spyOn(ChatGptPlanAuthController.prototype, "accessToken").mockResolvedValue("synthetic-chatgpt-token");
     const catalog = vi.spyOn(ChatGptPlanAuthController.prototype, "models").mockResolvedValue({
       default: "gpt-6.1-sol", options: ["gpt-5.6-sol", "gpt-6.1-sol"].map(id => ({ id, label: id })),
     });
-    vi.stubEnv("OPENMAUSBOT_CHATGPT_TOKEN", "inherited-token-must-not-leak");
+    vi.stubEnv("EACBOT_CHATGPT_TOKEN", "inherited-token-must-not-leak");
     vi.stubEnv("OPENAI_API_KEY", "inherited-api-key-must-not-leak");
     await create({ ...opts, mode: "resume", environment: { HOME: scratch, USERPROFILE: scratch, CODEX_HOME: join(scratch, ".codex") } });
     const dump = join(scratch, "model-provider-resume.json");
@@ -1971,7 +1971,7 @@ process.stdout.write(JSON.stringify({jsonrpc:'2.0',id:m.id,result})+'\\n');});`)
       pids.add(seen.pid);
       const plan = "authMode" in opts;
       expect(seen.env.OPENAI_API_KEY).toBeUndefined();
-      expect(seen.env.OPENMAUSBOT_CHATGPT_TOKEN).toBe(plan ? "synthetic-chatgpt-token" : undefined);
+      expect(seen.env.EACBOT_CHATGPT_TOKEN).toBe(plan ? "synthetic-chatgpt-token" : undefined);
       expect(JSON.stringify({ argv: seen.argv, calls: seen.calls })).not.toContain("synthetic-chatgpt-token");
       if (plan) {
         expect(seen.env.CODEX_HOME.startsWith(join(DATA_DIR, "providers", "chatgpt-plan") + sep)).toBe(true);
@@ -1980,7 +1980,7 @@ process.stdout.write(JSON.stringify({jsonrpc:'2.0',id:m.id,result})+'\\n');});`)
       } else expect(seen.env.CODEX_HOME).toBe(join(scratch, ".codex"));
       const threadCalls = seen.calls.filter((call: { method: string }) => ["thread/start", "thread/resume"].includes(call.method));
       expect(threadCalls).toHaveLength(1);
-      if (plan) expect(threadCalls[0].params.config["shell_environment_policy.exclude"]).toEqual(["OPENMAUSBOT_CHATGPT_TOKEN"]);
+      if (plan) expect(threadCalls[0].params.config["shell_environment_policy.exclude"]).toEqual(["EACBOT_CHATGPT_TOKEN"]);
       expect(threadCalls[0]).toMatchObject({
         method: index ? "thread/resume" : "thread/start",
         params: { model: expectedModel, modelProvider, ...(index ? { threadId: "codex-thread-1" } : {}) },
@@ -2240,9 +2240,9 @@ process.stdout.write(JSON.stringify({jsonrpc:'2.0',id:m.id,result})+'\\n');});`)
   });
 
   it("names a missing Company API key or CODEX_HOME instead of one blanket refusal", async () => {
-    await create({ managed: true, environment: { OPENMAUSBOT_COMPANY_API_KEY: "" } });
+    await create({ managed: true, environment: { EACBOT_COMPANY_API_KEY: "" } });
     await expect(instance.adapter.sendTurn({ threadId: "company-no-key", text: "hi", model: "company-codex-model" }))
-      .rejects.toThrow("OPENMAUSBOT_COMPANY_API_KEY is missing");
+      .rejects.toThrow("EACBOT_COMPANY_API_KEY is missing");
     await create({ managed: true, environment: { CODEX_HOME: "" } });
     await expect(instance.adapter.sendTurn({ threadId: "company-no-home", text: "hi", model: "company-codex-model" }))
       .rejects.toThrow("CODEX_HOME is missing");
@@ -2266,7 +2266,7 @@ process.stdout.write(JSON.stringify({jsonrpc:'2.0',id:m.id,result})+'\\n');});`)
       "initialize", "initialized", "config/read", "thread/resume", "thread/start", "turn/start",
     ]);
     expect(seen.calls.find((call: { method: string }) => call.method === "thread/start").params).toMatchObject({
-      model: "company-codex-model", modelProvider: "openmaus_company", cwd: scratch,
+      model: "company-codex-model", modelProvider: "eacbot_company", cwd: scratch,
       developerInstructions: expect.stringContaining("Keep current bot rules."),
       approvalPolicy: "never", sandbox: "danger-full-access", ephemeral: false,
     });
@@ -2274,7 +2274,7 @@ process.stdout.write(JSON.stringify({jsonrpc:'2.0',id:m.id,result})+'\\n');});`)
       threadId: "codex-thread-1",
       input: [{ type: "text", text: recoveryText }, { type: "image", url: "data:image/png;base64,aQ==" }],
     });
-    expect(seen.argv).toContain('model_provider="openmaus_company"');
+    expect(seen.argv).toContain('model_provider="eacbot_company"');
     expect(JSON.stringify(seen.argv)).not.toContain("synthetic-company-fixture");
     expect(recorder.events.filter((event) => event.type === "session.started")).toMatchObject([{ sessionId: "codex-thread-1", rebuilt: true }]);
   });

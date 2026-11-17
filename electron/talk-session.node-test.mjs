@@ -51,7 +51,7 @@ test("the box's words and timings are fixed", () => {
     busy: "Voice is in use in EACbot",
     serverDown: "Open EACbot to talk",
     starting: "EACbot is still starting. Try again in a moment.",
-    noMausbot: "Set up EACbot first, then try again.",
+    noEacbot: "Set up EACbot first, then try again.",
     moved: "EACbot lives on My Cloud now — talk to it there",
     permission: "Talking needs Microphone + Speech Recognition access — System Settings → Privacy & Security.",
     dictationOff: "Turn on Dictation in System Settings → Keyboard, then try again.",
@@ -183,7 +183,7 @@ test("a server that can't take asks says why and stops listening: down, still st
   const notices = [
     ["server-down", "Open EACbot to talk", "native.talk.openEACbot"],
     ["starting", TALK_TEXT.starting, "native.talk.starting"],
-    ["no-mausbot", TALK_TEXT.noMausbot, "native.talk.setUpFirst"],
+    ["no-eacbot", TALK_TEXT.noEacbot, "native.talk.setUpFirst"],
     ["moved", "EACbot lives on My Cloud now — talk to it there", "native.talk.movedToCloud"],
   ];
   for (const [code, text, textCode] of notices) {

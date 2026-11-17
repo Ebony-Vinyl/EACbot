@@ -9,21 +9,21 @@
 # EACbot serves this file with its own address and the connector's image (pinned by digest) filled in below.
 set -eu
 
-ADMIN_URL="${MAUSBOT_ADMIN_URL:-@MAUSBOT_ADMIN_URL@}"
-CONNECTOR_IMAGE="${MAUSBOT_CONNECTOR_IMAGE:-@MAUSBOT_CONNECTOR_IMAGE@}"
+ADMIN_URL="${EACBOT_ADMIN_URL:-@EACBOT_ADMIN_URL@}"
+CONNECTOR_IMAGE="${EACBOT_CONNECTOR_IMAGE:-@EACBOT_CONNECTOR_IMAGE@}"
 
-ETC_DIR="${MAUSBOT_ETC_DIR:-/etc/mausbot}"
-AUDIT_DIR="${MAUSBOT_AUDIT_DIR:-/var/log/mausbot}"
-APPARMOR_DIR="${MAUSBOT_APPARMOR_DIR:-/etc/apparmor.d}"
+ETC_DIR="${EACBOT_ETC_DIR:-/etc/eacbot}"
+AUDIT_DIR="${EACBOT_AUDIT_DIR:-/var/log/eacbot}"
+APPARMOR_DIR="${EACBOT_APPARMOR_DIR:-/etc/apparmor.d}"
 PROFILE=omb-home-narrow
 SECCOMP=seccomp-omb-home.json
-CONNECTOR=mausbot-connector
-CONNECTOR_NEXT=mausbot-connector-next
-HOME_CONTAINER=mausbot-home
-DATA_VOLUME=mausbot-data
-STATE_VOLUME=mausbot-connector
-SNAPSHOT_VOLUME=mausbot-snapshot
-ROLE_LABEL=com.mausbot.role
+CONNECTOR=eacbot-connector
+CONNECTOR_NEXT=eacbot-connector-next
+HOME_CONTAINER=eacbot-home
+DATA_VOLUME=eacbot-data
+STATE_VOLUME=eacbot-connector
+SNAPSHOT_VOLUME=eacbot-snapshot
+ROLE_LABEL=com.eacbot.role
 MIN_DOCKER=24
 MIN_CPUS=2
 MIN_MEMORY_MB=3500
@@ -66,10 +66,10 @@ check_os() {
   case "$os_id $os_version" in
     "ubuntu 22.04" | "ubuntu 24.04" | "debian 12") note "operating system: $os_name" ;;
     *)
-      if [ "${MAUSBOT_ALLOW_UNTESTED_OS:-}" = 1 ]; then
+      if [ "${EACBOT_ALLOW_UNTESTED_OS:-}" = 1 ]; then
         note "operating system: $os_name (not one EACbot is tested on; going on as asked)"
       else
-        fail "EACbot runs on Ubuntu 22.04 or 24.04, or Debian 12. This server runs $os_name. Please pick one of those, or run again with MAUSBOT_ALLOW_UNTESTED_OS=1 to try anyway."
+        fail "EACbot runs on Ubuntu 22.04 or 24.04, or Debian 12. This server runs $os_name. Please pick one of those, or run again with EACBOT_ALLOW_UNTESTED_OS=1 to try anyway."
       fi
       ;;
   esac
@@ -91,7 +91,7 @@ install_docker() {
 }
 
 offer_docker() { # what is wrong, in one sentence
-  if [ "${MAUSBOT_INSTALL_DOCKER:-}" = 1 ]; then
+  if [ "${EACBOT_INSTALL_DOCKER:-}" = 1 ]; then
     install_docker
     return
   fi
@@ -153,7 +153,7 @@ check_userns() {
   max=$(cat /proc/sys/user/max_user_namespaces 2>/dev/null || echo 1)
   clone=$(cat /proc/sys/kernel/unprivileged_userns_clone 2>/dev/null || echo 1)
   if [ "$max" = 0 ] || [ "$clone" != 1 ]; then
-    fail "Your server switches off a Linux feature our bots' safety box needs. Run: printf 'user.max_user_namespaces=63000\\nkernel.unprivileged_userns_clone=1\\n' | sudo tee /etc/sysctl.d/90-mausbot.conf && sudo sysctl --system  and then run this command again."
+    fail "Your server switches off a Linux feature our bots' safety box needs. Run: printf 'user.max_user_namespaces=63000\\nkernel.unprivileged_userns_clone=1\\n' | sudo tee /etc/sysctl.d/90-eacbot.conf && sudo sysctl --system  and then run this command again."
   fi
 }
 
@@ -235,23 +235,23 @@ install_profiles() {
 start_connector() {
   say "Starting the EACbot connector..."
   docker volume create "$STATE_VOLUME" >/dev/null
-  # The audit log: every job EACbot runs here, root's, for you to read (mausbot-connector audit).
+  # The audit log: every job EACbot runs here, root's, for you to read (eacbot-connector audit).
   install -d -m 0750 "$AUDIT_DIR"
   docker rm -f "$CONNECTOR" "$CONNECTOR_NEXT" >/dev/null 2>&1 || true
   instance=$(cat /proc/sys/kernel/random/uuid)
-  set -- --label "$ROLE_LABEL=connector" --label "com.mausbot.instance=$instance" \
-    -e "MAUSBOT_INSTANCE=$instance" -e "MAUSBOT_CONNECTOR_IMAGE=$CONNECTOR_IMAGE"
-  case "${MAUSBOT_UPDATE_WAIT_S:-}" in
+  set -- --label "$ROLE_LABEL=connector" --label "com.eacbot.instance=$instance" \
+    -e "EACBOT_INSTANCE=$instance" -e "EACBOT_CONNECTOR_IMAGE=$CONNECTOR_IMAGE"
+  case "${EACBOT_UPDATE_WAIT_S:-}" in
     '' | *[!0-9]*) ;;
-    *) set -- "$@" -e "MAUSBOT_UPDATE_WAIT_S=$MAUSBOT_UPDATE_WAIT_S" ;;
+    *) set -- "$@" -e "EACBOT_UPDATE_WAIT_S=$EACBOT_UPDATE_WAIT_S" ;;
   esac
   docker run -d --name "$CONNECTOR" --restart unless-stopped --network host \
     --security-opt no-new-privileges=true --cap-drop ALL --read-only --tmpfs /tmp \
-    -v /var/run/docker.sock:/var/run/docker.sock -v "$STATE_VOLUME:/state" -v "$ETC_DIR:/etc/mausbot:ro" -v "$AUDIT_DIR:/var/log/mausbot" \
+    -v /var/run/docker.sock:/var/run/docker.sock -v "$STATE_VOLUME:/state" -v "$ETC_DIR:/etc/eacbot:ro" -v "$AUDIT_DIR:/var/log/eacbot" \
     --log-opt max-size=10m --log-opt max-file=3 \
     "$@" "$CONNECTOR_IMAGE" run >/dev/null || fail "The EACbot connector could not be started (Docker's message is above). Run this command again."
   for _ in 1 2 3 4 5 6 7 8 9 10; do
-    if docker exec "$CONNECTOR" mausbot-connector version >/dev/null 2>&1; then return; fi
+    if docker exec "$CONNECTOR" eacbot-connector version >/dev/null 2>&1; then return; fi
     sleep 1
   done
   fail "The EACbot connector did not start. Its log: $(docker logs --tail 5 "$CONNECTOR" 2>&1 | tr '\n' ' ')"
@@ -259,7 +259,7 @@ start_connector() {
 
 check_box() {
   say "Checking that the bots' safety box works here..."
-  probe=$(docker exec "$CONNECTOR" mausbot-connector probe 2>&1 || true)
+  probe=$(docker exec "$CONNECTOR" eacbot-connector probe 2>&1 || true)
   problems=$(printf '%s\n' "$probe" | sed -n 's/^fail [a-z]* //p')
   warnings=$(printf '%s\n' "$probe" | sed -n 's/^warn [a-z]* //p')
   if [ -n "$warnings" ]; then printf '%s\n' "$warnings" | sed 's/^/  note: /'; fi
@@ -272,15 +272,15 @@ connect() {
   if [ -n "$code" ]; then
     say "Connecting to EACbot..."
     # The code works once: its refusal is read from this one attempt.
-    if ! refusal=$(printf '%s\n' "$code" | docker exec -i -e "MAUSBOT_ADMIN_URL=$ADMIN_URL" "$CONNECTOR" mausbot-connector enroll 2>&1 >/dev/null); then
+    if ! refusal=$(printf '%s\n' "$code" | docker exec -i -e "EACBOT_ADMIN_URL=$ADMIN_URL" "$CONNECTOR" eacbot-connector enroll 2>&1 >/dev/null); then
       fail "$(printf '%s\n' "$refusal" | tail -n 1)"
     fi
-  elif ! docker exec "$CONNECTOR" mausbot-connector status | grep -q '"enrolled":true'; then
+  elif ! docker exec "$CONNECTOR" eacbot-connector status | grep -q '"enrolled":true'; then
     fail "Add the one-time code EACbot shows next to the install command, like this: $(command_line '<code>')"
   fi
   waited=0
   while [ "$waited" -lt 60 ]; do
-    if docker exec "$CONNECTOR" mausbot-connector status 2>/dev/null | grep -q '"connected":true'; then return; fi
+    if docker exec "$CONNECTOR" eacbot-connector status 2>/dev/null | grep -q '"connected":true'; then return; fi
     sleep 1
     waited=$((waited + 1))
   done
@@ -291,7 +291,7 @@ install_connector() {
   code=""
   for arg in "$@"; do
     case "$arg" in
-      --install-docker) MAUSBOT_INSTALL_DOCKER=1 ;;
+      --install-docker) EACBOT_INSTALL_DOCKER=1 ;;
       -*) fail "Unknown option $arg. Usage: $(command_line '<code>')" ;;
       *) code=$arg ;;
     esac

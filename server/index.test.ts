@@ -3940,13 +3940,13 @@ describe("harness HTTP API", () => {
     const leadReplies = [
       [
         "Parker should do the desktop work.",
-        '<openmaus-goal>{"status":"continue",',
-        '"next":"Parker","instruction":"Use the shared desktop","detail":"Delegated to Parker"}</openmaus-goal>',
+        '<eacbot-goal>{"status":"continue",',
+        '"next":"Parker","instruction":"Use the shared desktop","detail":"Delegated to Parker"}</eacbot-goal>',
       ].join("\n"),
       [
         "The desktop stayed busy, so I finished without it.",
-        '<openmaus-goal>{"status":"completed",',
-        '"detail":"Parker parked at the computer; the lead finished the goal directly."}</openmaus-goal>',
+        '<eacbot-goal>{"status":"completed",',
+        '"detail":"Parker parked at the computer; the lead finished the goal directly."}</eacbot-goal>',
       ].join("\n"),
     ];
     mkdirSync(join(isolatedStatic, "assets"), { recursive: true });
@@ -5789,7 +5789,7 @@ describe("harness HTTP API", () => {
     expect(markdownExport.body.markdown).toContain("Give this file to your Chief of Staff");
     expect(markdownExport.body.markdown).not.toMatch(/Archived|autoApprove|alwaysAllow|modelSelection|threadId/);
     expect((await api("GET", "/api/bots")).body.groups).toHaveLength(roomsBefore);
-    expect((await api("POST", "/api/teams/export", {})).body.team.name).toBe("My OpenMaus Team");
+    expect((await api("POST", "/api/teams/export", {})).body.team.name).toBe("My EACbot Team");
 
     const stream = await openSse(`${BASE}/api/events`);
     try {
@@ -5918,7 +5918,7 @@ describe("harness HTTP API", () => {
 
   it("installs a complete bot package with a Chief, room, playbook, connector intent, and paused routine", async () => {
     const packageFile = {
-      format: "openmaus.package",
+      format: "eacbot.package",
       version: 1,
       package: {
         id: "signal-desk",
@@ -6349,8 +6349,8 @@ describe("harness HTTP API", () => {
           method: "POST",
           headers: {
             "content-type": "application/json",
-            "x-openmausbot-companion": "1",
-            "x-openmausbot-companion-device": "phone-1",
+            "x-eacbot-companion": "1",
+            "x-eacbot-companion-device": "phone-1",
           },
           body: JSON.stringify(encryptedEnvelope),
         },
@@ -7007,8 +7007,8 @@ describe("harness HTTP API", () => {
           method: "POST",
           headers: {
             "content-type": "application/json",
-            "x-openmausbot-companion": "1",
-            "x-openmausbot-companion-device": deviceId,
+            "x-eacbot-companion": "1",
+            "x-eacbot-companion-device": deviceId,
           },
           body: JSON.stringify(Object.fromEntries(
             Object.entries(envelope).filter(([key]) => key !== "botId" && key !== "messageId"),
@@ -7204,7 +7204,7 @@ describe("harness HTTP API", () => {
         modelSelection: { instanceId: "ghost", model: "ghost-1", effort: "high" },
       });
       expect(bot.messages[0].text).toContain("Pathfinder");
-      expect(bot.messages[0].text).not.toContain("Maus");
+      expect(bot.messages[0].text).not.toContain("Mascot");
     } finally {
       await api("DELETE", `/api/bots/${bot.id}`);
     }
@@ -9215,7 +9215,7 @@ describe("harness HTTP API", () => {
       })).status).toBe(202);
       const seen = await readJsonFileWhenReady<{ systemPrompt?: string }>(fakeClaudeDump, 15_000);
       const system = seen.systemPrompt ?? "";
-      expect(system).toContain('<openmaus-skill id="create-verification-skill"');
+      expect(system).toContain('<eacbot-skill id="create-verification-skill"');
       expect(system).toContain("skill_manage");
     } finally {
       await api("POST", `/api/bots/${bot.id}/interrupt`);
@@ -9235,11 +9235,11 @@ describe("harness HTTP API", () => {
       })).status).toBe(202);
       const seen = await readJsonFileWhenReady<{ systemPrompt?: string }>(fakeClaudeDump, 15_000);
       const system = seen.systemPrompt ?? "";
-      const root = /<openmaus-skill id="data-dashboards" version="[^"]+" root="([^"]+)">/.exec(system)?.[1];
+      const root = /<eacbot-skill id="data-dashboards" version="[^"]+" root="([^"]+)">/.exec(system)?.[1];
       expect(root).toBeTruthy();
       expect(existsSync(join(root!, "dashboard.html"))).toBe(true);
       expect(system).toContain("publish_page");
-      expect(system).not.toContain('<openmaus-skill id="create-verification-skill"');
+      expect(system).not.toContain('<eacbot-skill id="create-verification-skill"');
     } finally {
       await api("POST", `/api/bots/${bot.id}/interrupt`);
       await api("DELETE", `/api/bots/${bot.id}`);
@@ -9287,7 +9287,7 @@ describe("harness HTTP API", () => {
       expect((await api("POST", `/api/bots/${bot.id}/messages`, { text: "hello" })).status).toBe(202);
       const system = (await readJsonFileWhenReady<{ systemPrompt: string }>(fakeClaudeDump, 15_000)).systemPrompt;
       expect(system).toContain(roster);
-      expect(system).not.toContain("OPENMAUSBOT STATUS");
+      expect(system).not.toContain("EACBOT STATUS");
     } finally {
       await api("POST", `/api/bots/${bot.id}/interrupt`);
       await api("DELETE", `/api/bots/${bot.id}`);
@@ -9388,7 +9388,7 @@ describe("harness HTTP API", () => {
         expect((await api("POST", `/api/bots/${bot.id}/messages`, { text })).status).toBe(202);
         const seen = await readJsonFileWhenReady<{ systemPrompt: string; mcpConfig: { mcpServers: Record<string, unknown> } }>(fakeClaudeDump, 15_000);
         expect(seen.mcpConfig.mcpServers.phone, text).toBeDefined();
-        expect(seen.systemPrompt.includes('<openmaus-skill id="phone-harness"'), text).toBe(instructed);
+        expect(seen.systemPrompt.includes('<eacbot-skill id="phone-harness"'), text).toBe(instructed);
         expect((await api("POST", `/api/bots/${bot.id}/interrupt`)).status).toBe(200);
         await expect.poll(async () => (await api("GET", "/api/bots?messages=0")).body.bots
           .find((candidate: { id: string }) => candidate.id === bot.id)?.busy, { timeout: 5_000 }).toBe(false);
@@ -9682,8 +9682,8 @@ describe("harness HTTP API", () => {
       })).status).toBe(202);
       let seen = await readJsonFileWhenReady<{ systemPrompt?: string }>(fakeClaudeDump);
       let system = seen.systemPrompt ?? "";
-      expect(system).toContain('<openmaus-skill id="create-verification-skill"');
-      expect(system).toContain('<openmaus-skill id="phone-harness"');
+      expect(system).toContain('<eacbot-skill id="create-verification-skill"');
+      expect(system).toContain('<eacbot-skill id="phone-harness"');
       expect((await api("POST", `/api/groups/${room.id}/interrupt`, {})).status).toBe(200);
       await expect.poll(async () => {
         const state = (await api("GET", "/api/bots?messages=0")).body;
@@ -9696,8 +9696,8 @@ describe("harness HTTP API", () => {
       })).status).toBe(202);
       seen = await readJsonFileWhenReady<{ systemPrompt?: string }>(fakeClaudeDump);
       system = seen.systemPrompt ?? "";
-      expect(system).not.toContain('<openmaus-skill id="create-verification-skill"');
-      expect(system).toContain('<openmaus-skill id="phone-harness"');
+      expect(system).not.toContain('<eacbot-skill id="create-verification-skill"');
+      expect(system).toContain('<eacbot-skill id="phone-harness"');
     } finally {
       if (room) {
         expect((await api("POST", `/api/groups/${room.id}/interrupt`, {})).status).toBe(200);
@@ -11019,8 +11019,8 @@ describe("harness HTTP API", () => {
           method: "POST",
           headers: {
             "content-type": "application/json",
-            "x-openmausbot-companion": "1",
-            "x-openmausbot-companion-device": "phone-1",
+            "x-eacbot-companion": "1",
+            "x-eacbot-companion-device": "phone-1",
           },
           body: JSON.stringify({
             version: 1,

@@ -168,13 +168,13 @@ describe("eacbot fleet", () => {
       beta: { slug: "beta", host: "beta.agentada.cc", port: 8820, webhookPort: 8821, status: "suspended", createdAt: "" },
       old: { slug: "old", host: "old.agentada.cc", port: 8830, webhookPort: 8831, status: "retained", createdAt: "" },
     };
-    const prior = { ...emptyRegistry("agentada.cc"), operator: "maus", nextPort: 8840, workspaces };
+    const prior = { ...emptyRegistry("agentada.cc"), operator: "eacbot", nextPort: 8840, workspaces };
     const ready = machine({ root: true, files: { [registryFile]: JSON.stringify(prior) } });
     const result = io();
     expect(await runFleetCommand({ ...base, action: "init", domain: "fresh.example.test", yes: true }, result.io, ready.deps)).toBe(0);
     expect(JSON.parse(ready.files.get(registryFile)!)).toEqual({ ...prior, domain: "fresh.example.test" });
     expect(ready.files.get("/etc/eacbot/fence.nft")).toBe(fenceRules(Object.values(workspaces)));
-    expect(ready.files.get("/etc/systemd/system/eacbot-fleet.service")).toContain("--group maus");
+    expect(ready.files.get("/etc/systemd/system/eacbot-fleet.service")).toContain("--group eacbot");
     expect(ready.calls).toContain("run nft -f /etc/eacbot/fence.nft");
     expect(await runFleetCommand({ ...base, action: "init", domain: "fresh.example.test", operator: "newadmin", yes: true }, io().io, ready.deps)).toBe(0);
     expect(JSON.parse(ready.files.get(registryFile)!).operator).toBe("newadmin");

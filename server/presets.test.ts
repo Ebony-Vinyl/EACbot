@@ -207,7 +207,7 @@ describe("creating a bot from a preset", () => {
     }
   });
 
-  it("adds an organization preset's skills switched on, under the organization's own source, stamped for updates", async () => {
+  it("adds an organization preset's skills disabled for review, under the organization's own source, stamped for updates", async () => {
     const app = await installation();
     const org = app.org();
     const document = app.orgDocument("library-only.v2.json");
@@ -215,12 +215,12 @@ describe("creating a bot from a preset", () => {
     if (imported.alreadyAdded) throw new Error("unexpected");
     const bot = app.store.createBot({ name: "Sky", modelSelection: { instanceId: "claude", model: "default-model" } });
     app.presets.applyPresetToBot(bot.id, app.presetStore.resolve(imported.presets![0]!.id)!, app.applyDeps);
-    expect(app.skills.listSkills(bot.id)).toEqual([expect.objectContaining({ name: "objection-handling", enabled: true, source: "org:acme/sales-skills@2.0.1" })]);
+    expect(app.skills.listSkills(bot.id)).toEqual([expect.objectContaining({ name: "objection-handling", enabled: false, source: "org:acme/sales-skills@2.0.1" })]);
     const stored = JSON.parse(readFileSync(app.presetFile, "utf8")).content[org.installId].skills
       .find((skill: { name: string }) => skill.name === "objection-handling").instructions as string;
     expect(stored).toBe(document.package.skills!.entries.find((skill) => skill.name === "objection-handling")!.instructions);
     const written = app.skills.readSkillFile(bot.id, "objection-handling")!;
-    expect(app.skills.skillPackageStamps(bot.id)).toEqual([{ name: "objection-handling", enabled: true, stamp: {
+    expect(app.skills.skillPackageStamps(bot.id)).toEqual([{ name: "objection-handling", enabled: false, stamp: {
       installId: org.installId, key: "objection-handling", release: "2.0.1", r: app.parts.partHash(stored), w: app.parts.partHash(written), via: "preset",
     } }]);
     expect(JSON.stringify(app.skills.listSkills(bot.id))).not.toMatch(/"via"|"package"/);
@@ -287,7 +287,7 @@ describe("sharing my New bot defaults as a preset", () => {
     const app = await installation();
     const built = app.presets.presetFromDefaults(defaults({ profile: { name: "Sky", soul: "Use password=Hunter2-Secret-99 for the portal.\n" } }), { name: "Support agent", includeNotes: true });
     const first = app.exporter.createLibraryPackageExport({ published: null, preset: built.value, authorName: "Mira" });
-    expect(first.filename).toBe("support-agent-1.0.0.openmaus.json");
+    expect(first.filename).toBe("support-agent-1.0.0.eacbot.json");
     expect(first.redacted).toEqual(["presets[new-bot-defaults].bot.soul"]);
     expect(JSON.stringify(first.document)).not.toContain("Hunter2-Secret-99");
     expect(first.document.package).toMatchObject({ id: "support-agent", agents: [], author: { name: "Mira" }, presets: [expect.objectContaining({ skills: ["follow-up"] })] });

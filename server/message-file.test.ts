@@ -76,12 +76,12 @@ describe("message-linked files", () => {
     ))
       .toBe(false);
     expect(messageReferencesFile(
-      "[Open it](C:\\Users\\Maus\\report.md)",
-      "C:\\Users\\Maus\\report.md",
+      "[Open it](C:\\Users\\Mascot\\report.md)",
+      "C:\\Users\\Mascot\\report.md",
     )).toBe(true);
     expect(messageReferencesFile(
-      "[Open it](file:///C:/Users/Maus/release%20notes.md)",
-      "C:\\Users\\Maus\\release notes.md",
+      "[Open it](file:///C:/Users/Mascot/release%20notes.md)",
+      "C:\\Users\\Mascot\\release notes.md",
     )).toBe(true);
     expect(messageReferencesFile(
       "[Open it](file://server/share/phone%20report.md)",
@@ -99,19 +99,19 @@ describe("message-linked files", () => {
       .toBe(true);
 
     expect(messageReferencesFile(
-      "[Open it](C:/Users/Maus/drafts/../report.md)",
-      "C:\\Users\\Maus\\report.md",
+      "[Open it](C:/Users/Mascot/drafts/../report.md)",
+      "C:\\Users\\Mascot\\report.md",
     )).toBe(true);
-    expect(messageReferencesFile("[Open it](/C:/Users/Maus/report.md)", "C:/Users/Maus/report.md"))
+    expect(messageReferencesFile("[Open it](/C:/Users/Mascot/report.md)", "C:/Users/Mascot/report.md"))
       .toBe(false);
-    expect(messageReferencesFile("[Open it](C:/Users/Maus/report.md)", "c:/users/maus/report.md"))
+    expect(messageReferencesFile("[Open it](C:/Users/Mascot/report.md)", "c:/users/eacbot/report.md"))
       .toBe(false);
   });
 
   it("normalizes encoded Windows and UNC targets before authorization", () => {
     expect(messageReferencesFile(
-      "[Open it](C:/Users/Maus/release%20notes.md?download=1#latest)",
-      "C:\\Users\\Maus\\release notes.md",
+      "[Open it](C:/Users/Mascot/release%20notes.md?download=1#latest)",
+      "C:\\Users\\Mascot\\release notes.md",
     )).toBe(true);
     expect(messageReferencesFile(
       "[Web link](//server/share/team%20notes.md?download=1#latest)",
@@ -123,21 +123,21 @@ describe("message-linked files", () => {
     )).toBe(true);
 
     expect(messageReferencesFile(
-      "[Open it](C:/Users/Maus/release%2520notes.md?download=1)",
-      "C:\\Users\\Maus\\release notes.md",
+      "[Open it](C:/Users/Mascot/release%2520notes.md?download=1)",
+      "C:\\Users\\Mascot\\release notes.md",
     )).toBe(false);
   });
 
   it("keeps a Windows path's backslash before punctuation, as in \\.eacbot", () => {
-    const report = "C:\\Users\\Maus\\.eacbot\\workspaces\\bot\\_drafts\\report.md";
-    const chart = "C:\\Users\\Maus\\.eacbot\\workspaces\\bot\\chart.png";
-    const notes = "C:\\Users\\Maus\\.eacbot\\release notes.md";
+    const report = "C:\\Users\\Mascot\\.eacbot\\workspaces\\bot\\_drafts\\report.md";
+    const chart = "C:\\Users\\Mascot\\.eacbot\\workspaces\\bot\\chart.png";
+    const notes = "C:\\Users\\Mascot\\.eacbot\\release notes.md";
     const markdown = `[Report](${report})\n\n![Chart](${chart})\n\n[Notes][notes]\n\n[notes]: <${notes}>`;
 
     expect(messageReferencesFile(markdown, report)).toBe(true);
     expect(messageReferencesFile(markdown, notes)).toBe(true);
     expect(messageImageTargetAt(markdown, markdown.indexOf("![Chart]"))).toBe(chart);
-    expect(messageReferencesFile(markdown, "C:\\Users\\Maus.eacbot\\workspaces\\bot_drafts\\report.md")).toBe(false);
+    expect(messageReferencesFile(markdown, "C:\\Users\\Mascot.eacbot\\workspaces\\bot_drafts\\report.md")).toBe(false);
   });
 
   it("resolves only definitions used by rendered reference links", () => {
@@ -266,10 +266,10 @@ describe("message-linked files", () => {
   it("normalizes an encoded Windows path before opening it", async () => {
     const path = process.platform === "win32"
       ? join(workspace, "release notes.md")
-      : join(workspace, "C:\\Users\\Maus\\release notes.md");
+      : join(workspace, "C:\\Users\\Mascot\\release notes.md");
     const href = process.platform === "win32"
       ? `${path.replace("release notes.md", "release%20notes.md")}?download=1#latest`
-      : "C:\\Users\\Maus\\release%20notes.md?download=1#latest";
+      : "C:\\Users\\Mascot\\release%20notes.md?download=1#latest";
     writeFileSync(path, "windows path bytes");
 
     const opened = await openMessageFile(href, [workspace]);

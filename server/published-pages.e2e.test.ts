@@ -48,7 +48,7 @@ afterAll(async () => {
 });
 
 it("publishes a bot's page to a link shown inline, keeps the link and the card on a republish, and unpublishes it from the card", async () => {
-  const cli = (...args: string[]) => runControlOmb(args, { env: { OPENMAUSBOT_URL: fixture.info.url } }) as Promise<any>;
+  const cli = (...args: string[]) => runControlOmb(args, { env: { EACBOT_URL: fixture.info.url } }) as Promise<any>;
   const api = async (path: string, init: RequestInit = {}) => (await fetch(`${fixture.info.url}${path}`, { ...init, headers: { "content-type": "application/json" } })).json() as Promise<any>;
   const planPath = join(fixture.info.dataDir, "room-plan.json");
   const bot = (await cli("new-bot", "--name", "Publisher")).bot;
@@ -68,7 +68,7 @@ it("publishes a bot's page to a link shown inline, keeps the link and the card o
   const first = await turn([{ tool: "publish_page", arguments: { path: "site", title: "Bake sale" } }]);
   expect(first.tools).toEqual(expect.arrayContaining(["publish_page", "unpublish_page"]));
   const [pageId] = [...stub.service.pages.keys()];
-  const url = `https://${pageId}.mausbot.page/`;
+  const url = `https://${pageId}.eacbot.page/`;
   expect(first.results[0]).toContain(`Published “Bake sale” at ${url}`);
   expect(stub.service.minted).toEqual([{ action: "create", caller: "desktop" }]);
 

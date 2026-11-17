@@ -77,7 +77,7 @@ The `live-reply-*` scenarios grade how a bot talks (answer first, one question a
 
 ## Skill bench (alpha)
 
-The skill bench measures one fixture skill against its own prompts through the same scripted machinery as tier 1. Each prompt runs twice — with the skill installed as a user skill under the booted server's data dir and without it — so the contrast covers the real seams: trigger-term selection, the `<openmaus-skill>` block riding the system prompt, and the scripted follower's behavior against a no-skill baseline. It evaluates the harness, never a model.
+The skill bench measures one fixture skill against its own prompts through the same scripted machinery as tier 1. Each prompt runs twice — with the skill installed as a user skill under the booted server's data dir and without it — so the contrast covers the real seams: trigger-term selection, the `<eacbot-skill>` block riding the system prompt, and the scripted follower's behavior against a no-skill baseline. It evaluates the harness, never a model.
 
     node --experimental-strip-types evals/runners/run-skill-bench.ts [--fixture bench-triage-handoff] [--replicates 2]
 

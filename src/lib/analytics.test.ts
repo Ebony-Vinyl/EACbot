@@ -63,6 +63,8 @@ vi.stubGlobal("localStorage", baseStorage);
 
 beforeEach(() => {
   store.clear();
+  // Most of these cases describe an install the person opted in; the default-off cases remove this key.
+  store.set("omb-analytics-opt-out", "0");
   ph.loads = 0;
   ph.fail = false;
   ph.initThrows = false;
@@ -105,8 +107,9 @@ describe("optAction", () => {
 });
 
 describe("the stored choice", () => {
-  it("is on for a fresh install", () => {
-    expect(analyticsEnabled()).toBe(true);
+  it("stays off for a fresh install until the person turns it on", () => {
+    store.delete("omb-analytics-opt-out");
+    expect(analyticsEnabled()).toBe(false);
   });
 
   it("survives a restart once opted out", () => {
@@ -138,7 +141,8 @@ describe("the stored choice", () => {
     expect(store.get("omb-installed")).toBeUndefined();
   });
 
-  it("treats unusable storage as a fresh install rather than failing", () => {
+  it("treats unusable storage as a fresh install rather than failing", async () => {
+    const fresh = await freshAnalytics();
     vi.stubGlobal("localStorage", {
       getItem: () => {
         throw new Error("denied");
@@ -147,14 +151,27 @@ describe("the stored choice", () => {
         throw new Error("denied");
       },
     });
-    expect(analyticsEnabled()).toBe(true);
-    expect(() => setAnalyticsEnabled(false)).not.toThrow();
+    expect(fresh.analyticsEnabled()).toBe(false);
+    expect(() => fresh.setAnalyticsEnabled(false)).not.toThrow();
   });
 });
 
 describe("initAnalytics while opted out", () => {
   it("returns before loading the client or touching the install marker", async () => {
     store.set("omb-analytics-opt-out", "1");
+    const fresh = await freshAnalytics();
+
+    expect(fresh.analyticsEnabled()).toBe(false);
+    await fresh.initAnalytics();
+    fresh.track("onboarding_step");
+
+    expect(ph.loads).toBe(0);
+    expect(ph.calls).toEqual([]);
+    expect(store.get("omb-installed")).toBeUndefined();
+  });
+
+  it("does the same for an install that never chose, with no queued event and no request", async () => {
+    store.delete("omb-analytics-opt-out");
     const fresh = await freshAnalytics();
 
     expect(fresh.analyticsEnabled()).toBe(false);
@@ -219,22 +236,22 @@ describe("loading the client", () => {
     await fresh.initAnalytics();
     expect(ph.options[0]).toMatchObject({ save_referrer: false, save_campaign_params: false, disable_capture_url_hashes: true });
     const beforeSend = ph.options[0]!.before_send as (event: unknown) => unknown;
-    const page = "https://ada-tenant.mausbot.cloud/?share-computer=cmp_123&utm_source=hn#copy-to";
+    const page = "https://ada-tenant.eacbot.cloud/?share-computer=cmp_123&utm_source=hn#copy-to";
     const event = {
       uuid: "u", event: "app_snapshot",
       properties: {
         token: "phc_token", distinct_id: "d", app_version: "0.1.111", surface: "server", bots: 3, key_providers: ["boat"], $os: "Mac OS X",
-        $current_url: page, $host: "ada-tenant.mausbot.cloud", $pathname: "/", $referrer: "https://www.google.com/?q=ada", $referring_domain: "www.google.com",
+        $current_url: page, $host: "ada-tenant.eacbot.cloud", $pathname: "/", $referrer: "https://www.google.com/?q=ada", $referring_domain: "www.google.com",
         $search_engine: "google", ph_keyword: "ada", utm_source: "hn", utm_campaign: "launch", gclid: "g1", fbclid: "f1", gad_source: "1",
-        $session_entry_url: page, $session_entry_host: "ada-tenant.mausbot.cloud", $session_entry_pathname: "/", $session_entry_referrer: "https://www.google.com/",
+        $session_entry_url: page, $session_entry_host: "ada-tenant.eacbot.cloud", $session_entry_pathname: "/", $session_entry_referrer: "https://www.google.com/",
         $session_entry_referring_domain: "www.google.com", $session_entry_utm_source: "hn", $session_entry_gclid: "g1", $prev_pageview_pathname: "/old",
         $set: { email: "ada@example.com", $current_url: page },
       },
       $set: { email: "ada@example.com", $current_url: page, $pathname: "/", $referrer: "https://www.google.com/", $referring_domain: "www.google.com" },
       $set_once: {
-        $initial_current_url: page, $initial_host: "ada-tenant.mausbot.cloud", $initial_pathname: "/", $initial_referrer: "https://www.google.com/",
+        $initial_current_url: page, $initial_host: "ada-tenant.eacbot.cloud", $initial_pathname: "/", $initial_referrer: "https://www.google.com/",
         $initial_referring_domain: "www.google.com", $initial_utm_source: "hn", $initial_gclid: "g1", $initial_search_engine: "google", $initial_ph_keyword: "ada",
-        $current_url: page, $host: "ada-tenant.mausbot.cloud", $referrer: "https://www.google.com/", utm_medium: "social",
+        $current_url: page, $host: "ada-tenant.eacbot.cloud", $referrer: "https://www.google.com/", utm_medium: "social",
       },
     };
     const sent = beforeSend(structuredClone(event));
@@ -244,7 +261,7 @@ describe("loading the client", () => {
       $set: { email: "ada@example.com" },
       $set_once: {},
     });
-    expect(JSON.stringify(sent)).not.toMatch(/mausbot\.cloud|google|share-computer|cmp_123|hn|g1|f1/);
+    expect(JSON.stringify(sent)).not.toMatch(/eacbot\.cloud|google|share-computer|cmp_123|hn|g1|f1/);
     expect(beforeSend(null)).toBeNull();
   });
 

@@ -46,7 +46,7 @@ export type {
   SecretRequestCardData, Surface, TaskClosedBy, TaskOpenedBy, TaskUsage,
 } from "../shared/wire.ts";
 export type { GroupTask as GroupTaskRecord, BotProject as BotProjectRecord } from "../shared/wire.ts";
-export type { InstalledPlaybook, InstalledPackageMetadata, MausColor, MausExpression } from "../shared/wire.ts";
+export type { InstalledPlaybook, InstalledPackageMetadata, BotColor, MascotExpression } from "../shared/wire.ts";
 
 export type Message = WireMessage;
 

@@ -150,11 +150,11 @@ it("saves keys for any OpenCode provider on a Cloud, shows only their names, and
   expect(started().env.ANTHROPIC_API_KEY).toBe(OWNER_ANTHROPIC);
 }, 90_000);
 
-it("refuses a name OpenMaus keeps, in one plain line, and saves nothing", async () => {
+it("refuses a name EACbot keeps, in one plain line, and saves nothing", async () => {
   const before = readFileSync(join(dataDir, "config.json"), "utf8");
   const refused = await api("PUT", "/api/config", { opencodeGo: { providerKeys: { EAC_CLOUD_BOAT_TOKEN: "x-token", VENICE_API_KEY: VENICE } } });
   expect(refused.status).toBe(400);
-  expect(refused.body.error).toBe("OpenMaus keeps EAC_CLOUD_BOAT_TOKEN for itself, so OpenCode can't be given it here. Put this key in opencode.json instead.");
+  expect(refused.body.error).toBe("EACbot keeps EAC_CLOUD_BOAT_TOKEN for itself, so OpenCode can't be given it here. Put this key in opencode.json instead.");
   expect(readFileSync(join(dataDir, "config.json"), "utf8")).toBe(before);
   const opencodeKey = await api("PUT", "/api/config", { opencodeGo: { providerKeys: { OPENCODE_API_KEY: "zen" } } });
   expect(opencodeKey.status).toBe(400);

@@ -373,7 +373,7 @@ ID):
       "reclaimPending": 12
     },
     {
-      "hostSuffix": "mausbot.si",
+      "hostSuffix": "eacbot.si",
       "newEndpoints": true,
       "status": "ok",
       "checkedAt": 1790000000000,
@@ -417,9 +417,9 @@ repository:
 [
   {
     "accountId": "<32-hex Cloudflare account ID>",
-    "zoneId": "<32-hex zone ID of mausbot.si in that account>",
-    "companionHostSuffix": "mausbot.si",
-    "apiTokenSecret": "CLOUDFLARE_API_TOKEN_MAUSBOT_SI",
+    "zoneId": "<32-hex zone ID of eacbot.si in that account>",
+    "companionHostSuffix": "eacbot.si",
+    "apiTokenSecret": "CLOUDFLARE_API_TOKEN_EACBOT_SI",
     "tunnelLimit": 1000,
     "dnsRecordLimit": 200,
     "minAppVersion": "0.1.104"
@@ -522,7 +522,7 @@ and `errorCode`; only an operator can fix the token.
 **Why `minAppVersion`.** Desktop releases up to 0.1.103 accept only
 `eacbot.com` names for **Remote computer → Desktop companion** pairing
 (phones, pairing links, and Tailscale have no domain rule). The desktop app
-accepts `mausbot.si` from the release that ships this change, and from the
+accepts `eacbot.si` from the release that ships this change, and from the
 same release it reports its version with every endpoint request; older apps
 are judged by the version they registered with. Set `minAppVersion` to that
 release so a computer on an older release keeps an address every desktop can
@@ -553,7 +553,7 @@ Tailscale still work).
    (`POST accounts/<account id>/cfd_tunnel` with
    `{"name": "omb-token-check", "config_src": "cloudflare"}`) and a TXT record
    in the zone, then delete both.
-5. `wrangler secret put CLOUDFLARE_API_TOKEN_MAUSBOT_SI` (or the name you
+5. `wrangler secret put CLOUDFLARE_API_TOKEN_EACBOT_SI` (or the name you
    chose). Never put a token in `vars`, `.dev.vars.example`, logs, or CI output.
 6. Set `CLOUDFLARE_ENDPOINT_ACCOUNTS` with `dnsRecordLimit` equal to the
    zone's real quota and `minAppVersion` as above. Add the token's secret name

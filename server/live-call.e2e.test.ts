@@ -348,7 +348,7 @@ posixOnly("Live call e2e", () => {
 
   it("ends a phone's call, and refuses it another, once the companion says it was unpaired", async () => {
     const bot = await createBot();
-    const phone = { "x-openmausbot-companion": "1", "x-openmausbot-companion-device": "phone-e2e" };
+    const phone = { "x-eacbot-companion": "1", "x-eacbot-companion-device": "phone-e2e" };
     const sse = await openSse(`${base}/api/events`);
     try {
       const before = live.sessions.length;
@@ -359,7 +359,7 @@ posixOnly("Live call e2e", () => {
       await live.waitForAttach(session.id);
       await sse.until((frame) => frame.kind === "live.call" && frame.call?.callId === call.callId && frame.call?.status === "live");
 
-      expect(await post("/api/live/device-revoked", {}, { ...phone, "x-openmausbot-companion-device": "phone-other" }))
+      expect(await post("/api/live/device-revoked", {}, { ...phone, "x-eacbot-companion-device": "phone-other" }))
         .toEqual({ status: 200, body: { call: null } });
       expect(await post("/api/live/device-revoked", {}, phone)).toMatchObject({ status: 200, body: { call: { callId: call.callId } } });
       await live.waitForCommand(session.id, (c) => c.type === "session.close", 5_000);
@@ -751,7 +751,7 @@ posixOnly("Live call on the person's Cloud", () => {
 // No plan anywhere and no Live key: a phone's call starts once the person's own OpenAI key is in Settings → API keys.
 posixOnly("Live calls for everyone, with the person's own OpenAI key", () => {
   const OPENAI_KEY = "sk-fake-api-keys-openai";
-  const phone = { "x-openmausbot-companion": "1", "x-openmausbot-companion-device": "phone-byok" };
+  const phone = { "x-eacbot-companion": "1", "x-eacbot-companion-device": "phone-byok" };
   let child: ChildProcess;
   let home = "";
   let base = "";

@@ -182,7 +182,7 @@ describe("DeepSeek ACP support", () => {
   });
 
   it("puts the persona ahead of the prompt text", () => {
-    expect(deepseekSupport.buildPromptText?.({ system: "You are Maus.", text: "hi" } as never)).toBe("You are Maus.\n\nhi");
+    expect(deepseekSupport.buildPromptText?.({ system: "You are Mascot.", text: "hi" } as never)).toBe("You are Mascot.\n\nhi");
     expect(deepseekSupport.buildPromptText?.({ system: "", text: "hi" } as never)).toBe("hi");
   });
 });

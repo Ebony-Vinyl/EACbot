@@ -7,7 +7,7 @@ import type { HeadlessIo } from "./output.ts";
 import { runHeadless } from "./main.ts";
 
 type Rec = Record<string, any>;
-const URL_ENV = { OPENMAUSBOT_URL: "http://127.0.0.1:19999" };
+const URL_ENV = { EACBOT_URL: "http://127.0.0.1:19999" };
 
 const job = (state: string, version: string, extra: Rec = {}) => ({ threadId: "t1", state, version, since: 1_000, reason: `${state} now`, counts: {}, nodes: [], needsInput: [], ...extra });
 const waited = (status: string, state: string, jobView: Rec, extra: Rec = {}) => ({

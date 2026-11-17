@@ -262,7 +262,7 @@ function runGit(directory: string, args: string[]): Promise<void> {
   const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_")));
   return new Promise((resolveRun, rejectRun) => {
     execFile("git", [
-      "-c", "user.name=OpenMaus", "-c", "user.email=model-discovery@openmaus.invalid",
+      "-c", "user.name=EACbot", "-c", "user.email=model-discovery@eacbot.invalid",
       "-c", "commit.gpgsign=false", "-c", `core.hooksPath=${join(directory, ".git", "no-hooks")}`,
       ...args,
     ], { cwd: directory, env: { ...env, GIT_TERMINAL_PROMPT: "0" }, timeout: 10_000, windowsHide: true }, (error) => {
@@ -280,11 +280,11 @@ function discoveryDirectory(): Promise<string> {
   discoveryFolder ??= (async () => {
     const directory = join(DATA_DIR, "providers", "opencode", "discovery");
     mkdirSync(directory, { recursive: true });
-    const marker = join(directory, ".openmaus-project");
+    const marker = join(directory, ".eacbot-project");
     if (!existsSync(marker)) {
       try {
         await runGit(directory, ["init", "-q"]);
-        await runGit(directory, ["commit", "-q", "--allow-empty", "--no-verify", "-m", "OpenMaus model discovery"]);
+        await runGit(directory, ["commit", "-q", "--allow-empty", "--no-verify", "-m", "EACbot model discovery"]);
         writeFileSync(marker, "OpenCode files this folder's sessions under its own project.\n");
       } catch {}
     }
@@ -671,12 +671,12 @@ function withinFolder(path: string, folder: string): boolean {
 }
 
 /** A bot's shared or private folder: bots wrote everything there, so none of it may become OpenCode configuration. */
-export function openMausOwnsWorkingFolder(cwd: string): boolean {
+export function openMascotOwnsWorkingFolder(cwd: string): boolean {
   return [join(DATA_DIR, "workspaces"), join(DATA_DIR, "task-workspaces")].some((root) =>
     withinFolder(cwd, root) && resolvePath(cwd) !== resolvePath(root));
 }
 
-/** OpenMaus folders an OpenCode bot may use without an approval card: attachments and its own shared folder.
+/** EACbot folders an OpenCode bot may use without an approval card: attachments and its own shared folder.
  * Never one at or above the working folder: OpenCode reads opencode.json, .opencode/ and AGENTS.md from
  * every folder above it, so a planted file would configure later conversations. Known risk: the folder
  * rule covers writes too, so a bot can change or delete files in the attachments folder. */
@@ -891,7 +891,7 @@ const support = (
   },
   spawnFingerprint: (env, config) => openCodeSpawnFingerprint(env, config.cli),
   applyTurnEnv: (env, { fullAuto, botId, cwd }) => {
-    if (openMausOwnsWorkingFolder(cwd)) env.OPENCODE_DISABLE_PROJECT_CONFIG = "1";
+    if (openMascotOwnsWorkingFolder(cwd)) env.OPENCODE_DISABLE_PROJECT_CONFIG = "1";
     if (!fullAuto) {
       allowOwnedDirectories(env, botId, cwd);
       return;
