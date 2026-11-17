@@ -53,7 +53,7 @@ import com.eacbot.mobile.ui.statusLabel
  *
  * A phone shows one list and one conversation, not the desktop's three panes.
  * Each row carries the four states that do not compete: working, needs you,
- * finished, failed. "Needs you" wins over unread because it is the only one
+ * finished, failed. "等待你处理" wins over unread because it is the only one
  * that blocks someone else.
  */
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
@@ -86,12 +86,12 @@ fun HomeScreen(
             TopAppBar(
                 title = {
                     Column {
-                        Text("Hermes", style = MaterialTheme.typography.titleLarge, color = colors.ink)
+                        Text("Hermes 助理", style = MaterialTheme.typography.titleLarge, color = colors.ink)
                         Text(
                             text = when {
                                 offlineNote != null -> offlineNote
-                                streamConnected -> "Live"
-                                else -> "Reconnecting"
+                                streamConnected -> "实时"
+                                else -> "重新连接中"
                             },
                             style = MaterialTheme.typography.labelSmall,
                             color = if (offlineNote != null) colors.danger else colors.inkMuted,
@@ -99,9 +99,9 @@ fun HomeScreen(
                     }
                 },
                 actions = {
-                    TextAction("Agents", onOpenAgents)
+                    TextAction("智能体", onOpenAgents)
                     IconButton(onClick = onOpenSettings) {
-                        Icon(Icons.Filled.Settings, contentDescription = "Settings and devices", tint = colors.ink)
+                        Icon(Icons.Filled.Settings, contentDescription = "设置与设备", tint = colors.ink)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = colors.canvas),
@@ -113,7 +113,7 @@ fun HomeScreen(
                 containerColor = colors.accent,
                 contentColor = colors.accentInk,
                 icon = { Icon(Icons.Filled.Add, contentDescription = null) },
-                text = { Text("New task") },
+                text = { Text("新建任务") },
             )
         },
     ) { padding ->
@@ -141,12 +141,12 @@ fun HomeScreen(
             if (filtered.isEmpty()) {
                 EmptyNote(
                     title = when {
-                        all.isEmpty() -> "No tasks yet"
-                        else -> "Nothing ${filter.label.lowercase()}"
+                        all.isEmpty() -> "暂无任务"
+                        else -> "暂无${filter.label.lowercase()}项目"
                     },
                     detail = when {
-                        all.isEmpty() -> "Start one and Hermes will run it on your computer."
-                        else -> "Switch to All to see every task this core holds."
+                        all.isEmpty() -> "新建任务后，Hermes 将在你的电脑上运行。"
+                        else -> "切换到“全部”以查看此服务的所有任务。"
                     },
                 )
             } else {
@@ -185,7 +185,7 @@ private fun MissionRow(mission: Mission, onClick: () -> Unit) {
     ) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
-                text = mission.title.ifBlank { "Untitled task" },
+                text = mission.title.ifBlank { "未命名任务" },
                 style = MaterialTheme.typography.titleSmall,
                 color = colors.ink,
                 maxLines = 2,
@@ -202,7 +202,7 @@ private fun MissionRow(mission: Mission, onClick: () -> Unit) {
             }
             if (mission.status == MissionStatus.WaitingInput) {
                 Text(
-                    text = "Waiting for you before it continues",
+                    text = "等待你处理后继续",
                     style = MaterialTheme.typography.labelSmall,
                     color = colors.attention,
                 )

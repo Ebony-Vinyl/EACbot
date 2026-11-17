@@ -256,13 +256,13 @@ class ChatViewModel(
 
     private fun describe(error: Throwable): String = when (error) {
         is ApiException -> when (error.details.code) {
-            "revision_conflict" -> "This mission moved on. Reading the latest state."
-            "illegal_transition" -> "That is not possible while the mission is ${state.value.mission?.status?.wire ?: "here"}."
-            "capability_missing" -> "This engine cannot do that."
+            "revision_conflict" -> "此任务已有新进展，正在读取最新状态。"
+            "illegal_transition" -> "当前任务状态不支持此操作：${state.value.mission?.status?.wire ?: "here"}."
+            "capability_missing" -> "此引擎不支持该操作。"
             else -> error.details.message
         }
-        is NetworkException -> "Can't reach your computer right now"
-        else -> error.message ?: "Something went wrong"
+        is NetworkException -> "暂时无法连接你的电脑"
+        else -> error.message ?: "发生错误"
     }
 
     companion object {

@@ -65,10 +65,10 @@ class SettingsViewModel(
 
     private fun describe(error: Throwable): String = when (error) {
         is ApiException -> when {
-            error.isForbidden -> "Only the owner scope can see every device."
+            error.isForbidden -> "只有所有者权限可查看全部设备。"
             else -> error.details.message
         }
-        is NetworkException -> "Can't reach your computer right now"
-        else -> error.message ?: "Something went wrong"
+        is NetworkException -> "暂时无法连接你的电脑"
+        else -> error.message ?: "发生错误"
     }
 }

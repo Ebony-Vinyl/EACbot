@@ -69,10 +69,10 @@ fun SettingsScreen(
         containerColor = colors.canvas,
         topBar = {
             TopAppBar(
-                title = { Text("Settings", style = MaterialTheme.typography.titleMedium) },
+                title = { Text("设置", style = MaterialTheme.typography.titleMedium) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = colors.canvas, titleContentColor = colors.ink),
@@ -87,22 +87,22 @@ fun SettingsScreen(
                 .padding(horizontal = EacbotDimens.gutterWide, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            SectionLabel("This core")
+            SectionLabel("此服务")
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Address", style = MaterialTheme.typography.labelSmall, color = colors.inkMuted)
+                Text("地址", style = MaterialTheme.typography.labelSmall, color = colors.inkMuted)
                 Text(state.core?.baseUrl ?: "—", style = MaterialTheme.typography.labelSmall, color = colors.ink)
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("This phone", style = MaterialTheme.typography.labelSmall, color = colors.inkMuted)
+                Text("此手机", style = MaterialTheme.typography.labelSmall, color = colors.inkMuted)
                 Text(state.core?.label ?: "—", style = MaterialTheme.typography.labelSmall, color = colors.ink)
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Scope", style = MaterialTheme.typography.labelSmall, color = colors.inkMuted)
+                Text("权限范围", style = MaterialTheme.typography.labelSmall, color = colors.inkMuted)
                 Text(
                     text = when (state.core?.scope) {
-                        "owner" -> "Owner · can change computers and devices"
-                        "device" -> "Device · can run tasks, approve and type"
-                        "readonly" -> "Read only · can watch, cannot act"
+                        "owner" -> "所有者 · 可更改电脑和设备"
+                        "device" -> "设备 · 可运行任务、审批和输入"
+                        "readonly" -> "只读 · 可查看，不能操作"
                         else -> state.core?.scope ?: "—"
                     },
                     style = MaterialTheme.typography.labelSmall,
@@ -112,13 +112,13 @@ fun SettingsScreen(
 
             Spacer(Modifier.height(6.dp))
             Hairline()
-            SectionLabel("Devices paired to this core")
+            SectionLabel("与此服务配对的设备")
             if (state.loading) {
-                Text("Reading the device list…", style = MaterialTheme.typography.bodySmall, color = colors.inkMuted)
+                Text("正在读取设备列表…", style = MaterialTheme.typography.bodySmall, color = colors.inkMuted)
             }
             state.error?.let { message ->
                 Text(message, style = MaterialTheme.typography.bodySmall, color = colors.danger)
-                TextButton(onClick = viewModel::load) { Text("Try again") }
+                TextButton(onClick = viewModel::load) { Text("重试") }
             }
             state.sessions.forEach { session ->
                 DeviceRow(
@@ -130,9 +130,9 @@ fun SettingsScreen(
 
             Spacer(Modifier.height(8.dp))
             Hairline()
-            SectionLabel("This phone")
+            SectionLabel("此手机")
             Text(
-                "Forgetting revokes this phone's session on your computer and deletes the saved credential here. Your tasks keep running.",
+                "忘记后会撤销电脑上的手机会话，并删除本机保存的凭据，任务会继续运行。",
                 style = MaterialTheme.typography.bodySmall,
                 color = colors.inkMuted,
             )
@@ -140,7 +140,7 @@ fun SettingsScreen(
                 onClick = { confirmForget = true },
                 shape = RoundedCornerShape(EacbotDimens.controlRadius),
                 colors = ButtonDefaults.buttonColors(containerColor = colors.danger, contentColor = colors.canvas),
-            ) { Text("Forget this phone") }
+            ) { Text("忘记此手机") }
             Spacer(Modifier.height(24.dp))
         }
     }
@@ -149,10 +149,10 @@ fun SettingsScreen(
         AlertDialog(
             onDismissRequest = { confirmForget = false },
             containerColor = colors.surface,
-            title = { Text("Forget this phone?", color = colors.ink) },
+            title = { Text("忘记此手机？", color = colors.ink) },
             text = {
                 Text(
-                    "Its session is revoked on your computer and the credential is deleted here. You will need a new pairing code to connect again.",
+                    "将撤销电脑上的会话并删除本机凭据。再次连接需要新的配对码。",
                     color = colors.inkMuted,
                 )
             },
@@ -160,9 +160,9 @@ fun SettingsScreen(
                 TextButton(onClick = {
                     confirmForget = false
                     viewModel.forget()
-                }) { Text("Forget", color = colors.danger) }
+                }) { Text("移除", color = colors.danger) }
             },
-            dismissButton = { TextButton(onClick = { confirmForget = false }) { Text("Keep") } },
+            dismissButton = { TextButton(onClick = { confirmForget = false }) { Text("保留") } },
         )
     }
 
@@ -170,10 +170,10 @@ fun SettingsScreen(
         AlertDialog(
             onDismissRequest = { revokeTarget = null },
             containerColor = colors.surface,
-            title = { Text("Sign out ${target.label}?", color = colors.ink) },
+            title = { Text("让 ${target.label} 退出登录？", color = colors.ink) },
             text = {
                 Text(
-                    "That device stops working immediately and must pair again. Tasks already running are not stopped.",
+                    "该设备将立即失去访问权限，必须重新配对。正在运行的任务不会停止。",
                     color = colors.inkMuted,
                 )
             },
@@ -182,9 +182,9 @@ fun SettingsScreen(
                     val id = target.id
                     revokeTarget = null
                     viewModel.revoke(id)
-                }) { Text("Sign out", color = colors.danger) }
+                }) { Text("退出登录", color = colors.danger) }
             },
-            dismissButton = { TextButton(onClick = { revokeTarget = null }) { Text("Cancel") } },
+            dismissButton = { TextButton(onClick = { revokeTarget = null }) { Text("取消") } },
         )
     }
 }
@@ -200,20 +200,20 @@ private fun DeviceRow(session: DeviceSession, isThisPhone: Boolean, onRevoke: ()
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(session.label.ifBlank { "Unnamed device" }, style = MaterialTheme.typography.titleSmall, color = colors.ink)
+            Text(session.label.ifBlank { "未命名设备" }, style = MaterialTheme.typography.titleSmall, color = colors.ink)
             if (isThisPhone) {
-                Text("this phone", style = MaterialTheme.typography.labelSmall, color = colors.accent)
+                Text("此手机", style = MaterialTheme.typography.labelSmall, color = colors.accent)
             }
         }
         Text(
-            text = "${session.scope} · last used ${session.lastUsedAt}",
+            text = "${session.scope} · 上次使用 ${session.lastUsedAt}",
             style = MaterialTheme.typography.labelSmall,
             color = colors.inkMuted,
         )
         if (session.revokedAt != null) {
-            Text("Revoked", style = MaterialTheme.typography.labelSmall, color = colors.danger)
+            Text("已撤销", style = MaterialTheme.typography.labelSmall, color = colors.danger)
         } else if (!isThisPhone) {
-            TextButton(onClick = onRevoke) { Text("Sign out", style = MaterialTheme.typography.labelSmall) }
+            TextButton(onClick = onRevoke) { Text("退出登录", style = MaterialTheme.typography.labelSmall) }
         }
     }
 }

@@ -143,11 +143,11 @@ class NewMissionViewModel(
 
     private fun describe(error: Throwable): String = when (error) {
         is ApiException -> when (error.details.code) {
-            "capability_missing" -> "This engine cannot run that task."
-            "not_found" -> "That computer is not on this core any more."
+            "capability_missing" -> "此引擎无法运行该任务。"
+            "not_found" -> "该电脑已不在此服务中。"
             else -> error.details.message
         }
-        is NetworkException -> "Can't reach your computer right now"
-        else -> error.message ?: "Something went wrong"
+        is NetworkException -> "暂时无法连接你的电脑"
+        else -> error.message ?: "发生错误"
     }
 }

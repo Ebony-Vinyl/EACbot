@@ -67,7 +67,7 @@ fun ComputerScreen(
             TopAppBar(
                 title = {
                     Column {
-                        Text("Computer", style = MaterialTheme.typography.titleMedium, color = colors.ink)
+                        Text("电脑", style = MaterialTheme.typography.titleMedium, color = colors.ink)
                         Text(
                             missionTitle,
                             style = MaterialTheme.typography.labelSmall,
@@ -78,10 +78,10 @@ fun ComputerScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },
-                actions = { TextButton(onClick = viewModel::load) { Text("Refresh") } },
+                actions = { TextButton(onClick = viewModel::load) { Text("刷新") } },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = colors.canvas, titleContentColor = colors.ink),
             )
         },
@@ -98,21 +98,21 @@ fun ComputerScreen(
                 Text(message, style = MaterialTheme.typography.bodyMedium, color = colors.danger)
             }
 
-            SectionLabel("Desktop")
+            SectionLabel("桌面")
             when (val desktop = state.desktop) {
                 is DesktopEntry.Ready -> Button(
                     onClick = { onOpenDesktop(desktop.url.toString()) },
                     modifier = Modifier.fillMaxWidth().height(50.dp),
                     shape = RoundedCornerShape(EacbotDimens.controlRadius),
                     colors = ButtonDefaults.buttonColors(containerColor = colors.accent, contentColor = colors.accentInk),
-                ) { Text("Open ${desktop.label}") }
+                ) { Text("打开 ${desktop.label}") }
                 is DesktopEntry.Unavailable -> Text(
                     desktop.reason,
                     style = MaterialTheme.typography.bodySmall,
                     color = colors.inkMuted,
                 )
                 DesktopEntry.NotSupported -> Text(
-                    "This core publishes no desktop viewer. Terminals are still available.",
+                    "此服务未提供桌面查看器，仍可使用终端。",
                     style = MaterialTheme.typography.bodySmall,
                     color = colors.inkMuted,
                 )
@@ -122,15 +122,15 @@ fun ComputerScreen(
                     color = colors.danger,
                 )
                 null -> if (state.loading) {
-                    Text("Reading the desktop entry…", style = MaterialTheme.typography.bodySmall, color = colors.inkMuted)
+                    Text("正在读取桌面入口…", style = MaterialTheme.typography.bodySmall, color = colors.inkMuted)
                 }
             }
 
-            SectionLabel("Terminals")
+            SectionLabel("终端")
             if (state.terminals.isEmpty() && !state.loading) {
                 EmptyNote(
-                    "No terminal for this task",
-                    "A terminal appears when the agent opens one on your computer.",
+                    "此任务暂无终端",
+                    "智能体在电脑上打开终端后会显示在这里。",
                 )
             }
             state.terminals.forEach { terminal ->
@@ -157,10 +157,10 @@ private fun TerminalRow(terminal: TerminalRef, onClick: () -> Unit) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
                 text = when (terminal.kind) {
-                    TerminalKind.NativeTui -> "Agent terminal"
-                    TerminalKind.Pty -> "Shell"
-                    TerminalKind.Exec -> "Command"
-                    null -> "Terminal"
+                    TerminalKind.NativeTui -> "智能体终端"
+                    TerminalKind.Pty -> "命令行"
+                    TerminalKind.Exec -> "命令"
+                    null -> "终端"
                 },
                 style = MaterialTheme.typography.titleSmall,
                 color = colors.ink,

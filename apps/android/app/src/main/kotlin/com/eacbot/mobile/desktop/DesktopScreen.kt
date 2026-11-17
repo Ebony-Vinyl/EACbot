@@ -110,9 +110,9 @@ fun DesktopScreen(
                         Text(title, style = MaterialTheme.typography.titleSmall, color = colors.ink, maxLines = 1)
                         Text(
                             text = when {
-                                failed -> "Disconnected. The last frame stays until you retry."
-                                loading -> "Connecting to your computer"
-                                else -> "Live"
+                                failed -> "已断开连接，重试前保留最后画面。"
+                                loading -> "正在连接你的电脑"
+                                else -> "实时"
                             },
                             style = MaterialTheme.typography.labelSmall,
                             color = if (failed) colors.attention else colors.inkMuted,
@@ -121,21 +121,21 @@ fun DesktopScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = colors.ink)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回", tint = colors.ink)
                     }
                 },
                 actions = {
                     IconButton(onClick = { zoom = (zoom - 0.1f).coerceAtLeast(0.6f) }) {
-                        Icon(Icons.Filled.ZoomOut, contentDescription = "Zoom out", tint = colors.ink)
+                        Icon(Icons.Filled.ZoomOut, contentDescription = "缩小", tint = colors.ink)
                     }
                     IconButton(onClick = { zoom = (zoom + 0.1f).coerceAtMost(1.6f) }) {
-                        Icon(Icons.Filled.ZoomIn, contentDescription = "Zoom in", tint = colors.ink)
+                        Icon(Icons.Filled.ZoomIn, contentDescription = "放大", tint = colors.ink)
                     }
                     IconButton(onClick = { clipboardOpen = true }) {
-                        Icon(Icons.Filled.ContentPaste, contentDescription = "Clipboard", tint = colors.ink)
+                        Icon(Icons.Filled.ContentPaste, contentDescription = "剪贴板", tint = colors.ink)
                     }
                     IconButton(onClick = { webView?.reload() }) {
-                        Icon(Icons.Filled.Refresh, contentDescription = "Reconnect", tint = colors.ink)
+                        Icon(Icons.Filled.Refresh, contentDescription = "重新连接", tint = colors.ink)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = colors.surface, titleContentColor = colors.ink),
@@ -145,7 +145,7 @@ fun DesktopScreen(
             Column(Modifier.fillMaxWidth().background(colors.surface).imePadding()) {
                 if (handover) {
                     Text(
-                        text = "You are driving this computer. The agent is paused until you hand control back.",
+                        text = "你正在控制这台电脑，交回控制权前智能体保持暂停。",
                         style = MaterialTheme.typography.labelSmall,
                         color = colors.attention,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
@@ -159,7 +159,7 @@ fun DesktopScreen(
                     OutlinedTextField(
                         value = keyboardText,
                         onValueChange = { keyboardText = it },
-                        placeholder = { Text("Type to the desktop") },
+                        placeholder = { Text("向桌面输入文字") },
                         modifier = Modifier.weight(1f),
                         singleLine = true,
                         leadingIcon = { Icon(Icons.Filled.Keyboard, contentDescription = null) },
@@ -175,7 +175,7 @@ fun DesktopScreen(
                                 keyboardText = ""
                             }
                         },
-                    ) { Text("Send") }
+                    ) { Text("发送") }
                 }
                 Row(
                     Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 2.dp),
@@ -184,13 +184,13 @@ fun DesktopScreen(
                     TextButton(onClick = { webView?.evaluateJavascript("document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen()", null) }) {
                         Icon(Icons.Filled.Fullscreen, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.size(6.dp))
-                        Text("Full screen")
+                        Text("全屏")
                     }
                     TextButton(onClick = { webView?.evaluateJavascript("navigator.clipboard?.readText?.().then(t => window.dispatchEvent(new CustomEvent('eacbot-clipboard', {detail: t})))", null) }) {
-                        Text("Read clipboard")
+                        Text("读取剪贴板")
                     }
                     Spacer(Modifier.weight(1f))
-                    TextButton(onClick = { webView?.reload(); failed = false }) { Text("Retry") }
+                    TextButton(onClick = { webView?.reload(); failed = false }) { Text("重试") }
                 }
             }
         },
@@ -281,7 +281,7 @@ fun DesktopScreen(
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = colors.accent)
-                        Text("Connecting", style = MaterialTheme.typography.labelSmall, color = colors.inkMuted)
+                        Text("连接中", style = MaterialTheme.typography.labelSmall, color = colors.inkMuted)
                     }
                 }
             }
@@ -293,13 +293,13 @@ fun DesktopScreen(
                         .background(colors.surface, RoundedCornerShape(EacbotDimens.cardRadius))
                         .padding(12.dp),
                 ) {
-                    Text("The connection dropped.", style = MaterialTheme.typography.bodyMedium, color = colors.ink)
+                    Text("连接已中断。", style = MaterialTheme.typography.bodyMedium, color = colors.ink)
                     Text(
-                        "The last frame stays on screen. Retry when your computer is reachable again.",
+                        "最后画面会保留，电脑恢复连接后请重试。",
                         style = MaterialTheme.typography.labelSmall,
                         color = colors.inkMuted,
                     )
-                    TextButton(onClick = { webView?.reload(); failed = false }) { Text("Retry") }
+                    TextButton(onClick = { webView?.reload(); failed = false }) { Text("重试") }
                 }
             }
         }
@@ -332,11 +332,11 @@ private fun ClipboardDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = colors.surface,
-        title = { Text("Clipboard", style = MaterialTheme.typography.titleMedium, color = colors.ink) },
+        title = { Text("剪贴板", style = MaterialTheme.typography.titleMedium, color = colors.ink) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    "Text goes to the system clipboard, which the desktop viewer reads. Nothing is sent to a server.",
+                    "文字会放入系统剪贴板供桌面查看器读取，不会发送到服务器。",
                     style = MaterialTheme.typography.bodySmall,
                     color = colors.inkMuted,
                 )
@@ -347,11 +347,11 @@ private fun ClipboardDialog(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(EacbotDimens.controlRadius),
                 )
-                TextButton(onClick = onReadFromDevice) { Text("Use this phone's clipboard") }
+                TextButton(onClick = onReadFromDevice) { Text("使用此手机的剪贴板") }
             }
         },
-        confirmButton = { TextButton(onClick = { onCopyToDesktop(text) }) { Text("Copy") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Close") } },
+        confirmButton = { TextButton(onClick = { onCopyToDesktop(text) }) { Text("拷贝") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("关闭") } },
     )
 }
 

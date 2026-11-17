@@ -103,27 +103,27 @@ fun ChatScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },
                 actions = {
                     IconButton(onClick = onOpenComputer) {
-                        Icon(Icons.Filled.Computer, contentDescription = "This task's computer")
+                        Icon(Icons.Filled.Computer, contentDescription = "此任务的电脑")
                     }
                     if (operations != null) {
                         if (operations.steer || operations.interrupt) {
                             IconButton(onClick = { viewModel.interrupt() }, enabled = !state.sending) {
-                                Icon(Icons.Filled.PauseCircle, contentDescription = "Pause this run")
+                                Icon(Icons.Filled.PauseCircle, contentDescription = "暂停此次运行")
                             }
                         }
                         if (operations.resume) {
                             IconButton(onClick = { viewModel.resume() }, enabled = !state.sending) {
-                                Icon(Icons.Filled.PlayCircle, contentDescription = "Resume")
+                                Icon(Icons.Filled.PlayCircle, contentDescription = "恢复")
                             }
                         }
                         if (operations.cancel) {
                             IconButton(onClick = { viewModel.cancel() }, enabled = !state.sending) {
-                                Icon(Icons.Filled.StopCircle, contentDescription = "Cancel this mission")
+                                Icon(Icons.Filled.StopCircle, contentDescription = "取消此任务")
                             }
                         }
                     }
@@ -148,11 +148,11 @@ fun ChatScreen(
                     Modifier.fillMaxSize().padding(EacbotDimens.gutterWide),
                     verticalArrangement = Arrangement.Center,
                 ) {
-                    Text("Couldn't open this mission", style = MaterialTheme.typography.titleMedium, color = colors.ink)
+                    Text("无法打开此任务", style = MaterialTheme.typography.titleMedium, color = colors.ink)
                     Spacer(Modifier.height(6.dp))
                     Text(state.error!!, style = MaterialTheme.typography.bodyMedium, color = colors.inkMuted)
                     Spacer(Modifier.height(12.dp))
-                    TextButton(onClick = viewModel::retry) { Text("Try again") }
+                    TextButton(onClick = viewModel::retry) { Text("重试") }
                 }
                 else -> LazyColumn(
                     state = listState,
@@ -166,7 +166,7 @@ fun ChatScreen(
                     if (state.resyncing) {
                         item(key = "resync") {
                             Text(
-                                "Catching up on missed events",
+                                "正在补齐遗漏事件",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = colors.attention,
                             )
@@ -175,7 +175,7 @@ fun ChatScreen(
                     if (state.offline) {
                         item(key = "offline") {
                             Text(
-                                "Offline. Showing the last state this phone saw.",
+                                "已离线，显示此手机最后收到的状态。",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = colors.inkMuted,
                             )
@@ -212,9 +212,9 @@ fun ChatScreen(
 private fun ArtifactLine(item: ConversationItem.ArtifactCard) {
     val colors = LocalEacbotColors.current
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text("Artifact", style = MaterialTheme.typography.labelSmall, color = colors.inkMuted)
+        Text("产物", style = MaterialTheme.typography.labelSmall, color = colors.inkMuted)
         Text(item.path, style = MaterialTheme.typography.bodySmall, color = colors.ink, maxLines = 1)
-        Text("${item.bytes} bytes", style = MaterialTheme.typography.labelSmall, color = colors.inkMuted)
+        Text("${item.bytes} 字节", style = MaterialTheme.typography.labelSmall, color = colors.inkMuted)
     }
 }
 
@@ -222,8 +222,8 @@ private fun ArtifactLine(item: ConversationItem.ArtifactCard) {
 private fun UsageLine(item: ConversationItem.UsageLine) {
     val colors = LocalEacbotColors.current
     val parts = buildList {
-        item.inputTokens?.let { add("$it in") }
-        item.outputTokens?.let { add("$it out") }
+        item.inputTokens?.let { add("输入 $it") }
+        item.outputTokens?.let { add("输出 $it") }
         item.costUsd?.let { add("$${String.format("%.2f", it)}") }
     }
     if (parts.isEmpty()) return
@@ -262,7 +262,7 @@ private fun Composer(
                 onValueChange = onDraftChange,
                 modifier = Modifier.weight(1f),
                 enabled = state.canSend && !state.sending,
-                placeholder = { Text(if (!state.canSend) "No active conversation" else if (waiting) "Answer the agent" else "Message Hermes") },
+                placeholder = { Text(if (!state.canSend) "没有活动会话" else if (waiting) "回答智能体" else "向 Hermes 发送消息") },
                 maxLines = 5,
                 shape = RoundedCornerShape(EacbotDimens.controlRadius),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Default),
@@ -276,7 +276,7 @@ private fun Composer(
                 } else {
                     Icon(
                         Icons.AutoMirrored.Filled.Send,
-                        contentDescription = "Send",
+                        contentDescription = "发送",
                         tint = if (state.canSend && state.draft.isNotBlank()) colors.accent else colors.inkMuted,
                     )
                 }

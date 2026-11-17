@@ -57,7 +57,7 @@ fun StatusPill(
             .background(colors.surfaceRaised)
             .border(EacbotDimens.hairline, colors.outline, RoundedCornerShape(percent = 50))
             .padding(horizontal = if (compact) 8.dp else 10.dp, vertical = 4.dp)
-            .semantics { contentDescription = "Status: ${statusLabel(status)}" },
+            .semantics { contentDescription = "状态：${statusLabel(status)}" },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
@@ -86,18 +86,18 @@ private fun statusTone(status: MissionStatus): Tone = when (status) {
     MissionStatus.Cancelled -> Tone.Quiet
 }
 
-/** What a person reads. "Waiting for you" is the one that needs action. */
+/** What a person reads. "等你处理" is the one that needs action. */
 fun statusLabel(status: MissionStatus): String = when (status) {
-    MissionStatus.Queued -> "Queued"
-    MissionStatus.Provisioning -> "Starting"
-    MissionStatus.Running -> "Working"
-    MissionStatus.WaitingInput -> "Needs you"
-    MissionStatus.WaitingChildren -> "Waiting on helpers"
-    MissionStatus.Interrupted -> "Paused"
-    MissionStatus.Resuming -> "Resuming"
-    MissionStatus.Succeeded -> "Done"
-    MissionStatus.Failed -> "Failed"
-    MissionStatus.Cancelled -> "Cancelled"
+    MissionStatus.Queued -> "排队中"
+    MissionStatus.Provisioning -> "启动中"
+    MissionStatus.Running -> "工作中"
+    MissionStatus.WaitingInput -> "等待你处理"
+    MissionStatus.WaitingChildren -> "等待协作助手"
+    MissionStatus.Interrupted -> "已暂停"
+    MissionStatus.Resuming -> "恢复中"
+    MissionStatus.Succeeded -> "完成"
+    MissionStatus.Failed -> "失败"
+    MissionStatus.Cancelled -> "已取消"
 }
 
 /** A quiet section heading, used instead of a second toolbar. */
@@ -113,7 +113,7 @@ fun SectionLabel(text: String, modifier: Modifier = Modifier) {
 }
 
 /** A one-line empty state. It says what is missing and what to do, never
- * "nothing here yet" on its own. */
+ * "暂无内容" on its own. */
 @Composable
 fun EmptyNote(title: String, detail: String, modifier: Modifier = Modifier) {
     val colors = LocalEacbotColors.current
@@ -133,7 +133,7 @@ fun Hairline(modifier: Modifier = Modifier) {
     Box(modifier.fillMaxWidth().height(EacbotDimens.hairline).background(colors.outline))
 }
 
-/** A labelled value a card shows, e.g. "Model · Hermes 4". */
+/** A labelled value a card shows, e.g. "模型 · Hermes 4". */
 @Composable
 fun MetaPair(label: String, value: String, modifier: Modifier = Modifier, valueColor: Color? = null) {
     val colors = LocalEacbotColors.current

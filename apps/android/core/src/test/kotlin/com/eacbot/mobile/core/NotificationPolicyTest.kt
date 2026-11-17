@@ -36,14 +36,14 @@ class NotificationPolicyTest {
     fun `an agent that finishes without waiting notifies`() {
         val decision = decide(MissionStatus.Running, MissionStatus.Succeeded)!!
         assertEquals(NotificationDecision.NotificationKind.Finished, decision.kind)
-        assertEquals("Finished", decision.body)
+        assertEquals("已完成", decision.body)
     }
 
     @Test
     fun `a failure notifies and says so without the error text`() {
         val decision = decide(MissionStatus.Running, MissionStatus.Failed)!!
         assertEquals(NotificationDecision.NotificationKind.Finished, decision.kind)
-        assertEquals("Stopped with an error", decision.body)
+        assertEquals("因错误停止", decision.body)
     }
 
     @Test
@@ -72,7 +72,7 @@ class NotificationPolicyTest {
     @Test
     fun `the body never carries prompt text, tool input or approval detail`() {
         val decision = decide(MissionStatus.Running, MissionStatus.WaitingInput, title = "Rotate the API keys")!!
-        assertEquals("Waiting for your answer", decision.body)
+        assertEquals("等待你的回答", decision.body)
     }
 
     @Test

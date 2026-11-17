@@ -101,7 +101,7 @@ private class OkHttpTerminalSocket(
     }
 
     override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-        report(1006, t.message ?: "connection failed")
+        report(1006, t.message ?: "连接失败")
     }
 
     /** A close is reported once: `onClosing` and `onClosed` both arrive for a
