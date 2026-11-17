@@ -1,3 +1,4 @@
+import { t } from "@/lib/i18n";
 /**
  * Agent settings: what each engine can do, whether it is installed, how it
  * signs in, and which models it can actually run.
@@ -37,7 +38,7 @@ export function AgentSettings({ tools }: AgentSettingsProps): ReactNode {
   return (
     <section className="neutral-resource-page" data-testid="agent-settings">
       <header className="flex flex-col gap-1">
-        <h2 className="neutral-resource-title">Agent</h2>
+        <h2 className="neutral-resource-title">{t("composer.mention.agent")}</h2>
         <p className="text-[10px] leading-relaxed text-ink-secondary">
           这些是你自己安装的 Agent 软件。EACbot 只负责启动、观察和记录，不销售软件，也不代理登录。
         </p>

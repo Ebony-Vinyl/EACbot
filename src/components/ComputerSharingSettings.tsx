@@ -51,7 +51,7 @@ export function ComputerSharingSettings({ workspace, onClose }: { workspace: { i
         <p role="status" className="text-ink-secondary">{!state ? t("computerSharing.loading") : !state.enabled ? t("computerSharing.notShared") : state.connected ? t("computerSharing.sharing") : "Waiting for the workspace to connect"}</p>
         <button type="button" aria-label={t("computerSharing.close")} onClick={onClose} className="rounded p-1 text-ink-secondary hover:bg-control"><X size={16} /></button>
       </div>
-      <p className="text-ink-secondary">Choose what this workspace’s bots can use. Shared files and screen content may be sent to its AI provider. Access stays on when you switch workspaces, until you stop sharing or close the desktop app.</p>
+      <p className="text-ink-secondary">{t("workspaceUi.shareDescription")}</p>
       <fieldset disabled={busy || !state} className="flex flex-col gap-3 disabled:opacity-50">
         <legend className="mb-2 font-medium text-ink">{t("computerSharing.folders")}</legend>
         {folders.length === 0 && <p className="text-[12px] text-ink-secondary">{t("computerSharing.noFolders")}</p>}

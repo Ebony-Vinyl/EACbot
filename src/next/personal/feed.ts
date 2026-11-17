@@ -1,3 +1,4 @@
+import { t } from "@/lib/i18n";
 /**
  * The conversation a mission's log describes, in the order a person reads it.
  *
@@ -268,7 +269,7 @@ export function buildFeed(entries: readonly MissionLogEntry[], options: FeedOpti
         break;
       }
       case "run.started":
-        push({ kind: "notice", id: entry.eventId, at: entry.at, tone: "info", text: "Run started" });
+        push({ kind: "notice", id: entry.eventId, at: entry.at, tone: "info", text: t("workspaceUi.copy62") });
         break;
       case "run.completed":
         push({ kind: "notice", id: entry.eventId, at: entry.at, tone: "success", text: stringField(payload, "summary") ?? "Run completed" });
@@ -277,7 +278,7 @@ export function buildFeed(entries: readonly MissionLogEntry[], options: FeedOpti
         push({ kind: "notice", id: entry.eventId, at: entry.at, tone: "error", text: stringField(payload, "message") ?? "Run failed" });
         break;
       case "run.cancelled":
-        push({ kind: "notice", id: entry.eventId, at: entry.at, tone: "info", text: "Run cancelled" });
+        push({ kind: "notice", id: entry.eventId, at: entry.at, tone: "info", text: t("workspaceUi.copy58") });
         break;
       case "run.interrupted":
         push({
@@ -285,11 +286,11 @@ export function buildFeed(entries: readonly MissionLogEntry[], options: FeedOpti
           id: entry.eventId,
           at: entry.at,
           tone: "info",
-          text: payload.resumable === false ? "Run interrupted and cannot be resumed" : "Run interrupted; it can be resumed",
+          text: payload.resumable === false ? t("workspaceUi.copy59") : t("workspaceUi.copy60"),
         });
         break;
       case "run.resumed":
-        push({ kind: "notice", id: entry.eventId, at: entry.at, tone: "info", text: "Run resumed" });
+        push({ kind: "notice", id: entry.eventId, at: entry.at, tone: "info", text: t("workspaceUi.copy61") });
         break;
       case "run.usage": {
         const parts: string[] = [];
@@ -303,10 +304,10 @@ export function buildFeed(entries: readonly MissionLogEntry[], options: FeedOpti
         break;
       }
       case "mission.cancelled":
-        push({ kind: "notice", id: entry.eventId, at: entry.at, tone: "info", text: "Mission cancelled" });
+        push({ kind: "notice", id: entry.eventId, at: entry.at, tone: "info", text: t("workspaceUi.copy38") });
         break;
       case "mission.woken":
-        push({ kind: "notice", id: entry.eventId, at: entry.at, tone: "info", text: "Child tasks settled" });
+        push({ kind: "notice", id: entry.eventId, at: entry.at, tone: "info", text: t("workspaceUi.copy32") });
         break;
       case "run.start_failed":
         push({ kind: "notice", id: entry.eventId, at: entry.at, tone: "error", text: stringField(payload, "message") ?? "The run could not start" });
@@ -322,7 +323,7 @@ export function buildFeed(entries: readonly MissionLogEntry[], options: FeedOpti
         });
         break;
       case "run.control_pending":
-        push({ kind: "notice", id: entry.eventId, at: entry.at, tone: "error", text: "A control action is unconfirmed; reconcile this run" });
+        push({ kind: "notice", id: entry.eventId, at: entry.at, tone: "error", text: t("workspaceUi.copy29") });
         break;
       default:
         break;

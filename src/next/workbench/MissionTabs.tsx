@@ -1,3 +1,4 @@
+import { t } from "@/lib/i18n";
 /** The mission tabs: what is open, which one is showing, and the strip of
  * missions waiting for a person above them.
  *
@@ -22,8 +23,8 @@ export function MissionTabStrip({ open, activeId, needsInput: pinned, onSelect, 
   return (
     <div className="wb-tabs">
       {pinned.length === 0 ? null : (
-        <div className="wb-pinned" role="region" aria-label="Missions waiting for you">
-          <span className="wb-pinned-label">Needs you</span>
+        <div className="wb-pinned" role="region" aria-label={t("workspaceUi.copy26")}>
+          <span className="wb-pinned-label">{t("needsYou.title")}</span>
           <ul className="wb-pinned-list">
             {pinned.map((mission) => (
               <li key={mission.id}>
@@ -41,9 +42,9 @@ export function MissionTabStrip({ open, activeId, needsInput: pinned, onSelect, 
           </ul>
         </div>
       )}
-      <div className="wb-tab-strip" role="tablist" aria-label="Open missions">
+      <div className="wb-tab-strip" role="tablist" aria-label={t("workspaceUi.copy27")}>
         {open.length === 0 ? (
-          <p className="wb-hint wb-tab-empty">No mission is open. Pick one from the list on the left.</p>
+          <p className="wb-hint wb-tab-empty">{t("workspaceUi.copy42")}</p>
         ) : (
           open.map((mission) => {
             const selected = mission.id === activeId;

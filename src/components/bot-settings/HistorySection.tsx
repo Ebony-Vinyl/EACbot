@@ -48,7 +48,7 @@ export function HistorySection({
               <span className="text-ink-secondary">{whenLabel(row.at)}</span>
               {" · "}
               <span>
-                {row.actor} via {row.via}
+                {t("workspaceUi.via", { actor: row.actor, source: row.via })}
               </span>
               {" · "}
               <span>{row.summary}</span>

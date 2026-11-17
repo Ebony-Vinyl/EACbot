@@ -110,3 +110,17 @@ describe("mission order", () => {
     expect(needsInputMissions([{ status: "running" }, { status: "waiting_input" }])).toHaveLength(1);
   });
 });
+
+
+it("translates status labels after the language is loaded without changing wire states", async () => {
+  const { loadLocale, setLocale } = await import("@/lib/i18n");
+  try {
+    await loadLocale("zh");
+    expect(missionLabel("running")).toBe("运行中");
+    expect(terminalChip("working").state).toBe("working");
+    expect(terminalChip("working").label).toMatch(/[\u3400-\u9fff]/);
+    expect(exitChip({ reason: "exit", exitCode: 0 }).label).toBe("已退出");
+  } finally {
+    setLocale("en");
+  }
+});

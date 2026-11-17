@@ -1,3 +1,4 @@
+import { t } from "@/lib/i18n";
 /** The left rail: the computers and spaces work runs on, the agents that can
  * run it, and the missions and terminals each one has.
  *
@@ -49,8 +50,8 @@ export function groupMachines(missions: readonly Mission[], terminals: readonly 
     const environment = mission?.environment;
     const id = environment?.id ?? "unknown";
     const group = groups.get(id) ?? {
-      label: environment?.label ?? "Unknown computer",
-      detail: environment ? describeEnvironment(environment) : "The mission this terminal belongs to is not in the snapshot.",
+      label: environment?.label ?? t("workspaceUi.unknownComputer"),
+      detail: environment ? describeEnvironment(environment) : t("workspaceUi.copy69"),
       terminals: [],
     };
     group.terminals.push({
@@ -73,18 +74,18 @@ function describeEnvironment(environment: Mission["environment"]): string {
 export function WorkbenchSidebar(props: WorkbenchSidebarProps) {
   const { collapsed } = props;
   return (
-    <aside className="wb-side" data-collapsed={collapsed ? "true" : "false"} aria-label="Computers, spaces and agents">
+    <aside className="wb-side" data-collapsed={collapsed ? "true" : "false"} aria-label={t("workspaceUi.copy80")}>
       <div className="wb-side-head">
         <button
           type="button"
           className="wb-icon-button"
           onClick={props.onToggle}
           aria-expanded={!collapsed}
-          title={collapsed ? "Show the computer list" : "Hide the computer list"}
+          title={collapsed ? t("workspaceUi.copy64") : t("workspaceUi.copy36")}
         >
           {collapsed ? "»" : "«"}
         </button>
-        {collapsed ? null : <h2 className="wb-side-title">Workbench</h2>}
+        {collapsed ? null : <h2 className="wb-side-title">{t("workspaceUi.copy20")}</h2>}
       </div>
 
       {collapsed ? (
@@ -98,14 +99,14 @@ export function WorkbenchSidebar(props: WorkbenchSidebarProps) {
       ) : props.error ? (
         <div className="wb-side-error" role="alert">
           <p>{props.error}</p>
-          <button type="button" className="wb-button" onClick={props.onRetry}>Try again</button>
+          <button type="button" className="wb-button" onClick={props.onRetry}>{t("update.card.tryAgain")}</button>
         </div>
       ) : (
         <>
-          <section className="wb-side-section" aria-label="Computers and spaces">
-            <h3 className="wb-side-heading">Computers</h3>
+          <section className="wb-side-section" aria-label={t("workspaceUi.copy21")}>
+            <h3 className="wb-side-heading">{t("sidebar.nav.computers")}</h3>
             {props.machines.length === 0 ? (
-              <p className="wb-hint">No computer has a terminal yet. Start a mission and its terminal appears here.</p>
+              <p className="wb-hint">{t("workspaceUi.copy40")}</p>
             ) : (
               <ul className="wb-machine-list">
                 {props.machines.map((machine) => (
@@ -115,7 +116,7 @@ export function WorkbenchSidebar(props: WorkbenchSidebarProps) {
                       <span className="wb-machine-detail">{machine.detail}</span>
                     </div>
                     {machine.terminals.length === 0 ? (
-                      <p className="wb-hint">No terminals on this computer.</p>
+                      <p className="wb-hint">{t("workspaceUi.copy47")}</p>
                     ) : (
                       <ul className="wb-terminal-list">
                         {machine.terminals.map((entry) => (
@@ -129,8 +130,8 @@ export function WorkbenchSidebar(props: WorkbenchSidebarProps) {
                             >
                               <span className="wb-terminal-kind">{entry.terminal.kind}</span>
                               <span className="wb-terminal-name">{entry.missionTitle ?? entry.terminal.id}</span>
-                              {entry.terminal.closedAt ? <span className="wb-chip" data-tone="neutral">Closed</span> : null}
-                              {entry.inPane ? <span className="wb-chip" data-tone="accent">In a pane</span> : null}
+                              {entry.terminal.closedAt ? <span className="wb-chip" data-tone="neutral">{t("task.closed")}</span> : null}
+                              {entry.inPane ? <span className="wb-chip" data-tone="accent">{t("workspaceUi.copy22")}</span> : null}
                             </button>
                           </li>
                         ))}
@@ -142,10 +143,10 @@ export function WorkbenchSidebar(props: WorkbenchSidebarProps) {
             )}
           </section>
 
-          <section className="wb-side-section" aria-label="Agents">
-            <h3 className="wb-side-heading">Agents</h3>
+          <section className="wb-side-section" aria-label={t("sidebar.nav.agents")}>
+            <h3 className="wb-side-heading">{t("sidebar.nav.agents")}</h3>
             {props.agents.length === 0 ? (
-              <p className="wb-hint">This server reported no agents.</p>
+              <p className="wb-hint">{t("workspaceUi.copy73")}</p>
             ) : (
               <ul className="wb-agent-list">
                 {props.agents.map((agent) => {
@@ -177,10 +178,10 @@ export function WorkbenchSidebar(props: WorkbenchSidebarProps) {
             )}
           </section>
 
-          <section className="wb-side-section" aria-label="Missions">
-            <h3 className="wb-side-heading">Missions</h3>
+          <section className="wb-side-section" aria-label={t("workspaceUi.copy84")}>
+            <h3 className="wb-side-heading">{t("workspaceUi.copy84")}</h3>
             {props.missions.length === 0 ? (
-              <p className="wb-hint">No mission exists yet. Start one and it appears here.</p>
+              <p className="wb-hint">{t("workspaceUi.copy41")}</p>
             ) : (
               <ul className="wb-mission-list">
                 {sortMissions(props.missions).map((mission) => (
@@ -207,7 +208,7 @@ export function WorkbenchSidebar(props: WorkbenchSidebarProps) {
 
 function SidebarLoading() {
   return (
-    <div className="wb-side-loading" aria-busy="true" aria-label="Loading computers and agents">
+    <div className="wb-side-loading" aria-busy="true" aria-label={t("workspaceUi.copy23")}>
       {[0, 1, 2, 3].map((row) => <span key={row} className="wb-skeleton" />)}
     </div>
   );

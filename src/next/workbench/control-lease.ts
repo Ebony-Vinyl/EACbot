@@ -1,3 +1,4 @@
+import { t } from "@/lib/i18n";
 /** Who may type into a terminal, as the workbench shows it.
  *
  * A viewer watches or controls. Watching is the safe default: an observer sees
@@ -87,16 +88,16 @@ export function reduceLease(state: LeaseState, action: LeaseAction): LeaseState 
 export function leaseCopy(state: LeaseState): { title: string; detail: string } {
   switch (state.kind) {
     case "watching":
-      return { title: "Watching", detail: "You can see this terminal. Type nothing until you take control." };
+      return { title: t("browser.control.watching"), detail: t("workspaceUi.watchHint") };
     case "requesting":
-      return { title: "Taking control…", detail: "Waiting for the terminal to hand control over." };
+      return { title: t("browser.control.taking"), detail: t("workspaceUi.controlWait") };
     case "controlling":
-      return { title: "In control", detail: "Keystrokes and size changes go to this terminal." };
+      return { title: t("workspaceUi.copy37"), detail: t("workspaceUi.controlHint") };
     case "held-by-other":
-      return { title: `${state.holder} is in control`, detail: "You are watching. Take control to type here." };
+      return { title: t("workspaceUi.holder", { holder: state.holder }), detail: t("workspaceUi.watchOnly") };
     case "released":
-      return { title: "Control ended", detail: state.reason };
+      return { title: t("workspaceUi.copy33"), detail: state.reason };
     case "denied":
-      return { title: "Control was refused", detail: state.reason };
+      return { title: t("workspaceUi.copy34"), detail: state.reason };
   }
 }

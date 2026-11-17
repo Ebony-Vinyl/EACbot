@@ -1,3 +1,4 @@
+import { t } from "@/lib/i18n";
 /**
  * The Hermes conversation: one mission's log as a chat, with the controls
  * that belong to it.
@@ -71,7 +72,7 @@ function MissionHeader({ mission, liveStatus }: { readonly mission: ReturnType<t
     <header className="flex shrink-0 flex-col gap-1.5 border-b border-hairline/30 px-4 py-3">
       <div className="flex flex-wrap items-center gap-2">
         <h1 className="min-w-0 truncate text-[13px] font-semibold text-ink">
-          {mission.status === "ready" ? mission.data.title : "Hermes"}
+          {mission.status === "ready" ? mission.data.title : t("sidebar.nav.hermes")}
         </h1>
         {mission.status === "ready" && (
           <>

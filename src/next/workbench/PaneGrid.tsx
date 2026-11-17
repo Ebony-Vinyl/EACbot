@@ -1,3 +1,4 @@
+import { t } from "@/lib/i18n";
 /** The pane grid: a BSP tree drawn as flex panes with a draggable divider at
  * every split, and one real terminal per pane.
  *
@@ -129,20 +130,20 @@ export function PaneGrid(props: PaneGridProps) {
             type="button"
             className="wb-icon-button"
             onClick={() => props.onFocus(cyclePane(root, zoomedPaneId, -1) ?? zoomedPaneId)}
-            title="Previous pane"
+            title={t("workspaceUi.copy1")}
           >
             ‹
           </button>
-          <span className="wb-zoom-label">{node?.terminalId ? panes[node.terminalId]?.title ?? "Terminal" : "Terminal"}</span>
+          <span className="wb-zoom-label">{node?.terminalId ? panes[node.terminalId]?.title ?? t("engineSetup.terminal") : t("engineSetup.terminal")}</span>
           <button
             type="button"
             className="wb-icon-button"
             onClick={() => props.onFocus(cyclePane(root, zoomedPaneId, 1) ?? zoomedPaneId)}
-            title="Next pane"
+            title={t("workspaceUi.copy2")}
           >
             ›
           </button>
-          <button type="button" className="wb-button" onClick={() => props.onZoom(null)}>Leave zoom</button>
+          <button type="button" className="wb-button" onClick={() => props.onZoom(null)}>{t("workspaceUi.copy3")}</button>
         </div>
         <div className="wb-zoom-body">
           <PaneFrame
@@ -214,7 +215,7 @@ function PaneNodeView(props: NodeViewProps): React.ReactElement {
     );
   }
   return (
-    <div className="wb-split" data-orientation={node.orientation} role="group" aria-label={node.orientation === "horizontal" ? "Panes side by side" : "Panes stacked"}>
+    <div className="wb-split" data-orientation={node.orientation} role="group" aria-label={node.orientation === "horizontal" ? t("workspaceUi.copy52") : t("workspaceUi.copy53")}>
       <div className="wb-split-child" style={{ flex: `0 0 ${node.ratio * 100}%` }}>
         <PaneNodeView {...props} node={node.first} />
       </div>
@@ -276,7 +277,7 @@ function Divider({ splitId, orientation, ratio, dragging, onDragStart, onDragEnd
       role="separator"
       tabIndex={0}
       aria-orientation={horizontal ? "vertical" : "horizontal"}
-      aria-label={horizontal ? "Resize panes side by side" : "Resize stacked panes"}
+      aria-label={horizontal ? t("workspaceUi.copy55") : t("workspaceUi.copy56")}
       aria-valuenow={Math.round(ratio * 100)}
       aria-valuemin={12}
       aria-valuemax={88}
@@ -315,7 +316,7 @@ function PaneFrame({ paneId, terminalId, info, focused, actions, style, inert = 
       style={style}
       data-focused={focused ? "true" : "false"}
       data-testid={`pane-${paneId}`}
-      aria-label={info?.title ?? "Terminal pane"}
+      aria-label={info?.title ?? t("workspaceUi.pane")}
       aria-hidden={inert ? "true" : undefined}
       onPointerDown={inert ? undefined : () => actions.onFocus(paneId)}
     >
@@ -326,46 +327,45 @@ function PaneFrame({ paneId, terminalId, info, focused, actions, style, inert = 
           onClick={() => actions.onFocus(paneId)}
           aria-current={focused ? "true" : undefined}
           tabIndex={inert ? -1 : 0}
-          title={info ? `${info.title} · ${info.missionTitle ?? "no mission"}` : "No terminal"}
+          title={info ? `${info.title} · ${info.missionTitle ?? t("workspaceUi.noMission")}` : t("workspaceUi.copy46")}
         >
-          <span className="wb-pane-name">{title ?? info?.title ?? "No terminal"}</span>
+          <span className="wb-pane-name">{title ?? info?.title ?? t("workspaceUi.copy46")}</span>
           {info?.missionTitle ? <span className="wb-pane-mission">{info.missionTitle}</span> : null}
         </button>
         <div className="wb-pane-badges">
           {chip ? <span className="wb-chip" data-tone={chip.tone}>{chip.label}</span> : null}
-          {lease ? <span className="wb-chip" data-tone={lease.canSend ? "accent" : "neutral"}>{lease.canSend ? "In control" : "Watching"}</span> : null}
+          {lease ? <span className="wb-chip" data-tone={lease.canSend ? "accent" : "neutral"}>{lease.canSend ? t("workspaceUi.copy37") : t("browser.control.watching")}</span> : null}
         </div>
         <div className="wb-pane-actions">
           {terminalId !== null && lease ? (
             lease.canSend ? (
-              <button type="button" className="wb-icon-button" onClick={() => actions.onRelease(terminalId)} title="Stop controlling this terminal" tabIndex={inert ? -1 : 0}>
-                Release
+              <button type="button" className="wb-icon-button" onClick={() => actions.onRelease(terminalId)} title={t("workspaceUi.copy4")} tabIndex={inert ? -1 : 0}>
+                {t("workspaceUi.release")}
               </button>
             ) : (
-              <button type="button" className="wb-icon-button" onClick={() => actions.onAcquire(terminalId)} title="Take control of this terminal" tabIndex={inert ? -1 : 0}>
-                Take control
-              </button>
+              <button type="button" className="wb-icon-button" onClick={() => actions.onAcquire(terminalId)} title={t("workspaceUi.copy5")} tabIndex={inert ? -1 : 0}>
+                {t("vm.workspace.takeControl")}</button>
             )
           ) : null}
-          <button type="button" className="wb-icon-button" onClick={() => actions.onSplit(paneId, "horizontal")} title="Split right" tabIndex={inert ? -1 : 0}>⇥</button>
-          <button type="button" className="wb-icon-button" onClick={() => actions.onSplit(paneId, "vertical")} title="Split down" tabIndex={inert ? -1 : 0}>⇩</button>
-          <button type="button" className="wb-icon-button" onClick={() => actions.onZoom(paneId)} title="Zoom this pane" tabIndex={inert ? -1 : 0}>⤢</button>
-          <button type="button" className="wb-icon-button" onClick={() => actions.onClose(paneId)} title="Close this pane" tabIndex={inert ? -1 : 0}>✕</button>
+          <button type="button" className="wb-icon-button" onClick={() => actions.onSplit(paneId, "horizontal")} title={t("workspaceUi.copy6")} tabIndex={inert ? -1 : 0}>⇥</button>
+          <button type="button" className="wb-icon-button" onClick={() => actions.onSplit(paneId, "vertical")} title={t("workspaceUi.copy7")} tabIndex={inert ? -1 : 0}>⇩</button>
+          <button type="button" className="wb-icon-button" onClick={() => actions.onZoom(paneId)} title={t("workspaceUi.copy8")} tabIndex={inert ? -1 : 0}>⤢</button>
+          <button type="button" className="wb-icon-button" onClick={() => actions.onClose(paneId)} title={t("workspaceUi.copy9")} tabIndex={inert ? -1 : 0}>✕</button>
         </div>
       </header>
 
       {terminalId === null ? (
         <div className="wb-pane-body wb-pane-placeholder">
-          <p>This pane has no terminal yet.</p>
+          <p>{t("workspaceUi.copy72")}</p>
           <div className="wb-command-row">
-            <button type="button" className="wb-button" onClick={() => actions.onPickTerminal(paneId)} tabIndex={inert ? -1 : 0}>Pick a terminal</button>
-            <button type="button" className="wb-button" onClick={actions.onStartTerminal} tabIndex={inert ? -1 : 0}>Open agent terminal</button>
+            <button type="button" className="wb-button" onClick={() => actions.onPickTerminal(paneId)} tabIndex={inert ? -1 : 0}>{t("workspaceUi.copy10")}</button>
+            <button type="button" className="wb-button" onClick={actions.onStartTerminal} tabIndex={inert ? -1 : 0}>{t("workspaceUi.copy11")}</button>
           </div>
         </div>
       ) : info?.error ? (
         <div className="wb-pane-body wb-pane-error" role="alert">
           <p>{info.error}</p>
-          <button type="button" className="wb-button" onClick={() => actions.onRetry(terminalId)} tabIndex={inert ? -1 : 0}>Retry</button>
+          <button type="button" className="wb-button" onClick={() => actions.onRetry(terminalId)} tabIndex={inert ? -1 : 0}>{t("sidebar.update.retryAction")}</button>
         </div>
       ) : connection ? (
         <div className="wb-pane-body">
@@ -376,19 +376,19 @@ function PaneFrame({ paneId, terminalId, info, focused, actions, style, inert = 
             onChip={setChip}
             onTitle={setTitle}
             onFocusChange={() => actions.onFocus(paneId)}
-            label={info?.title ?? "Terminal"}
+            label={info?.title ?? t("engineSetup.terminal")}
           />
           {lease && !lease.canSend ? (
             <div className="wb-pane-note" role="note">
-              <p>{held === null ? "You are watching this terminal." : `${held} is in control.`}</p>
-              <p className="wb-hint">Typing and resizing are off until you take control.</p>
-              <button type="button" className="wb-button" onClick={() => actions.onAcquire(terminalId)} tabIndex={inert ? -1 : 0}>Take control</button>
+              <p>{held === null ? t("workspaceUi.copy79") : `${held} is in control.`}</p>
+              <p className="wb-hint">{t("workspaceUi.copy77")}</p>
+              <button type="button" className="wb-button" onClick={() => actions.onAcquire(terminalId)} tabIndex={inert ? -1 : 0}>{t("vm.workspace.takeControl")}</button>
             </div>
           ) : null}
         </div>
       ) : (
         <div className="wb-pane-body wb-pane-placeholder" aria-busy="true">
-          <p>Connecting…</p>
+          <p>{t("pair.connecting")}</p>
         </div>
       )}
     </section>

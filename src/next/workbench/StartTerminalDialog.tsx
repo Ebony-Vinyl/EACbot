@@ -1,3 +1,4 @@
+import { t } from "@/lib/i18n";
 /** The "open the agent's own terminal" entry: one click when a mission is
  * selected, a small form when it is not.
  *
@@ -32,29 +33,29 @@ export function StartTerminalDialog(props: StartTerminalDialogProps) {
   return (
     <div className="wb-dialog-scrim" role="presentation">
       <div className="wb-dialog" role="dialog" aria-modal="true" aria-labelledby="wb-start-title">
-        <h2 id="wb-start-title" className="wb-inspector-title">Open an agent terminal</h2>
+        <h2 id="wb-start-title" className="wb-inspector-title">{t("workspaceUi.copy24")}</h2>
         {fromMission === null ? (
-          <p className="wb-hint">Pick the computer and the agent whose terminal to open.</p>
+          <p className="wb-hint">{t("workspaceUi.copy54")}</p>
         ) : (
           <p className="wb-hint">
-            Opens {missionTool ?? "the agent"} on {fromMission.environment.label}.
+            {t("workspaceUi.opensOn", { agent: missionTool ?? t("workspaceUi.agentFallback"), computer: fromMission.environment.label })}
           </p>
         )}
         <label className="wb-field">
-          <span>Computer</span>
+          <span>{t("settings.simple.page.computer")}</span>
           <select
             value={environmentId}
             onChange={(event) => setEnvironmentId(event.currentTarget.value)}
             disabled={props.busy || fromMission !== null}
           >
-            {props.environments.length === 0 ? <option value="">No computer is known</option> : null}
+            {props.environments.length === 0 ? <option value="">{t("workspaceUi.copy25")}</option> : null}
             {props.environments.map((environment) => (
               <option key={environment.id} value={environment.id}>{environment.label}</option>
             ))}
           </select>
         </label>
         <label className="wb-field">
-          <span>Agent</span>
+          <span>{t("composer.mention.agent")}</span>
           <select
             value={tool}
             onChange={(event) => {
@@ -73,9 +74,9 @@ export function StartTerminalDialog(props: StartTerminalDialogProps) {
             disabled={props.busy || environmentId === "" || tool === undefined}
             onClick={() => tool !== undefined && props.onStart({ environmentId, tool })}
           >
-            {props.busy ? "Starting…" : "Open terminal"}
+            {props.busy ? t("routines.starting") : t("workspaceUi.copy51")}
           </button>
-          <button type="button" className="wb-button" onClick={props.onCancel} disabled={props.busy}>Cancel</button>
+          <button type="button" className="wb-button" onClick={props.onCancel} disabled={props.busy}>{t("task.bulk.cancel")}</button>
         </div>
       </div>
     </div>

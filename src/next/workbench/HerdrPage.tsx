@@ -1,3 +1,4 @@
+import { t } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { ChevronDown, ChevronLeft, Ellipsis, PanelLeft, Search, SquarePen, Terminal } from "lucide-react";
 import { useStore } from "@/state/store";
@@ -75,7 +76,7 @@ export function HerdrPage() {
       {creating ? <form className="herdr-create" onSubmit={event => { event.preventDefault(); void create(); }}>
         <h2>在项目里开始工作</h2><p>选择项目文件夹与本机 Agent。会话会由 Herdr 保持，切换页面后仍可接回。</p>
         <label>项目文件夹<div className="herdr-folder"><input required value={project} placeholder="/path/to/project" onChange={event => setProject(event.target.value)} />{window.ogb?.pickFolder && <button type="button" onClick={() => void window.ogb!.pickFolder!(project).then(path => { if (path) setProject(path); })}>选择文件夹</button>}</div></label>
-        <label>Agent<select value={tool} onChange={event => setTool(event.target.value)}>{!tools.some(item => item.name === tool) && <option value={tool} disabled>选择已安装的 Agent</option>}{tools.map(item => <option key={item.name} value={item.name}>{item.name}</option>)}</select></label>
+        <label>{t("composer.mention.agent")}<select value={tool} onChange={event => setTool(event.target.value)}>{!tools.some(item => item.name === tool) && <option value={tool} disabled>选择已安装的 Agent</option>}{tools.map(item => <option key={item.name} value={item.name}>{item.name}</option>)}</select></label>
         <label>会话标题<input value={title} maxLength={200} placeholder="例如：修复登录问题" onChange={event => setTitle(event.target.value)} /></label>
         <p>{tool === "codex" ? "直接运行本机 Codex，沿用 CLI 的登录与配置。对话页读取原生记录，消息发送到同一终端；登录及授权在终端处理。" : "这个 Agent 当前通过原生终端交互。"}</p>
         <button type="submit" disabled={busy || !project.trim() || !tools.some(item => item.name === tool)}>{busy ? "正在启动…" : "开始会话"}</button>

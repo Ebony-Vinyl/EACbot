@@ -1,3 +1,4 @@
+import { t } from "@/lib/i18n";
 /** How the workbench names states, and the one rule that keeps them apart.
  *
  * A mission's status comes from the mission authority's snapshot and from
@@ -21,13 +22,13 @@ export interface TerminalChip {
   readonly tone: ChipTone;
 }
 
-const TERMINAL_STATES: Readonly<Record<TerminalChipState, Omit<TerminalChip, "state">>> = {
-  idle: { label: "Idle", tone: "neutral" },
-  working: { label: "Working", tone: "accent" },
-  blocked: { label: "Blocked", tone: "warning" },
-  done: { label: "Done", tone: "success" },
-  unknown: { label: "Unknown", tone: "neutral" },
-};
+const TERMINAL_STATES = {
+  idle: { label: "pluginUi.idle", tone: "neutral" },
+  working: { label: "routines.goal.working", tone: "accent" },
+  blocked: { label: "tasks.column.blocked", tone: "warning" },
+  done: { label: "teamShare.done", tone: "success" },
+  unknown: { label: "skills.sourceUnknown", tone: "neutral" },
+} as const satisfies Readonly<Record<TerminalChipState, Omit<TerminalChip, "state">>>;
 
 const TERMINAL_WORDS: Readonly<Record<TerminalChipState, readonly string[]>> = {
   idle: ["idle", "ready", "prompt", "waiting_for_input_idle"],
@@ -41,11 +42,11 @@ const TERMINAL_WORDS: Readonly<Record<TerminalChipState, readonly string[]>> = {
  * build does not know become `unknown` rather than a guess. */
 export function terminalChip(raw: string | null | undefined): TerminalChip {
   const word = (raw ?? "").trim().toLowerCase();
-  if (word === "") return { state: "unknown", ...TERMINAL_STATES.unknown };
+  if (word === "") return { state: "unknown", ...TERMINAL_STATES.unknown, label: t(TERMINAL_STATES.unknown.label) };
   for (const state of ["blocked", "working", "idle", "done"] as const) {
-    if (TERMINAL_WORDS[state].includes(word)) return { state, ...TERMINAL_STATES[state] };
+    if (TERMINAL_WORDS[state].includes(word)) return { state, ...TERMINAL_STATES[state], label: t(TERMINAL_STATES[state].label) };
   }
-  return { state: "unknown", ...TERMINAL_STATES.unknown };
+  return { state: "unknown", ...TERMINAL_STATES.unknown, label: t(TERMINAL_STATES.unknown.label) };
 }
 
 /** The chip for a stream that ended: a clean exit reads as done, anything
@@ -53,22 +54,22 @@ export function terminalChip(raw: string | null | undefined): TerminalChip {
 export function exitChip(info: { reason: string; exitCode?: number }): TerminalChip {
   const clean = info.exitCode === undefined || info.exitCode === 0;
   return clean
-    ? { state: "done", label: "Exited", tone: "success" }
-    : { state: "unknown", label: `Exited ${info.exitCode}`, tone: "warning" };
+    ? { state: "done", label: t("workspaceUi.exited"), tone: "success" }
+    : { state: "unknown", label: t("workspaceUi.exitCode", { code: info.exitCode! }), tone: "warning" };
 }
 
-const MISSION_LABELS: Readonly<Record<MissionStatus, string>> = {
-  queued: "Queued",
-  provisioning: "Provisioning",
-  running: "Running",
-  waiting_input: "Needs input",
-  waiting_children: "Waiting on children",
-  interrupted: "Interrupted",
-  resuming: "Resuming",
-  succeeded: "Succeeded",
-  failed: "Failed",
-  cancelled: "Cancelled",
-};
+const MISSION_LABELS = {
+  queued: "workspaceUi.queued",
+  provisioning: "workspaceUi.provisioning",
+  running: "workspaceUi.running",
+  waiting_input: "workspaceUi.waiting_input",
+  waiting_children: "workspaceUi.waiting_children",
+  interrupted: "workspaceUi.interrupted",
+  resuming: "workspaceUi.resumingStatus",
+  succeeded: "workspaceUi.succeeded",
+  failed: "workspaceUi.failed",
+  cancelled: "workspaceUi.cancelled",
+} as const satisfies Readonly<Record<MissionStatus, string>>;
 
 const MISSION_TONES: Readonly<Record<MissionStatus, ChipTone>> = {
   queued: "neutral",
@@ -84,7 +85,7 @@ const MISSION_TONES: Readonly<Record<MissionStatus, ChipTone>> = {
 };
 
 export function missionLabel(status: MissionStatus): string {
-  return MISSION_LABELS[status];
+  return t(MISSION_LABELS[status]);
 }
 
 export function missionTone(status: MissionStatus): ChipTone {
