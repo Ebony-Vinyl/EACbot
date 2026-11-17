@@ -12,6 +12,10 @@ import com.eacbot.mobile.core.NotificationDecision
 import com.eacbot.mobile.core.NotificationPolicy
 import com.eacbot.mobile.core.SseConnectionState
 import com.eacbot.mobile.core.SseLiveEvents
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -49,6 +53,7 @@ class CoreConnection(
     private val onNotification: (NotificationDecision) -> Unit = {},
     private val now: () -> Long = System::currentTimeMillis,
 ) {
+    private val requests = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val phaseState = MutableStateFlow<SessionPhase>(SessionPhase.NeedsPairing)
     val phase: StateFlow<SessionPhase> = phaseState.asStateFlow()
 
@@ -228,9 +233,11 @@ class CoreConnection(
      * state a person cannot detect. */
     fun refreshMissions() {
         val client = api ?: return
-        runCatching { client.missions() }
-            .onSuccess { adoptMissions(it) }
-            .onFailure { report(it) }
+        requests.launch {
+            runCatching { client.missions() }
+                .onSuccess { if (api === client) adoptMissions(it) }
+                .onFailure { if (api === client) report(it) }
+        }
     }
 
     private fun report(error: Throwable) {

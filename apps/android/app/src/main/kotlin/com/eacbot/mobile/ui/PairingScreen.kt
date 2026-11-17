@@ -60,6 +60,8 @@ fun PairingScreen(
     defaultLabel: String,
     onPair: suspend (baseUrl: String, code: String, label: String) -> Result<Unit>,
     notice: String? = null,
+    heading: String = "Your own core",
+    description: String = "Your core runs on your own machine. Start it, then type the address and the code it printed in the terminal.",
 ) {
     val colors = LocalEacbotColors.current
     var address by remember { mutableStateOf("") }
@@ -115,12 +117,12 @@ fun PairingScreen(
     ) {
         Spacer(Modifier.height(24.dp))
         Text(
-            text = "Connect your computer",
+            text = heading,
             style = MaterialTheme.typography.displaySmall,
             color = colors.ink,
         )
         Text(
-            text = "Your core runs on your own machine. Start it, then type the address and the code it printed in the terminal.",
+            text = description,
             style = MaterialTheme.typography.bodyLarge,
             color = colors.inkMuted,
         )

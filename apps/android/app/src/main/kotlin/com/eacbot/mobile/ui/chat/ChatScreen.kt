@@ -261,14 +261,15 @@ private fun Composer(
                 value = state.draft,
                 onValueChange = onDraftChange,
                 modifier = Modifier.weight(1f),
-                placeholder = { Text(if (waiting) "Answer the agent" else "Message Hermes") },
+                enabled = state.canSend && !state.sending,
+                placeholder = { Text(if (!state.canSend) "No active conversation" else if (waiting) "Answer the agent" else "Message Hermes") },
                 maxLines = 5,
                 shape = RoundedCornerShape(EacbotDimens.controlRadius),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Default),
             )
             IconButton(
                 onClick = onSend,
-                enabled = !state.sending && state.draft.isNotBlank(),
+                enabled = state.canSend && !state.sending && state.draft.isNotBlank(),
             ) {
                 if (state.sending) {
                     CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = colors.accent)
@@ -276,7 +277,7 @@ private fun Composer(
                     Icon(
                         Icons.AutoMirrored.Filled.Send,
                         contentDescription = "Send",
-                        tint = if (state.draft.isNotBlank()) colors.accent else colors.inkMuted,
+                        tint = if (state.canSend && state.draft.isNotBlank()) colors.accent else colors.inkMuted,
                     )
                 }
             }

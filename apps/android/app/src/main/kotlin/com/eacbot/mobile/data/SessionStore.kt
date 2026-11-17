@@ -27,7 +27,7 @@ data class PairedCore(
  * URL. A 401 or a revocation clears the whole record, which is what sends the
  * app back to pairing.
  */
-class SessionStore(context: Context) : TokenSource {
+class SessionStore(context: Context, fileName: String = FILE_NAME) : TokenSource {
 
     private val prefs: SharedPreferences = runCatching {
         val key = MasterKey.Builder(context)
@@ -35,7 +35,7 @@ class SessionStore(context: Context) : TokenSource {
             .build()
         EncryptedSharedPreferences.create(
             context,
-            FILE_NAME,
+            fileName,
             key,
             EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
             EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
@@ -44,7 +44,7 @@ class SessionStore(context: Context) : TokenSource {
         // Without a usable keystore the honest answer is "nothing is stored":
         // falling back to plain preferences would put the bearer on disk in
         // cleartext, which is worse than asking the person to pair again.
-        context.getSharedPreferences(FILE_NAME_PLAIN, Context.MODE_PRIVATE).apply { edit().clear().apply() }
+        context.getSharedPreferences("$fileName-unusable", Context.MODE_PRIVATE).apply { edit().clear().apply() }
     }
 
     fun load(): PairedCore? {
