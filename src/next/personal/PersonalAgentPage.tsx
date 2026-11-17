@@ -163,7 +163,7 @@ export function PersonalAgentPage(): ReactNode {
 }
 
 const RECONCILE_CHOICES = [
-  { value: "start", label: "启动这个 run", detail: "它被接受了但从未开始。" },
+  { value: "start", label: "启动此次运行", detail: "它被接受了但从未开始。" },
   { value: "resume", label: "从原生会话恢复", detail: "原生会话可能还在，继续它。" },
   { value: "cancel", label: "重试取消", detail: "上一次取消没有确认到原生端。" },
   { value: "abandon", label: "标记为失败", detail: "不再重放，把它结束掉。" },
@@ -217,7 +217,7 @@ export function ReconcileDialog({
             />
           </label>
           <p className="break-all font-mono text-[10px] text-ink-secondary">
-            run {runId.length > 0 ? runId : "（没有记录的运行）"}
+            运行 {runId.length > 0 ? runId : "（没有记录的运行）"}
           </p>
           <div className="flex justify-end gap-1.5">
             <Button variant="ghost" size="sm" onClick={onClose}>

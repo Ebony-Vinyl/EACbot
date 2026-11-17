@@ -1,3 +1,4 @@
+import { t } from "@/lib/i18n";
 /** The workbench shell: machines on the left, mission tabs on top, a BSP grid
  * of real terminals in the middle, and the mission's own panel on the right.
  *
@@ -100,7 +101,7 @@ export function Workbench(props: WorkbenchProps = {}) {
   const live = useLiveEvents({
     onEvent: () => void load(),
     onResync: (reason) => {
-      setConnectionNote(reason === undefined ? "The live stream asked for a full refresh." : `The live stream asked for a full refresh: ${reason}`);
+      setConnectionNote(reason === undefined ? t("workspaceUi.copy68") : t("workspaceUi.refreshReason", { reason }));
       void load();
     },
   });
@@ -341,7 +342,7 @@ export function Workbench(props: WorkbenchProps = {}) {
         {connectionNote === null ? null : (
           <p className="wb-banner" role="status">
             {connectionNote}
-            <button type="button" className="wb-link-button" onClick={() => setConnectionNote(null)}>Dismiss</button>
+            <button type="button" className="wb-link-button" onClick={() => setConnectionNote(null)}>{t("update.banner.dismiss")}</button>
           </p>
         )}
         <div className="wb-body">
@@ -363,7 +364,7 @@ export function Workbench(props: WorkbenchProps = {}) {
               if (first) pickTerminal(first.id);
             }}
             onStartTerminal={openAgentTerminal}
-            empty={<p className="wb-hint">No panes are open.</p>}
+            empty={<p className="wb-hint">{t("workspaceUi.copy44")}</p>}
           />
           <MissionPanel
             mission={activeMission}
@@ -384,11 +385,11 @@ export function Workbench(props: WorkbenchProps = {}) {
         </div>
         <footer className="wb-status">
           <span className="wb-chip" data-tone={live.status === "open" ? "success" : live.status === "retrying" ? "warning" : "neutral"}>
-            {live.status === "open" ? "Live" : live.status === "retrying" ? "Reconnecting" : live.status === "connecting" ? "Connecting" : "Offline"}
+            {live.status === "open" ? t("trace.live") : live.status === "retrying" ? t("workspaceUi.copy91") : live.status === "connecting" ? t("workspaceUi.copy89") : t("workspaceUi.offline")}
           </span>
           <span className="wb-hint">{paneCount(layout.root)} {paneCount(layout.root) === 1 ? "pane" : "panes"}</span>
-          <button type="button" className="wb-link-button" onClick={openAgentTerminal}>Open agent terminal</button>
-          <button type="button" className="wb-link-button" onClick={() => void load()}>Refresh</button>
+          <button type="button" className="wb-link-button" onClick={openAgentTerminal}>{t("workspaceUi.copy11")}</button>
+          <button type="button" className="wb-link-button" onClick={() => void load()}>{t("workspaces.refresh")}</button>
         </footer>
         {picker ? (
           <StartTerminalDialog
@@ -421,5 +422,5 @@ async function readComputers(): Promise<StartTerminalDialogProps["environments"]
 
 function messageOf(failure: unknown): string {
   if (failure instanceof Error && failure.message !== "") return failure.message;
-  return "That did not work. Try again.";
+  return t("workspaceUi.copy67");
 }

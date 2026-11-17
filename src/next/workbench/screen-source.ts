@@ -1,3 +1,4 @@
+import { t } from "@/lib/i18n";
 /** One state source for a computer's picture, shared by the rail preview and
  * the fullscreen canvas.
  *
@@ -110,31 +111,31 @@ export function screenEnded(state: ScreenState, reason: string): ScreenState {
 export function screenCopy(state: ScreenState): { title: string; detail: string } {
   switch (state.phase) {
     case "off":
-      return { title: "No computer", detail: "Pick a running agent with a screen to watch it here." };
+      return { title: t("workspaceUi.copy39"), detail: t("workspaceUi.pickScreen") };
     case "starting":
-      return { title: "Starting", detail: `Opening ${state.label || "the computer"}.` };
+      return { title: t("vm.state.starting"), detail: t("workspaceUi.openingComputer", { label: state.label || t("workspaceUi.computer") }) };
     case "live":
-      return { title: "Live", detail: state.label };
+      return { title: t("trace.live"), detail: state.label };
     case "reconnecting":
       return {
-        title: "Reconnecting",
+        title: t("workspaceUi.copy91"),
         detail: state.hasFrame
-          ? `The last picture is from ${timeLabel(state.lastFrameAt)}. Trying again (${state.attempt}).`
-          : "Trying again.",
+          ? t("workspaceUi.lastFrame", { time: timeLabel(state.lastFrameAt), attempt: state.attempt })
+          : t("workspaceUi.copy76"),
       };
     case "ended":
-      return { title: "Ended", detail: state.detail ?? "The program on this computer exited." };
+      return { title: t("workspaceUi.ended"), detail: state.detail ?? t("workspaceUi.programExited") };
     case "error":
-      return { title: "Disconnected", detail: state.detail ?? "The computer could not be reached." };
+      return { title: t("workspaceUi.copy90"), detail: state.detail ?? t("workspaceUi.computerUnreachable") };
   }
 }
 
 function timeLabel(at: number | null): string {
-  if (at === null) return "just now";
+  if (at === null) return t("workspaceUi.justNow");
   const seconds = Math.max(0, Math.round((Date.now() - at) / 1000));
-  if (seconds < 60) return `${seconds} s ago`;
+  if (seconds < 60) return t("workspaceUi.secondsAgo", { count: seconds });
   const minutes = Math.round(seconds / 60);
-  return minutes < 60 ? `${minutes} min ago` : `${Math.round(minutes / 60)} h ago`;
+  return minutes < 60 ? t("workspaceUi.minutesAgo", { count: minutes }) : t("workspaceUi.hoursAgo", { count: Math.round(minutes / 60) });
 }
 
 /** A screen the multi-view may list: its agent is running and it has drawn

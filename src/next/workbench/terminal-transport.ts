@@ -1,3 +1,4 @@
+import { t } from "@/lib/i18n";
 /** The connection abstraction the workbench components use, built on the
  * foundation's terminal transport.
  *
@@ -225,7 +226,7 @@ class FoundationTerminalConnection implements TerminalConnection {
     this.#reportedDown = false;
     this.#setState(this.#attempt === 0
       ? { kind: "connecting", attempt: 0 }
-      : { kind: "reconnecting", attempt: this.#attempt, detail: "opening a fresh stream" });
+      : { kind: "reconnecting", attempt: this.#attempt, detail: t("workspaceUi.freshStream") });
     let transport: FoundationTerminal;
     try {
       transport = this.#connect({

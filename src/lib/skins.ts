@@ -43,7 +43,7 @@ export const SKINS: readonly Skin[] = [
 export type SkinChoice = SkinId | "system";
 export const THEME_SKINS = { light: "daylight", dark: "midnight" } as const satisfies Record<"light" | "dark", SkinId>;
 
-export const DEFAULT_SKIN_CHOICE: SkinChoice = "system";
+export const DEFAULT_SKIN_CHOICE: SkinChoice = "daylight";
 export const PRIOR_INSTALL_SKIN: SkinId = "midnight";
 
 const KEY = "omb-skin";

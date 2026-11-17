@@ -39,14 +39,15 @@ beforeEach(() => {
 afterEach(() => { vi.unstubAllGlobals(); });
 
 describe("default skin", () => {
-  it("opens a fresh install following the computer's light or dark setting, in Simple mode, and keeps following it", async () => {
-    expect(await boot()).toEqual({ skin: "daylight", advanced: false, stored: "system" });
+  it("opens a fresh install in Daylight and Simple mode, preserving it after restart", async () => {
+    expect(await boot()).toEqual({ skin: "daylight", advanced: false, stored: "daylight" });
     values.set("omb-installed", "2026-10-17T00:00:00.000Z");
     os.dark = true;
-    expect(await boot()).toEqual({ skin: "midnight", advanced: false, stored: "system" });
+    expect(await boot()).toEqual({ skin: "daylight", advanced: false, stored: "daylight" });
   });
 
   it("switches between Daylight and Midnight when the computer does, while following it", async () => {
+    values.set("omb-skin", "system");
     await boot();
     setOsDark(true);
     expect(document.documentElement.dataset.skin).toBe("midnight");
@@ -84,14 +85,14 @@ describe("default skin", () => {
     expect(await boot()).toMatchObject({ skin: "midnight", advanced: false });
   });
 
-  it("shows System as the theme and the matching look as the selected skin in Appearance on a fresh install", async () => {
+  it("shows Light and Daylight in Appearance on a fresh install", async () => {
     os.dark = true;
     await boot();
     const [{ SkinPicker }, { ThemeRow }] = await Promise.all([import("@/components/SkinPicker"), import("@/components/ThemeRow")]);
     const picker = renderToStaticMarkup(createElement(SkinPicker));
     const pressed = [...picker.matchAll(/aria-pressed="true"[\s\S]*?<div class="text-\[13px\] font-medium text-ink">([^<]+)</g)].map(([, name]) => name);
-    expect(pressed).toEqual(["Midnight"]);
+    expect(pressed).toEqual(["Daylight"]);
     const theme = renderToStaticMarkup(createElement(ThemeRow));
-    expect([...theme.matchAll(/aria-checked="true"[^>]*>([^<]+)</g)].map(([, label]) => label)).toEqual(["System"]);
+    expect([...theme.matchAll(/aria-checked="true"[^>]*>([^<]+)</g)].map(([, label]) => label)).toEqual(["Light"]);
   });
 });

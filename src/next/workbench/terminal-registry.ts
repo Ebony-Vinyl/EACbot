@@ -1,3 +1,4 @@
+import { t } from "@/lib/i18n";
 /** Holds one terminal connection per terminal the panes show, with the lease
  * beside it.
  *
@@ -57,7 +58,7 @@ export function leaseAfterStream(
     if (!requested) return current.kind === "controlling" ? reduceLease(current, { type: "release" }) : current;
     return canControl
       ? { kind: "controlling", since: now }
-      : { kind: "held-by-other", holder: "Another viewer" };
+      : { kind: "held-by-other", holder: t("workspaceUi.anotherViewer") };
   }
   if (kind === "reconnecting") {
     return current.kind === "controlling" || current.kind === "requesting"

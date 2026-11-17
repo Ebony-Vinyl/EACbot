@@ -1,3 +1,4 @@
+import { t } from "@/lib/i18n";
 /** The mission panel: the tree of work under this mission, its history in
  * sequence order, and the commands a person can send.
  *
@@ -37,8 +38,8 @@ export function MissionPanel(props: MissionPanelProps) {
   const { mission } = props;
   if (!mission) {
     return (
-      <section className="wb-inspector" aria-label="Mission">
-        <p className="wb-hint">No mission is selected. Pick a tab or a mission on the left.</p>
+      <section className="wb-inspector" aria-label={t("workspaceUi.copy12")}>
+        <p className="wb-hint">{t("workspaceUi.copy43")}</p>
       </section>
     );
   }
@@ -52,22 +53,22 @@ export function MissionPanel(props: MissionPanelProps) {
       <header className="wb-inspector-head">
         <h2 className="wb-inspector-title">{mission.title}</h2>
         <span className="wb-chip" data-tone={missionTone(mission.status)}>{missionLabel(mission.status)}</span>
-        {needsInput(mission) ? <span className="wb-chip" data-tone="warning">Needs you</span> : null}
+        {needsInput(mission) ? <span className="wb-chip" data-tone="warning">{t("needsYou.title")}</span> : null}
       </header>
 
       <dl className="wb-facts">
-        <div><dt>Agent</dt><dd>{mission.agent}</dd></div>
-        <div><dt>Revision</dt><dd>{mission.revision}</dd></div>
-        <div><dt>Computer</dt><dd>{mission.environment.label}</dd></div>
-        {mission.model ? <div><dt>Model</dt><dd>{mission.model.label ?? mission.model.model}</dd></div> : null}
-        {mission.error ? <div><dt>Error</dt><dd className="wb-danger">{mission.error.message}</dd></div> : null}
+        <div><dt>{t("composer.mention.agent")}</dt><dd>{mission.agent}</dd></div>
+        <div><dt>{t("workspaceUi.copy13")}</dt><dd>{mission.revision}</dd></div>
+        <div><dt>{t("settings.simple.page.computer")}</dt><dd>{mission.environment.label}</dd></div>
+        {mission.model ? <div><dt>{t("usage.prices.colModel")}</dt><dd>{mission.model.label ?? mission.model.model}</dd></div> : null}
+        {mission.error ? <div><dt>{t("workspaceUi.copy85")}</dt><dd className="wb-danger">{mission.error.message}</dd></div> : null}
       </dl>
 
       <MissionTree nodes={props.tree} currentId={mission.id} onSelect={props.onSelect} />
 
-      <div className="wb-commands" role="group" aria-label="Mission commands">
+      <div className="wb-commands" role="group" aria-label={t("workspaceUi.copy14")}>
         {!props.canMutate ? (
-          <p className="wb-hint">This device may watch but not send commands.</p>
+          <p className="wb-hint">{t("workspaceUi.copy70")}</p>
         ) : (
           <SteerForm
             disabled={props.busy !== null || settled}
@@ -81,27 +82,27 @@ export function MissionPanel(props: MissionPanelProps) {
             className="wb-button"
             onClick={props.onInterrupt}
             disabled={!props.canMutate || props.busy !== null || !canInterrupt}
-            title={canInterrupt ? "Stop the current run, keeping it resumable" : "Only a running mission can be interrupted"}
+            title={canInterrupt ? t("workspaceUi.copy65") : t("workspaceUi.copy49")}
           >
-            {props.busy === "interrupt" ? "Interrupting…" : "Interrupt"}
+            {props.busy === "interrupt" ? t("workspaceUi.interrupting") : t("call.turns.interrupt")}
           </button>
           <button
             type="button"
             className="wb-button"
             onClick={props.onResume}
             disabled={!props.canMutate || props.busy !== null || !canResume}
-            title={canResume ? "Resume where the run stopped" : "Only an interrupted mission can resume"}
+            title={canResume ? t("workspaceUi.copy57") : t("workspaceUi.copy50")}
           >
-            {props.busy === "resume" ? "Resuming…" : "Resume"}
+            {props.busy === "resume" ? t("workspaceUi.resuming") : t("workspaces.resume")}
           </button>
           <button
             type="button"
             className="wb-button wb-danger-button"
             onClick={props.onCancel}
             disabled={!props.canMutate || props.busy !== null || settled}
-            title={settled ? "This mission is already settled" : "End the mission and its children"}
+            title={settled ? t("workspaceUi.copy71") : t("workspaceUi.copy35")}
           >
-            {props.busy === "cancel" ? "Cancelling…" : "Cancel"}
+            {props.busy === "cancel" ? t("engineSetup.device.cancelling") : t("task.bulk.cancel")}
           </button>
         </div>
         {props.commandError ? <p className="wb-error" role="alert">{props.commandError}</p> : null}
@@ -130,27 +131,27 @@ function SteerForm({ disabled, busy, onSend }: { disabled: boolean; busy: boolea
       }}
     >
       <label className="wb-field">
-        <span>Send to this mission</span>
+        <span>{t("workspaceUi.copy15")}</span>
         <textarea
           name="steer"
           rows={2}
           disabled={disabled}
           value={value}
-          placeholder="Say what to change, or answer the question"
+          placeholder={t("workspaceUi.copy63")}
           onChange={(event) => setValue(event.currentTarget.value)}
         />
       </label>
       <button type="submit" className="wb-button" disabled={disabled || value.trim() === ""}>
-        {busy ? "Sending…" : "Send"}
+        {busy ? t("pair.sending") : t("chat.send")}
       </button>
     </form>
   );
 }
 
 function MissionTree({ nodes, currentId, onSelect }: { nodes: readonly MissionNode<Mission>[]; currentId: string; onSelect: (missionId: string) => void }) {
-  if (nodes.length === 0) return <p className="wb-hint">No related missions.</p>;
+  if (nodes.length === 0) return <p className="wb-hint">{t("workspaceUi.copy45")}</p>;
   return (
-    <div className="wb-tree" role="tree" aria-label="Related missions">
+    <div className="wb-tree" role="tree" aria-label={t("workspaceUi.copy16")}>
       {nodes.map((node) => <TreeNode key={node.mission.id} node={node} currentId={currentId} onSelect={onSelect} />)}
     </div>
   );
@@ -176,18 +177,18 @@ function TreeNode({ node, currentId, onSelect }: { node: MissionNode<Mission>; c
 
 function HistoryStream({ view, loading, error, onResync }: { view: LogView; loading: boolean; error: string | null; onResync: () => void }) {
   return (
-    <section className="wb-history" aria-label="History">
+    <section className="wb-history" aria-label={t("data.history")}>
       <header className="wb-history-head">
-        <h3 className="wb-side-heading">History</h3>
-        <button type="button" className="wb-icon-button" onClick={onResync} title="Reload this history">↻</button>
+        <h3 className="wb-side-heading">{t("data.history")}</h3>
+        <button type="button" className="wb-icon-button" onClick={onResync} title={t("workspaceUi.copy17")}>↻</button>
       </header>
       {error ? <p className="wb-error" role="alert">{error}</p> : null}
       {loading && view.entries.length === 0 ? (
-        <div className="wb-side-loading" aria-busy="true" aria-label="Loading history">
+        <div className="wb-side-loading" aria-busy="true" aria-label={t("workspaceUi.copy18")}>
           {[0, 1, 2].map((row) => <span key={row} className="wb-skeleton" />)}
         </div>
       ) : view.entries.length === 0 ? (
-        <p className="wb-hint">Nothing has happened in this mission yet.</p>
+        <p className="wb-hint">{t("workspaceUi.copy48")}</p>
       ) : (
         <ol className="wb-log">
           {view.entries.map((entry, index) => (
@@ -200,8 +201,8 @@ function HistoryStream({ view, loading, error, onResync }: { view: LogView; load
       )}
       {view.gap ? (
         <p className="wb-gap" role="status">
-          {view.gap.missing} {view.gap.missing === 1 ? "entry is" : "entries are"} missing between {view.gap.afterSeq} and {view.gap.beforeSeq}.
-          <button type="button" className="wb-link-button" onClick={onResync}>Reload from the server</button>
+          {t("workspaceUi.gapBetween", { count: view.gap.missing, after: view.gap.afterSeq, before: view.gap.beforeSeq })}
+          <button type="button" className="wb-link-button" onClick={onResync}>{t("workspaceUi.copy19")}</button>
         </p>
       ) : null}
     </section>
@@ -212,8 +213,8 @@ function GapBetween({ previous, entry, onResync }: { previous: LogEntry | undefi
   if (!previous || entry.seq <= previous.seq + 1) return null;
   return (
     <p className="wb-gap" role="status">
-      {entry.seq - previous.seq - 1} missing after {previous.seq}
-      <button type="button" className="wb-link-button" onClick={onResync}>Reload</button>
+      {t("workspaceUi.gapAfter", { count: entry.seq - previous.seq - 1, after: previous.seq })}
+      <button type="button" className="wb-link-button" onClick={onResync}>{t("webPanels.page.reload")}</button>
     </p>
   );
 }

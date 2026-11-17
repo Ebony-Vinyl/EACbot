@@ -12,6 +12,7 @@ import {
   bucketFor, groupedTiles, healthWindow, metricLabel, metricValue, recordLine, seriesSpec, sourceLine, tilesFor, trendArrow,
   type HealthGroup, type HealthTile,
 } from "@/lib/health-view";
+import { HEALTH_METRICS } from "../../../shared/health";
 import type { HealthImportReport, HealthOverview, HealthSample, HealthSource } from "../../../shared/health";
 
 const RANGES = [7, 30, 90, 365] as const;
@@ -215,7 +216,7 @@ export function HealthPage() {
 }
 
 function AddReading({ onSaved, onError }: { onSaved: () => void; onError: (reason: string) => void }) {
-  const [metric, setMetric] = useState("steps");
+  const [metric, setMetric] = useState(() => metricLabel("steps"));
   const [value, setValue] = useState("");
   const [at, setAt] = useState("");
   const [busy, setBusy] = useState(false);
@@ -223,14 +224,14 @@ function AddReading({ onSaved, onError }: { onSaved: () => void; onError: (reaso
   const save = async () => {
     const numeric = Number(value);
     if (!Number.isFinite(numeric)) {
-      onError("value must be a number");
+      onError(t("health.add.invalidNumber"));
       return;
     }
     setBusy(true);
     try {
       await api("/api/health/records", {
         method: "POST",
-        body: JSON.stringify({ metric, value: numeric, ...(at ? { at: new Date(at).toISOString() } : {}) }),
+        body: JSON.stringify({ metric: HEALTH_METRICS.find(key => metricLabel(key) === metric) ?? metric, value: numeric, ...(at ? { at: new Date(at).toISOString() } : {}) }),
       });
       setValue("");
       setAt("");
@@ -246,7 +247,7 @@ function AddReading({ onSaved, onError }: { onSaved: () => void; onError: (reaso
     <Card>
       <CardHeader><CardTitle>{t("health.add.title")}</CardTitle></CardHeader>
       <CardContent className="flex flex-wrap items-end gap-2 pt-2">
-        <Field label={t("health.add.metric")}><Input value={metric} onChange={(e) => setMetric(e.target.value)} /></Field>
+        <Field label={t("health.add.metric")}><Input list="health-metrics" value={metric} onChange={(e) => setMetric(e.target.value)} /><datalist id="health-metrics">{HEALTH_METRICS.map(key => <option key={key} value={metricLabel(key)} />)}</datalist></Field>
         <Field label={t("health.add.value")}><Input value={value} onChange={(e) => setValue(e.target.value)} inputMode="decimal" className="w-24" /></Field>
         <Field label={t("health.add.when")}><Input type="datetime-local" value={at} onChange={(e) => setAt(e.target.value)} /></Field>
         <Button variant="primary" onClick={() => void save()} disabled={busy || !value.trim() || !metric.trim()}>{t("health.add.save")}</Button>
