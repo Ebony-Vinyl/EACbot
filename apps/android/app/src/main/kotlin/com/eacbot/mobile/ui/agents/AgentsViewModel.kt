@@ -45,7 +45,7 @@ data class AgentsUiState(
  *
  * A model list is only "known" when the engine reported one. `reported = false`
  * is a real answer and the screen shows "unknown" rather than an empty list a
- * person would read as "no models".
+ * person would read as "无模型".
  */
 class AgentsViewModel(
     private val api: CoreApi,
@@ -156,8 +156,8 @@ class AgentsViewModel(
 
     private fun describe(error: Throwable): String = when (error) {
         is ApiException -> error.details.message
-        is NetworkException -> "Can't reach your computer right now"
-        else -> error.message ?: "Something went wrong"
+        is NetworkException -> "暂时无法连接你的电脑"
+        else -> error.message ?: "发生错误"
     }
 
     companion object {
@@ -167,19 +167,19 @@ class AgentsViewModel(
 
 /** How an engine takes a mid-run message, in a sentence a person can act on. */
 fun steerDescription(steer: SteerCapability): String = when (steer) {
-    SteerCapability.Native -> "Takes messages mid-task"
-    is SteerCapability.NextBoundary -> "Messages arrive at its next step"
-    is SteerCapability.None -> "No mid-task messages: ${steer.reason}"
+    SteerCapability.Native -> "支持运行中接收消息"
+    is SteerCapability.NextBoundary -> "消息在下一步送达"
+    is SteerCapability.None -> "不支持运行中发送消息：${steer.reason}"
 }
 
 /** The capabilities worth stating on a card, in the order a person asks them. */
 fun capabilityLines(agent: AgentDescriptor): List<Pair<String, Boolean>> = listOf(
-    "Pause" to agent.capabilities.interrupt,
-    "Resume" to agent.capabilities.resume,
-    "Cancel" to agent.capabilities.cancel,
-    "Approvals" to agent.capabilities.approval,
-    "Questions" to agent.capabilities.questions,
-    "Helpers" to agent.capabilities.subagents,
-    "Images" to agent.capabilities.images,
-    "Usage" to agent.capabilities.usage,
+    "暂停" to agent.capabilities.interrupt,
+    "恢复" to agent.capabilities.resume,
+    "取消" to agent.capabilities.cancel,
+    "批准事项" to agent.capabilities.approval,
+    "问题" to agent.capabilities.questions,
+    "协作助手" to agent.capabilities.subagents,
+    "图片" to agent.capabilities.images,
+    "用量" to agent.capabilities.usage,
 )

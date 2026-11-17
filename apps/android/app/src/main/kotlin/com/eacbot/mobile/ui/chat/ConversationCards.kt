@@ -71,14 +71,14 @@ fun ToolCard(item: ConversationItem.ToolCard, modifier: Modifier = Modifier) {
             OutcomeLabel(item.ok)
             Icon(
                 imageVector = if (open) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                contentDescription = if (open) "Hide details" else "Show details",
+                contentDescription = if (open) "隐藏详情" else "显示详情",
                 tint = colors.inkMuted,
                 modifier = Modifier.size(18.dp),
             )
         }
         if (open) {
             if (item.input.isNotEmpty()) {
-                Text("Input", style = MaterialTheme.typography.labelSmall, color = colors.inkMuted)
+                Text("输入", style = MaterialTheme.typography.labelSmall, color = colors.inkMuted)
                 Text(
                     text = item.input,
                     style = MaterialTheme.typography.bodySmall,
@@ -88,7 +88,7 @@ fun ToolCard(item: ConversationItem.ToolCard, modifier: Modifier = Modifier) {
             }
             val output = item.output
             if (output != null) {
-                Text("Result", style = MaterialTheme.typography.labelSmall, color = colors.inkMuted)
+                Text("结果", style = MaterialTheme.typography.labelSmall, color = colors.inkMuted)
                 Text(
                     text = output,
                     style = MaterialTheme.typography.bodySmall,
@@ -144,7 +144,7 @@ fun ApprovalCard(
             .padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Text("Needs your decision", style = MaterialTheme.typography.labelMedium, color = colors.attention)
+        Text("需要你决定", style = MaterialTheme.typography.labelMedium, color = colors.attention)
         Text(item.action, style = MaterialTheme.typography.titleSmall, color = colors.ink)
         Text(
             text = item.detail,
@@ -153,7 +153,7 @@ fun ApprovalCard(
             color = colors.inkMuted,
         )
         item.expiresAt?.let {
-            Text("Expires $it", style = MaterialTheme.typography.labelSmall, color = colors.inkMuted)
+            Text("到期时间：$it", style = MaterialTheme.typography.labelSmall, color = colors.inkMuted)
         }
 
         if (item.isPending) {
@@ -163,13 +163,13 @@ fun ApprovalCard(
                     enabled = !busy,
                     shape = RoundedCornerShape(EacbotDimens.controlRadius),
                     colors = ButtonDefaults.buttonColors(containerColor = colors.accent, contentColor = colors.accentInk),
-                ) { Text("Allow") }
+                ) { Text("允许") }
                 OutlinedButton(
                     onClick = { onResolve("deny", null) },
                     enabled = !busy,
                     shape = RoundedCornerShape(EacbotDimens.controlRadius),
-                ) { Text("Deny") }
-                TextButton(onClick = { answering = !answering }, enabled = !busy) { Text("Answer instead") }
+                ) { Text("拒绝") }
+                TextButton(onClick = { answering = !answering }, enabled = !busy) { Text("改为回答") }
             }
             AnimatedVisibility(
                 visible = answering,
@@ -180,7 +180,7 @@ fun ApprovalCard(
                     OutlinedTextField(
                         value = answer,
                         onValueChange = { answer = it },
-                        label = { Text("Your answer") },
+                        label = { Text("你的回答") },
                         minLines = 2,
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(EacbotDimens.controlRadius),
@@ -190,15 +190,15 @@ fun ApprovalCard(
                         enabled = !busy && answer.isNotBlank(),
                         shape = RoundedCornerShape(EacbotDimens.controlRadius),
                         colors = ButtonDefaults.buttonColors(containerColor = colors.accent, contentColor = colors.accentInk),
-                    ) { Text("Send answer") }
+                    ) { Text("发送回答") }
                 }
             }
         } else {
             Text(
                 text = when (item.decision) {
-                    "allow" -> "Allowed${item.decidedBy?.let { " by $it" } ?: ""}"
-                    "deny" -> "Denied. The agent continues without it."
-                    "expired" -> "Expired before a decision"
+                    "allow" -> "已允许${item.decidedBy?.let { "，由 $it 批准" } ?: ""}"
+                    "deny" -> "已拒绝，智能体将跳过此操作继续。"
+                    "expired" -> "未决定便已过期"
                     else -> item.decision ?: ""
                 },
                 style = MaterialTheme.typography.bodyMedium,
@@ -228,13 +228,13 @@ fun QuestionCard(
             .padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Text("Question", style = MaterialTheme.typography.labelMedium, color = colors.attention)
+        Text("提问", style = MaterialTheme.typography.labelMedium, color = colors.attention)
         Text(item.question, style = MaterialTheme.typography.bodyLarge, color = colors.ink)
         if (item.isPending) {
             OutlinedTextField(
                 value = answer,
                 onValueChange = { answer = it },
-                label = { Text("Your answer") },
+                label = { Text("你的回答") },
                 minLines = 2,
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(EacbotDimens.controlRadius),
@@ -244,9 +244,9 @@ fun QuestionCard(
                 enabled = !busy && answer.isNotBlank(),
                 shape = RoundedCornerShape(EacbotDimens.controlRadius),
                 colors = ButtonDefaults.buttonColors(containerColor = colors.accent, contentColor = colors.accentInk),
-            ) { Text("Send answer") }
+            ) { Text("发送回答") }
         } else {
-            Text("You answered: ${item.answer}", style = MaterialTheme.typography.bodyMedium, color = colors.inkMuted)
+            Text("你的回答：${item.answer}", style = MaterialTheme.typography.bodyMedium, color = colors.inkMuted)
         }
     }
 }
@@ -273,12 +273,12 @@ fun TextBubble(text: String, fromAgent: Boolean, modifier: Modifier = Modifier) 
 fun RunMarkerLine(kind: String, detail: String?, modifier: Modifier = Modifier) {
     val colors = LocalEacbotColors.current
     val label = when (kind) {
-        "started" -> "Started"
-        "completed" -> "Finished"
-        "failed" -> "Failed"
-        "cancelled" -> "Cancelled"
-        "interrupted" -> "Paused"
-        "resumed" -> "Resumed"
+        "started" -> "已开始"
+        "completed" -> "已完成"
+        "failed" -> "失败"
+        "cancelled" -> "已取消"
+        "interrupted" -> "已暂停"
+        "resumed" -> "已恢复"
         else -> kind
     }
     val tint = when (kind) {

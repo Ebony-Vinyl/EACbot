@@ -74,10 +74,10 @@ fun NewMissionScreen(
         containerColor = colors.canvas,
         topBar = {
             TopAppBar(
-                title = { Text("New task", style = MaterialTheme.typography.titleMedium) },
+                title = { Text("新建任务", style = MaterialTheme.typography.titleMedium) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = colors.canvas, titleContentColor = colors.ink),
@@ -96,7 +96,7 @@ fun NewMissionScreen(
             OutlinedTextField(
                 value = title,
                 onValueChange = { title = it },
-                label = { Text("What is it about") },
+                label = { Text("任务主题") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(EacbotDimens.controlRadius),
@@ -104,13 +104,13 @@ fun NewMissionScreen(
             OutlinedTextField(
                 value = prompt,
                 onValueChange = { prompt = it },
-                label = { Text("What should Hermes do") },
+                label = { Text("希望 Hermes 做什么") },
                 minLines = 5,
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(EacbotDimens.controlRadius),
             )
 
-            SectionLabel("Engine")
+            SectionLabel("引擎")
             if (state.loadingAgents) {
                 CircularProgressIndicator(color = colors.accent, modifier = Modifier.height(24.dp))
             } else {
@@ -128,11 +128,11 @@ fun NewMissionScreen(
                 CapabilitySummary(agent)
             }
 
-            SectionLabel("Model")
+            SectionLabel("模型")
             when {
-                state.loadingModels -> Text("Reading the engine's catalog…", style = MaterialTheme.typography.bodySmall, color = colors.inkMuted)
+                state.loadingModels -> Text("正在读取引擎模型列表…", style = MaterialTheme.typography.bodySmall, color = colors.inkMuted)
                 state.models == null -> Text(
-                    "Unknown: this engine did not report a model list.",
+                    "未知：此引擎未提供模型列表。",
                     style = MaterialTheme.typography.bodySmall,
                     color = colors.attention,
                 )
@@ -141,7 +141,7 @@ fun NewMissionScreen(
                         FilterChip(
                             selected = state.selectedModel == null,
                             onClick = { viewModel.selectModel(null) },
-                            label = { Text("Engine default") },
+                            label = { Text("引擎默认模型") },
                         )
                         state.models!!.models.take(6).forEach { entry ->
                             FilterChip(
@@ -153,16 +153,16 @@ fun NewMissionScreen(
                     }
                 }
                 else -> Text(
-                    "Unknown: this engine reported no models this time.",
+                    "未知：此引擎本次未提供模型。",
                     style = MaterialTheme.typography.bodySmall,
                     color = colors.attention,
                 )
             }
 
-            SectionLabel("Computer")
+            SectionLabel("电脑")
             if (state.environments.isEmpty()) {
                 Text(
-                    "No computer is configured on this core. The task will fail at start until one is added on the desktop.",
+                    "此服务尚未配置电脑。请先在桌面端添加，否则任务启动会失败。",
                     style = MaterialTheme.typography.bodySmall,
                     color = colors.danger,
                 )
@@ -197,7 +197,7 @@ fun NewMissionScreen(
                 if (state.creating) {
                     CircularProgressIndicator(modifier = Modifier.height(20.dp), strokeWidth = 2.dp, color = colors.accentInk)
                 } else {
-                    Text("Start task")
+                    Text("开始任务")
                 }
             }
             Spacer(Modifier.height(24.dp))
@@ -213,22 +213,22 @@ private fun CapabilitySummary(agent: AgentDescriptor) {
         if (!agent.capabilities.canSteer) {
             add(
                 when (val steer = agent.capabilities.steer) {
-                    is com.eacbot.mobile.core.SteerCapability.None -> "No mid-task messages: ${steer.reason}"
-                    is com.eacbot.mobile.core.SteerCapability.NextBoundary -> "Messages land at the next step: ${steer.note}"
+                    is com.eacbot.mobile.core.SteerCapability.None -> "不支持运行中发送消息：${steer.reason}"
+                    is com.eacbot.mobile.core.SteerCapability.NextBoundary -> "消息将在下一步送达：${steer.note}"
                     else -> ""
                 },
             )
         }
-        if (!agent.capabilities.interrupt) add("Cannot pause")
-        if (!agent.capabilities.resume) add("Cannot resume a paused run")
-        if (!agent.capabilities.approval) add("No approval prompts")
-        if (!agent.capabilities.questions) add("No questions")
-        if (!agent.capabilities.modelCatalog) add("Reports no model list")
+        if (!agent.capabilities.interrupt) add("不支持暂停")
+        if (!agent.capabilities.resume) add("无法恢复已暂停运行")
+        if (!agent.capabilities.approval) add("无审批提示")
+        if (!agent.capabilities.questions) add("无提问")
+        if (!agent.capabilities.modelCatalog) add("未提供模型列表")
     }.filter { it.isNotEmpty() }
 
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         if (notes.isEmpty()) {
-            Text("Full control", style = MaterialTheme.typography.labelSmall, color = colors.success)
+            Text("完全控制", style = MaterialTheme.typography.labelSmall, color = colors.success)
         } else {
             notes.forEach { note ->
                 Text(note, style = MaterialTheme.typography.labelSmall, color = colors.inkMuted)

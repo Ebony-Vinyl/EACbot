@@ -44,10 +44,10 @@ class EacbotApplication : Application() {
         val manager = getSystemService(NotificationManager::class.java) ?: return
         val channel = NotificationChannel(
             NotificationPresenter.CHANNEL_ID,
-            "Agent activity",
+            "智能体活动",
             NotificationManager.IMPORTANCE_DEFAULT,
         ).apply {
-            description = "When an agent needs you or finishes a task"
+            description = "智能体需要你处理或完成任务时通知"
             // A lock screen shows the mission title and a fixed phrase, never
             // the prompt, a tool's input or an approval's detail.
             lockscreenVisibility = android.app.Notification.VISIBILITY_PRIVATE

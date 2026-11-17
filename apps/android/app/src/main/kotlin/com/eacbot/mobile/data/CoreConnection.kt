@@ -97,7 +97,7 @@ class CoreConnection(
      * The token never reaches a log, a screenshot or a saved view. */
     fun pair(baseUrlText: String, code: String, label: String): Result<PairedCore> {
         val base = CoreUrl.normalize(baseUrlText)
-            ?: return Result.failure(IllegalArgumentException("That address is not a URL"))
+            ?: return Result.failure(IllegalArgumentException("该地址不是有效网址"))
         val probe = CoreApi(base, { null }, {})
         return runCatching { probe.claimPairing(code, label) }.mapCatching { pairing ->
             val core = PairedCore(
@@ -130,7 +130,7 @@ class CoreConnection(
     }
 
     /** The core refused the bearer. Clearing it is the only correct answer. */
-    fun signedOut(reason: String = "This phone is no longer signed in") {
+    fun signedOut(reason: String = "此手机已退出登录") {
         disconnect()
         sessions.clear()
         paired = null
@@ -175,7 +175,7 @@ class CoreConnection(
         paired = core
         val base = CoreUrl.normalize(core.baseUrl)
         if (base == null) {
-            signedOut("The saved address is not a URL")
+            signedOut("保存的地址不是有效网址")
             return
         }
         phaseState.value = SessionPhase.Connecting(core)
@@ -243,8 +243,8 @@ class CoreConnection(
     private fun report(error: Throwable) {
         when (error) {
             is ApiException -> if (error.isUnauthenticated) signedOut() else errors.tryEmit(error.details.message)
-            is NetworkException -> errors.tryEmit("Can't reach your computer right now")
-            else -> errors.tryEmit(error.message ?: "Something went wrong")
+            is NetworkException -> errors.tryEmit("暂时无法连接你的电脑")
+            else -> errors.tryEmit(error.message ?: "发生错误")
         }
     }
 

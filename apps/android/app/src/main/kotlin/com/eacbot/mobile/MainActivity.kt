@@ -112,7 +112,7 @@ private fun EacbotShell(connection: CoreConnection, sessions: com.eacbot.mobile.
         is SessionPhase.Connecting, is SessionPhase.Live -> {
             val api = connection.currentApi()
             if (api == null) {
-                SignedOutScreen("The connection could not be opened", onPairAgain = { connection.forgetDevice() })
+                SignedOutScreen("无法打开连接", onPairAgain = { connection.forgetDevice() })
                 return
             }
             NavHost(navController = nav, startDestination = Routes.Home) {
@@ -149,7 +149,7 @@ private fun EacbotShell(connection: CoreConnection, sessions: com.eacbot.mobile.
                         onDispose { viewModel.stop() }
                     }
                     ChatScreen(
-                        title = missions[missionId]?.title ?: "Task",
+                        title = missions[missionId]?.title ?: "任务",
                         viewModel = viewModel,
                         onBack = { nav.popBackStack() },
                         onOpenComputer = { nav.navigate("${Routes.Computer}/$missionId") },
@@ -162,7 +162,7 @@ private fun EacbotShell(connection: CoreConnection, sessions: com.eacbot.mobile.
                     val missionId = entry.arguments?.getString("missionId").orEmpty()
                     val viewModel = remember(missionId) { ComputerViewModel(api, missionId) }
                     ComputerScreen(
-                        missionTitle = missions[missionId]?.title ?: "Task",
+                        missionTitle = missions[missionId]?.title ?: "任务",
                         viewModel = viewModel,
                         onBack = { nav.popBackStack() },
                         onOpenTerminal = { nav.navigate("${Routes.Terminal}/$it") },
@@ -177,7 +177,7 @@ private fun EacbotShell(connection: CoreConnection, sessions: com.eacbot.mobile.
                 ) { entry ->
                     val url = java.net.URLDecoder.decode(entry.arguments?.getString("url").orEmpty(), "UTF-8")
                     DesktopScreen(
-                        title = "Your computer",
+                        title = "你的电脑",
                         viewerUrl = url,
                         handover = true,
                         onBack = { nav.popBackStack() },
@@ -205,7 +205,7 @@ private fun EacbotShell(connection: CoreConnection, sessions: com.eacbot.mobile.
                         onDispose { viewModel.close() }
                     }
                     TerminalScreen(
-                        title = "Terminal",
+                        title = "终端",
                         viewModel = viewModel,
                         onBack = { nav.popBackStack() },
                     )
@@ -229,5 +229,5 @@ object Routes {
 /** What this phone calls itself in the core's device list. */
 private fun defaultLabel(): String {
     val model = Build.MODEL?.takeIf { it.isNotBlank() } ?: "Android"
-    return "$model phone"
+    return "$model 手机"
 }

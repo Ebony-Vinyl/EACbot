@@ -190,10 +190,10 @@ object UuidCommandIds : CommandIds {
 /** The statuses a person filters by. Each group names what it holds, so a
  * filter never silently swallows a status it did not list. */
 enum class MissionFilter(val label: String) {
-    Active("Working"),
-    Waiting("Waiting"),
-    Finished("Finished"),
-    All("All"),
+    Active("运行中"),
+    Waiting("等待中"),
+    Finished("已完成"),
+    All("全部"),
     ;
 
     fun matches(status: MissionStatus): Boolean = when (this) {

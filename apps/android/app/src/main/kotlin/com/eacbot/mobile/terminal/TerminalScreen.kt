@@ -114,17 +114,17 @@ fun TerminalScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = colors.ink)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回", tint = colors.ink)
                     }
                 },
                 actions = {
                     if (state.isReconnecting || state.connection is TerminalConnectionState.Failed) {
                         IconButton(onClick = viewModel::retry) {
-                            Icon(Icons.Filled.Refresh, contentDescription = "Reconnect now", tint = colors.ink)
+                            Icon(Icons.Filled.Refresh, contentDescription = "立即重新连接", tint = colors.ink)
                         }
                     }
                     IconButton(onClick = { keyboardOpen = !keyboardOpen }) {
-                        Icon(Icons.Filled.Keyboard, contentDescription = "Keyboard", tint = colors.ink)
+                        Icon(Icons.Filled.Keyboard, contentDescription = "键盘", tint = colors.ink)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = colors.surface, titleContentColor = colors.ink),
@@ -140,13 +140,13 @@ fun TerminalScreen(
                     FilterChip(
                         selected = state.role == TerminalRole.Observe,
                         onClick = { viewModel.setRole(TerminalRole.Observe) },
-                        label = { Text("Watch") },
+                        label = { Text("观看") },
                         leadingIcon = { Icon(Icons.Filled.Visibility, contentDescription = null, modifier = Modifier.size(16.dp)) },
                     )
                     FilterChip(
                         selected = state.role == TerminalRole.Control,
                         onClick = { viewModel.setRole(TerminalRole.Control) },
-                        label = { Text("Control") },
+                        label = { Text("控制") },
                         leadingIcon = { Icon(Icons.Filled.Keyboard, contentDescription = null, modifier = Modifier.size(16.dp)) },
                     )
                     Spacer(Modifier.weight(1f))
@@ -159,8 +159,8 @@ fun TerminalScreen(
                 if (!state.canType) {
                     Text(
                         text = when {
-                            state.role == TerminalRole.Observe -> "Watching only. Switch to Control to type."
-                            state.isLive -> "This viewer was not granted control."
+                            state.role == TerminalRole.Observe -> "当前仅查看，切换到“控制”后即可输入。"
+                            state.isLive -> "此查看器未获控制权限。"
                             else -> "Connecting…"
                         },
                         style = MaterialTheme.typography.labelSmall,
@@ -182,7 +182,7 @@ fun TerminalScreen(
                                 // multi-character paste.
                                 typed = it
                             },
-                            placeholder = { Text("Type here") },
+                            placeholder = { Text("在此输入") },
                             modifier = Modifier.weight(1f),
                             singleLine = true,
                             shape = RoundedCornerShape(EacbotDimens.controlRadius),
@@ -192,9 +192,9 @@ fun TerminalScreen(
                                 viewModel.sendInput((typed + "\n").toByteArray())
                                 typed = ""
                             },
-                        ) { Icon(Icons.AutoMirrored.Filled.KeyboardReturn, contentDescription = "Send") }
+                        ) { Icon(Icons.AutoMirrored.Filled.KeyboardReturn, contentDescription = "发送") }
                         IconButton(onClick = { viewModel.sendInput(byteArrayOf(0x03)) }) {
-                            Icon(Icons.Filled.Close, contentDescription = "Send Ctrl-C")
+                            Icon(Icons.Filled.Close, contentDescription = "发送 Ctrl-C")
                         }
                     }
                     QuickKeys(onSend = viewModel::sendInput)
@@ -211,7 +211,7 @@ fun TerminalScreen(
                 .safeDrawingPadding(),
         ) {
             if (state.loading) {
-                Text("Opening terminal…", style = MaterialTheme.typography.bodyMedium, color = colors.inkMuted, modifier = Modifier.padding(16.dp))
+                Text("正在打开终端…", style = MaterialTheme.typography.bodyMedium, color = colors.inkMuted, modifier = Modifier.padding(16.dp))
             }
             TerminalCanvas(
                 lines = state.lines,
@@ -231,8 +231,8 @@ fun TerminalScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text("Reconnecting", style = MaterialTheme.typography.labelSmall, color = colors.attention)
-                    TextButton(onClick = viewModel::retry) { Text("Retry", style = MaterialTheme.typography.labelSmall) }
+                    Text("重新连接中", style = MaterialTheme.typography.labelSmall, color = colors.attention)
+                    TextButton(onClick = viewModel::retry) { Text("重试", style = MaterialTheme.typography.labelSmall) }
                 }
             }
             if (state.error != null && !state.isReconnecting) {
@@ -244,7 +244,7 @@ fun TerminalScreen(
                         .padding(12.dp),
                 ) {
                     Text(state.error!!, style = MaterialTheme.typography.bodySmall, color = colors.danger)
-                    TextButton(onClick = viewModel::retry) { Text("Try again") }
+                    TextButton(onClick = viewModel::retry) { Text("重试") }
                 }
             }
         }
@@ -395,15 +395,15 @@ private val LIGHT_PALETTE = listOf(
 
 private fun statusLine(state: TerminalUiState): String = when (val connection = state.connection) {
     is TerminalConnectionState.Live -> when {
-        state.exitCode != null -> "Exited (${state.exitCode})"
+        state.exitCode != null -> "已退出（${state.exitCode}）"
         state.status != null -> state.status!!
-        state.canType -> "Live · you have control"
-        else -> "Live · watching"
+        state.canType -> "实时 · 你拥有控制权"
+        else -> "实时 · 观察中"
     }
-    is TerminalConnectionState.Connecting -> "Connecting"
-    is TerminalConnectionState.Reconnecting -> "Reconnecting (attempt ${connection.attempt})"
-    is TerminalConnectionState.Exited -> "Exited: ${connection.reason}"
+    is TerminalConnectionState.Connecting -> "连接中"
+    is TerminalConnectionState.Reconnecting -> "正在重新连接（第 ${connection.attempt} 次）"
+    is TerminalConnectionState.Exited -> "已退出：${connection.reason}"
     is TerminalConnectionState.Failed -> connection.message
-    TerminalConnectionState.Idle -> "Starting"
-    TerminalConnectionState.Closed -> "Closed"
+    TerminalConnectionState.Idle -> "启动中"
+    TerminalConnectionState.Closed -> "已关闭"
 }

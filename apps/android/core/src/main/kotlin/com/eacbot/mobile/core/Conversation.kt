@@ -367,11 +367,11 @@ object NotificationPolicy {
             kind = kind,
             title = safeTitle,
             body = when (kind) {
-                NotificationDecision.NotificationKind.NeedsYou -> "Waiting for your answer"
+                NotificationDecision.NotificationKind.NeedsYou -> "等待你的回答"
                 NotificationDecision.NotificationKind.Finished -> when (current) {
-                    MissionStatus.Succeeded -> "Finished"
-                    MissionStatus.Failed -> "Stopped with an error"
-                    else -> "Finished"
+                    MissionStatus.Succeeded -> "已完成"
+                    MissionStatus.Failed -> "因错误停止"
+                    else -> "已完成"
                 }
             },
             missionId = missionId,

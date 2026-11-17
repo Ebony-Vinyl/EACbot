@@ -79,14 +79,14 @@ fun AgentsScreen(
         containerColor = colors.canvas,
         topBar = {
             TopAppBar(
-                title = { Text("Agents", style = MaterialTheme.typography.titleMedium) },
+                title = { Text("智能体", style = MaterialTheme.typography.titleMedium) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },
                 actions = {
-                    TextButton(onClick = { viewModel.load() }) { Text("Refresh") }
+                    TextButton(onClick = { viewModel.load() }) { Text("刷新") }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = colors.canvas, titleContentColor = colors.ink),
             )
@@ -110,19 +110,19 @@ fun AgentsScreen(
             if (state.offline) {
                 item {
                     Text(
-                        "Offline. Showing what this phone last read.",
+                        "已离线，显示此手机最后读取的内容。",
                         style = MaterialTheme.typography.labelSmall,
                         color = colors.inkMuted,
                     )
                 }
             }
 
-            item { SectionLabel("Engines on this core") }
+            item { SectionLabel("此服务上的引擎") }
             items(state.agents, key = { it.descriptor.rawKind }) { card ->
                 AgentCardRow(card)
             }
 
-            item { SectionLabel("Missions") }
+            item { SectionLabel("任务") }
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     MissionFilter.entries.forEach { option ->
@@ -141,8 +141,8 @@ fun AgentsScreen(
             if (roots.isEmpty() && !state.loading) {
                 item {
                     EmptyNote(
-                        "No missions here",
-                        "A mission is one task delegated to an engine. Start one from the Hermes tab.",
+                        "暂无任务",
+                        "任务是委派给引擎的一项工作，可从 Hermes 标签页启动。",
                     )
                 }
             }
@@ -161,15 +161,15 @@ fun AgentsScreen(
             if (state.selectedRootId != null) {
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        SectionLabel("Tree")
+                        SectionLabel("任务树")
                         if (state.treeLoading) {
-                            Text("Reading the tree…", style = MaterialTheme.typography.labelSmall, color = colors.inkMuted)
+                            Text("正在读取任务树…", style = MaterialTheme.typography.labelSmall, color = colors.inkMuted)
                         }
                         val tree = state.tree
                         if (tree != null) {
                             val summary = summarizeChildren(tree)
                             Text(
-                                "${summary.total} helpers · ${summary.running} working · ${summary.waiting} waiting · ${summary.succeeded} done",
+                                "${summary.total} 个协作助手 · ${summary.running} 个运行中 · ${summary.waiting} 个等待中 · ${summary.succeeded} 个已完成",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = colors.inkMuted,
                             )
@@ -182,7 +182,7 @@ fun AgentsScreen(
 
                 item {
                     TextButton(onClick = { showLog = !showLog }) {
-                        Text(if (showLog) "Hide event log" else "Show event log")
+                        Text(if (showLog) "隐藏事件日志" else "显示事件日志")
                     }
                 }
                 if (showLog) {
@@ -190,15 +190,15 @@ fun AgentsScreen(
                         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             if (state.historyGap) {
                                 Text(
-                                    "The log skipped ahead. Resyncing from a snapshot.",
+                                    "日志发生跳跃，正在从快照重新同步。",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = colors.attention,
                                 )
-                                TextButton(onClick = viewModel::resync) { Text("Resync") }
+                                TextButton(onClick = viewModel::resync) { Text("重新同步") }
                             }
                             state.history.takeLast(40).forEach { entry -> LogLine(entry) }
                             if (state.history.isNotEmpty()) {
-                                TextButton(onClick = viewModel::loadMoreHistory) { Text("Load more events") }
+                                TextButton(onClick = viewModel::loadMoreHistory) { Text("加载更多事件") }
                             }
                         }
                     }
@@ -232,7 +232,7 @@ private fun AgentCardRow(card: AgentCard) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             capabilityLines(card.descriptor).forEach { (name, present) ->
                 Text(
-                    text = if (present) name else "$name off",
+                    text = if (present) name else "$name 已关闭",
                     style = MaterialTheme.typography.labelSmall,
                     color = if (present) colors.inkMuted else colors.danger,
                 )
@@ -241,8 +241,8 @@ private fun AgentCardRow(card: AgentCard) {
         Text(
             text = when {
                 card.modelsKnown -> card.models?.models?.joinToString(" · ") { it.ref.display } ?: ""
-                card.models != null && !card.models.reported -> "Models: unknown (this engine reports no catalog)"
-                else -> "Models: unknown"
+                card.models != null && !card.models.reported -> "模型：未知（此引擎未提供列表）"
+                else -> "模型：未知"
             },
             style = MaterialTheme.typography.labelSmall,
             color = if (card.modelsKnown) colors.inkMuted else colors.attention,
@@ -270,15 +270,15 @@ private fun RootMissionRow(
             .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Text(root.title.ifBlank { "Untitled" }, style = MaterialTheme.typography.titleSmall, color = colors.ink, maxLines = 2)
+        Text(root.title.ifBlank { "未命名" }, style = MaterialTheme.typography.titleSmall, color = colors.ink, maxLines = 2)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             StatusPill(root.status, compact = true)
-            Text("rev ${root.revision}", style = MaterialTheme.typography.labelSmall, color = colors.inkMuted)
+            Text("版本 ${root.revision}", style = MaterialTheme.typography.labelSmall, color = colors.inkMuted)
             if (root.childIds.isNotEmpty()) {
-                Text("${root.childIds.size} helpers", style = MaterialTheme.typography.labelSmall, color = colors.inkMuted)
+                Text("${root.childIds.size} 个协作助手", style = MaterialTheme.typography.labelSmall, color = colors.inkMuted)
             }
             Spacer(Modifier.weight(1f))
-            TextButton(onClick = onShowTree) { Text("Tree", style = MaterialTheme.typography.labelSmall) }
+            TextButton(onClick = onShowTree) { Text("任务树", style = MaterialTheme.typography.labelSmall) }
         }
     }
 }

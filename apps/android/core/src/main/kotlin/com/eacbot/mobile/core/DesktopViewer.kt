@@ -51,7 +51,7 @@ object DesktopViewer {
         if (base.isHttps && !resolved.isHttps) {
             return DesktopEntry.Refused("an https core cannot open an http viewer")
         }
-        return DesktopEntry.Ready(resolved, label ?: "Your computer")
+        return DesktopEntry.Ready(resolved, label ?: "你的电脑")
     }
 
     /**

@@ -60,8 +60,8 @@ fun PairingScreen(
     defaultLabel: String,
     onPair: suspend (baseUrl: String, code: String, label: String) -> Result<Unit>,
     notice: String? = null,
-    heading: String = "Your own core",
-    description: String = "Your core runs on your own machine. Start it, then type the address and the code it printed in the terminal.",
+    heading: String = "你的本地服务",
+    description: String = "服务运行在你自己的电脑上。启动后，输入终端显示的地址和配对码。",
 ) {
     val colors = LocalEacbotColors.current
     var address by remember { mutableStateOf("") }
@@ -76,11 +76,11 @@ fun PairingScreen(
         if (busy) return
         val cleanCode = code.trim()
         if (address.isBlank()) {
-            error = "Enter the address your core printed"
+            error = "输入服务显示的地址"
             return
         }
         if (cleanCode.length < 4) {
-            error = "Enter the pairing code"
+            error = "输入配对码"
             return
         }
         focus.clearFocus()
@@ -92,14 +92,14 @@ fun PairingScreen(
             result.onFailure { failure ->
                 error = when (failure) {
                     is ApiException -> when (failure.details.code) {
-                        "pairing_expired" -> "That code has expired. Print a new one on your computer."
-                        "pairing_unknown" -> "That code does not match. Check the terminal for the current one."
-                        "pairing_exhausted" -> "Too many wrong codes. Print a new one on your computer."
-                        "forbidden" -> "That computer refused the pairing. Check its terminal."
+                        "pairing_expired" -> "配对码已过期，请在电脑上生成新的配对码。"
+                        "pairing_unknown" -> "配对码不匹配，请查看终端中的当前配对码。"
+                        "pairing_exhausted" -> "错误次数过多，请在电脑上生成新的配对码。"
+                        "forbidden" -> "电脑拒绝配对，请查看其终端。"
                         else -> failure.details.message
                     }
-                    is NetworkException -> "Could not reach that address. Check the computer is on and the address is right."
-                    else -> failure.message ?: "Pairing failed"
+                    is NetworkException -> "无法连接此地址，请确认电脑已开机且地址正确。"
+                    else -> failure.message ?: "配对失败"
                 }
             }
         }
@@ -143,7 +143,7 @@ fun PairingScreen(
         OutlinedTextField(
             value = address,
             onValueChange = { address = it.trim() },
-            label = { Text("Core address") },
+            label = { Text("服务地址") },
             placeholder = { Text("192.168.1.20:8789") },
             singleLine = true,
             enabled = !busy,
@@ -159,7 +159,7 @@ fun PairingScreen(
         OutlinedTextField(
             value = code,
             onValueChange = { code = it.trim() },
-            label = { Text("Pairing code") },
+            label = { Text("配对码") },
             placeholder = { Text("ABCD-EFGH") },
             singleLine = true,
             enabled = !busy,
@@ -175,7 +175,7 @@ fun PairingScreen(
         OutlinedTextField(
             value = label,
             onValueChange = { label = it },
-            label = { Text("This phone's name") },
+            label = { Text("此手机的名称") },
             singleLine = true,
             enabled = !busy,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
@@ -202,14 +202,14 @@ fun PairingScreen(
                     color = colors.accentInk,
                 )
                 Spacer(Modifier.size(10.dp))
-                Text("Pairing")
+                Text("正在配对")
             } else {
-                Text("Pair this phone", style = MaterialTheme.typography.labelLarge)
+                Text("配对此手机", style = MaterialTheme.typography.labelLarge)
             }
         }
 
         Text(
-            text = "The code works once and expires in about ten minutes. This phone gets its own session, which you can revoke at any time.",
+            text = "配对码仅使用一次，约十分钟后过期。此手机将获得独立会话，可随时撤销。",
             style = MaterialTheme.typography.bodySmall,
             color = colors.inkMuted,
             textAlign = TextAlign.Start,
@@ -230,12 +230,12 @@ fun SignedOutScreen(reason: String, onPairAgain: () -> Unit) {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.Start,
     ) {
-        Text("Signed out", style = MaterialTheme.typography.headlineSmall, color = colors.ink)
+        Text("已退出登录", style = MaterialTheme.typography.headlineSmall, color = colors.ink)
         Spacer(Modifier.height(8.dp))
         Text(reason, style = MaterialTheme.typography.bodyLarge, color = colors.inkMuted)
         Spacer(Modifier.height(8.dp))
         Text(
-            "Pair again to keep using this phone. Nothing on your computer was changed.",
+            "请重新配对以继续使用此手机，电脑上的内容未更改。",
             style = MaterialTheme.typography.bodyMedium,
             color = colors.inkMuted,
         )
@@ -245,8 +245,8 @@ fun SignedOutScreen(reason: String, onPairAgain: () -> Unit) {
                 onClick = onPairAgain,
                 shape = RoundedCornerShape(EacbotDimens.controlRadius),
                 colors = ButtonDefaults.buttonColors(containerColor = colors.accent, contentColor = colors.accentInk),
-            ) { Text("Pair again") }
-            TextButton(onClick = onPairAgain) { Text("Enter a different address") }
+            ) { Text("重新配对") }
+            TextButton(onClick = onPairAgain) { Text("输入其他地址") }
         }
     }
 }
