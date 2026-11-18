@@ -41,13 +41,13 @@ class LegacyViewModel(private val sessions: SessionStore) : ViewModel() {
             sessions.save(PairedCore(base.toString(), label, session.getValue("id").jsonPrimitive.content,
                 "client", session["expiresAt"]?.jsonPrimitive?.content.orEmpty()), result.getValue("token").jsonPrimitive.content)
             api = client
-            state.value = LegacyState(connected = true)
+            state.update { LegacyState(connected = true, draft = it.draft) }
         }
     }
 
     fun select(bot: LegacyBot?) {
         pendingSend = null
-        state.update { it.copy(selected = bot, messages = emptyList(), draft = "", error = null) }
+        state.update { it.copy(selected = bot, messages = emptyList(), draft = if (it.selected == null) it.draft else "", error = null) }
     }
 
     fun draft(text: String) { state.update { it.copy(draft = text) } }
@@ -102,7 +102,7 @@ class LegacyViewModel(private val sessions: SessionStore) : ViewModel() {
         if (error is ApiException && error.status == 401) {
             sessions.clear()
             api = null
-            state.value = LegacyState(error = "登录已过期，请重新配对")
+            state.value = LegacyState(draft = state.value.draft, error = "登录已过期，请重新配对")
         } else state.update {
             if (refreshing) it.copy(connectionError = "连接中断，正在重试")
             else it.copy(error = error.message ?: "连接失败")
