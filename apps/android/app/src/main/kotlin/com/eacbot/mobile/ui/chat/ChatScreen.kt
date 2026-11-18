@@ -4,63 +4,58 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Computer
+import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.PauseCircle
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.StopCircle
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.eacbot.mobile.core.ConversationItem
+import com.eacbot.mobile.core.MissionStatus
 import com.eacbot.mobile.design.EacbotDimens
 import com.eacbot.mobile.design.LocalEacbotColors
-import com.eacbot.mobile.ui.Hairline
-import com.eacbot.mobile.ui.StatusPill
+import com.eacbot.mobile.ui.AgentHeader
+import com.eacbot.mobile.ui.CaptionChip
+import com.eacbot.mobile.ui.ChatBubble
+import com.eacbot.mobile.ui.CircleButton
+import com.eacbot.mobile.ui.EmptyHero
+import com.eacbot.mobile.ui.MessageComposer
+import com.eacbot.mobile.ui.NoticeBanner
+import com.eacbot.mobile.ui.StatusTone
+import com.eacbot.mobile.ui.TypingBubble
 import com.eacbot.mobile.ui.statusLabel
+import com.eacbot.mobile.ui.statusTone
 
 /**
- * One mission as a conversation.
- *
- * The list is the folded log: assistant text, tool cards, approval and question
- * cards, and thin run markers. Controls come from the mission's own status, so
- * a button the server would refuse is not offered.
+ * One mission as a conversation: the folded log as bubbles and cards. Controls
+ * come from the mission's own status, so a button the server would refuse is
+ * not offered.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(
     title: String,
@@ -73,232 +68,147 @@ fun ChatScreen(
     val listState = rememberLazyListState()
     val mission = state.mission
     val operations = state.operations
+    var menuOpen by remember { mutableStateOf(false) }
+    val working = mission?.status?.let { statusTone(it) == StatusTone.Working } == true
 
     LaunchedEffect(Unit) { viewModel.start() }
-    LaunchedEffect(Unit) {
-        viewModel.liveHints.collect { viewModel.onNotification() }
-    }
-    LaunchedEffect(state.fold.items.size) {
-        if (state.fold.items.isNotEmpty()) listState.animateScrollToItem(state.fold.items.lastIndex)
+    LaunchedEffect(Unit) { viewModel.liveHints.collect { viewModel.onNotification() } }
+    LaunchedEffect(state.fold.items.size, working) {
+        val count = state.fold.items.size + if (working) 1 else 0
+        if (count > 0) listState.animateScrollToItem(count - 1)
     }
 
-    Scaffold(
-        containerColor = colors.canvas,
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(mission?.title ?: title, maxLines = 1, style = MaterialTheme.typography.titleMedium)
-                        mission?.let { m ->
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                                StatusPill(m.status, compact = true)
-                                Text(
-                                    text = m.model?.display ?: m.rawAgent,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = colors.inkMuted,
-                                )
-                            }
+    Column(Modifier.fillMaxSize().background(colors.canvas).imePadding()) {
+        AgentHeader(
+            name = mission?.title?.ifBlank { null } ?: title,
+            status = mission?.let { m ->
+                listOfNotNull(statusLabel(m.status), m.model?.display).joinToString(" · ")
+            },
+            statusColor = mission?.let { statusTone(it.status).colors(colors).first },
+            leading = { CircleButton(Icons.AutoMirrored.Filled.ArrowBack, "返回", onBack) },
+            trailing = {
+                Box {
+                    CircleButton(Icons.Filled.MoreHoriz, "任务操作", { menuOpen = true })
+                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                        DropdownMenuItem(
+                            text = { Text("此任务的电脑") },
+                            leadingIcon = { Icon(Icons.Filled.Computer, null) },
+                            onClick = { menuOpen = false; onOpenComputer() },
+                        )
+                        if (operations != null && (operations.steer || operations.interrupt)) {
+                            DropdownMenuItem(
+                                text = { Text("暂停此次运行") },
+                                leadingIcon = { Icon(Icons.Filled.PauseCircle, null) },
+                                enabled = !state.sending,
+                                onClick = { menuOpen = false; viewModel.interrupt() },
+                            )
+                        }
+                        if (operations?.resume == true) {
+                            DropdownMenuItem(
+                                text = { Text("恢复") },
+                                leadingIcon = { Icon(Icons.Filled.PlayCircle, null) },
+                                enabled = !state.sending,
+                                onClick = { menuOpen = false; viewModel.resume() },
+                            )
+                        }
+                        if (operations?.cancel == true) {
+                            DropdownMenuItem(
+                                text = { Text("取消此任务", color = colors.danger) },
+                                leadingIcon = { Icon(Icons.Filled.StopCircle, null, tint = colors.danger) },
+                                enabled = !state.sending,
+                                onClick = { menuOpen = false; viewModel.cancel() },
+                            )
                         }
                     }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = onOpenComputer) {
-                        Icon(Icons.Filled.Computer, contentDescription = "此任务的电脑")
-                    }
-                    if (operations != null) {
-                        if (operations.steer || operations.interrupt) {
-                            IconButton(onClick = { viewModel.interrupt() }, enabled = !state.sending) {
-                                Icon(Icons.Filled.PauseCircle, contentDescription = "暂停此次运行")
-                            }
-                        }
-                        if (operations.resume) {
-                            IconButton(onClick = { viewModel.resume() }, enabled = !state.sending) {
-                                Icon(Icons.Filled.PlayCircle, contentDescription = "恢复")
-                            }
-                        }
-                        if (operations.cancel) {
-                            IconButton(onClick = { viewModel.cancel() }, enabled = !state.sending) {
-                                Icon(Icons.Filled.StopCircle, contentDescription = "取消此任务")
-                            }
-                        }
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = colors.canvas, titleContentColor = colors.ink),
-            )
-        },
-        bottomBar = {
-            Composer(
-                state = state,
-                onDraftChange = viewModel::onDraftChange,
-                onSend = viewModel::send,
-            )
-        },
-    ) { padding ->
-        Box(Modifier.fillMaxSize().padding(padding)) {
+                }
+            },
+        )
+
+        Box(Modifier.weight(1f)) {
             when {
-                state.loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = colors.accent)
-                }
-                state.error != null && state.mission == null -> Column(
-                    Modifier.fillMaxSize().padding(EacbotDimens.gutterWide),
-                    verticalArrangement = Arrangement.Center,
-                ) {
-                    Text("无法打开此任务", style = MaterialTheme.typography.titleMedium, color = colors.ink)
-                    Spacer(Modifier.height(6.dp))
-                    Text(state.error!!, style = MaterialTheme.typography.bodyMedium, color = colors.inkMuted)
-                    Spacer(Modifier.height(12.dp))
-                    TextButton(onClick = viewModel::retry) { Text("重试") }
-                }
+                state.loading -> CircularProgressIndicator(Modifier.align(Alignment.Center), color = colors.accent)
+                state.error != null && mission == null -> EmptyHero(
+                    title = "无法打开此任务",
+                    detail = state.error!!,
+                    action = "重试",
+                    onAction = viewModel::retry,
+                    modifier = Modifier.align(Alignment.Center),
+                )
                 else -> LazyColumn(
                     state = listState,
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                        horizontal = EacbotDimens.gutter,
-                        vertical = 12.dp,
-                    ),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(horizontal = EacbotDimens.gutter, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    if (state.resyncing) {
-                        item(key = "resync") {
-                            Text(
-                                "正在补齐遗漏事件",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = colors.attention,
-                            )
-                        }
-                    }
-                    if (state.offline) {
-                        item(key = "offline") {
-                            Text(
-                                "已离线，显示此手机最后收到的状态。",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = colors.inkMuted,
-                            )
-                        }
+                    if (state.resyncing) item(key = "resync") { CaptionChip("正在补齐遗漏事件", color = colors.attention) }
+                    if (state.offline) item(key = "offline") { CaptionChip("已离线，显示此手机最后收到的状态") }
+                    mission?.prompt?.takeIf { it.isNotBlank() }?.let { prompt ->
+                        item(key = "prompt") { ChatBubble(prompt, fromUser = true) }
                     }
                     items(state.fold.items, key = { "${it::class.simpleName}-${it.seq}" }) { item ->
                         when (item) {
-                            is ConversationItem.AssistantText -> TextBubble(item.text, fromAgent = true)
-                            is ConversationItem.StreamText -> TextBubble(item.text, fromAgent = false)
+                            is ConversationItem.AssistantText -> ChatBubble(item.text, fromUser = false)
+                            is ConversationItem.StreamText -> OutputCard(item.text)
                             is ConversationItem.ToolCard -> ToolCard(item)
                             is ConversationItem.ApprovalCard -> ApprovalCard(
                                 item = item,
                                 busy = state.sending,
                                 onResolve = { decision, answer -> viewModel.resolveApproval(item.approvalId, decision, answer) },
                             )
-                            is ConversationItem.QuestionCard -> QuestionCard(
-                                item = item,
-                                busy = state.sending,
-                                onAnswer = viewModel::answerQuestion,
-                            )
+                            is ConversationItem.QuestionCard -> QuestionCard(item, state.sending, viewModel::answerQuestion)
                             is ConversationItem.RunMarker -> RunMarkerLine(item.kind, item.detail)
-                            is ConversationItem.ArtifactCard -> ArtifactLine(item)
+                            is ConversationItem.ArtifactCard -> ArtifactCard(item)
                             is ConversationItem.UsageLine -> UsageLine(item)
                         }
                     }
-                    item(key = "tail") { Spacer(Modifier.height(8.dp)) }
+                    if (working) item(key = "typing") { TypingBubble() }
                 }
             }
         }
-    }
-}
 
-@Composable
-private fun ArtifactLine(item: ConversationItem.ArtifactCard) {
-    val colors = LocalEacbotColors.current
-    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text("产物", style = MaterialTheme.typography.labelSmall, color = colors.inkMuted)
-        Text(item.path, style = MaterialTheme.typography.bodySmall, color = colors.ink, maxLines = 1)
-        Text("${item.bytes} 字节", style = MaterialTheme.typography.labelSmall, color = colors.inkMuted)
+        Composer(state, viewModel::onDraftChange, viewModel::send)
     }
 }
 
 @Composable
 private fun UsageLine(item: ConversationItem.UsageLine) {
-    val colors = LocalEacbotColors.current
     val parts = buildList {
         item.inputTokens?.let { add("输入 $it") }
         item.outputTokens?.let { add("输出 $it") }
         item.costUsd?.let { add("$${String.format("%.2f", it)}") }
     }
-    if (parts.isEmpty()) return
-    Text(parts.joinToString(" · "), style = MaterialTheme.typography.labelSmall, color = colors.inkMuted)
+    if (parts.isNotEmpty()) CaptionChip(parts.joinToString(" · "))
 }
 
-/**
- * The input row.
- *
- * While the agent is waiting on a question, the same field becomes the answer,
- * because that is the one thing a person wants to do next.
- */
+/** While the agent waits on a question, the same field becomes the answer. */
 @Composable
-private fun Composer(
-    state: ChatUiState,
-    onDraftChange: (String) -> Unit,
-    onSend: () -> Unit,
-) {
+private fun Composer(state: ChatUiState, onDraftChange: (String) -> Unit, onSend: () -> Unit) {
     val colors = LocalEacbotColors.current
-    val waiting = state.mission?.status == com.eacbot.mobile.core.MissionStatus.WaitingInput
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .background(colors.surface)
-            .navigationBarsPadding()
-            .imePadding(),
-    ) {
-        Hairline()
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.Bottom,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            OutlinedTextField(
-                value = state.draft,
-                onValueChange = onDraftChange,
-                modifier = Modifier.weight(1f),
-                enabled = state.canSend && !state.sending,
-                placeholder = { Text(if (!state.canSend) "没有活动会话" else if (waiting) "回答智能体" else "向 Hermes 发送消息") },
-                maxLines = 5,
-                shape = RoundedCornerShape(EacbotDimens.controlRadius),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Default),
-            )
-            IconButton(
-                onClick = onSend,
-                enabled = state.canSend && !state.sending && state.draft.isNotBlank(),
-            ) {
-                if (state.sending) {
-                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = colors.accent)
-                } else {
-                    Icon(
-                        Icons.AutoMirrored.Filled.Send,
-                        contentDescription = "发送",
-                        tint = if (state.canSend && state.draft.isNotBlank()) colors.accent else colors.inkMuted,
-                    )
-                }
-            }
-        }
+    val status = state.mission?.status
+    Column(Modifier.fillMaxWidth().navigationBarsPadding()) {
         state.error?.let { message ->
-            Text(
-                text = message,
-                style = MaterialTheme.typography.labelSmall,
-                color = colors.danger,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-            )
+            if (state.mission != null) NoticeBanner(message, tone = StatusTone.Failed)
         }
-        val status = state.mission?.status
         if (status != null && status.isTerminal) {
             Text(
-                text = statusLabel(status),
-                style = MaterialTheme.typography.labelSmall,
+                "此任务${statusLabel(status)}，无法再发送消息",
+                style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
                 color = colors.inkMuted,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 4.dp),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             )
         }
-        Spacer(Modifier.width(1.dp))
+        MessageComposer(
+            text = state.draft,
+            change = onDraftChange,
+            send = onSend,
+            enabled = state.canSend && !state.sending,
+            hint = when {
+                state.sending -> "发送中…"
+                !state.canSend -> "当前任务无法接收消息"
+                status == MissionStatus.WaitingInput -> "回答智能体"
+                else -> "发送消息"
+            },
+        )
     }
 }

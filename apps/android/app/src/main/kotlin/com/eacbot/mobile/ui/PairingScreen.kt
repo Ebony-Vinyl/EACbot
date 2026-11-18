@@ -3,27 +3,18 @@ package com.eacbot.mobile.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -36,6 +27,7 @@ import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.eacbot.mobile.core.ApiException
@@ -60,8 +52,9 @@ fun PairingScreen(
     defaultLabel: String,
     onPair: suspend (baseUrl: String, code: String, label: String) -> Result<Unit>,
     notice: String? = null,
-    heading: String = "你的本地服务",
-    description: String = "服务运行在你自己的电脑上。启动后，输入终端显示的地址和配对码。",
+    heading: String = "连接你的电脑",
+    description: String = "在电脑上启动 EACbot，输入它显示的服务地址和配对码。",
+    onBack: (() -> Unit)? = null,
 ) {
     val colors = LocalEacbotColors.current
     var address by remember { mutableStateOf("") }
@@ -108,112 +101,99 @@ fun PairingScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(colors.canvas)
-            .safeDrawingPadding()
-            .imePadding()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = EacbotDimens.gutterWide, vertical = 28.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+            .background(colors.canvasGrouped)
+            .imePadding(),
     ) {
-        Spacer(Modifier.height(24.dp))
-        Text(
-            text = heading,
-            style = MaterialTheme.typography.displaySmall,
-            color = colors.ink,
-        )
-        Text(
-            text = description,
-            style = MaterialTheme.typography.bodyLarge,
-            color = colors.inkMuted,
-        )
-
-        if (notice != null) {
-            Text(
-                text = notice,
-                style = MaterialTheme.typography.bodyMedium,
-                color = colors.attention,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(colors.surfaceRaised, RoundedCornerShape(EacbotDimens.controlRadius))
-                    .padding(12.dp),
-            )
-        }
-
-        Spacer(Modifier.height(6.dp))
-        OutlinedTextField(
-            value = address,
-            onValueChange = { address = it.trim() },
-            label = { Text("服务地址") },
-            placeholder = { Text("192.168.1.20:8789") },
-            singleLine = true,
-            enabled = !busy,
-            keyboardOptions = KeyboardOptions(
-                capitalization = KeyboardCapitalization.None,
-                autoCorrectEnabled = false,
-                imeAction = ImeAction.Next,
-            ),
-            keyboardActions = KeyboardActions(onNext = { focus.moveFocus(FocusDirection.Down) }),
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(EacbotDimens.controlRadius),
-        )
-        OutlinedTextField(
-            value = code,
-            onValueChange = { code = it.trim() },
-            label = { Text("配对码") },
-            placeholder = { Text("ABCD-EFGH") },
-            singleLine = true,
-            enabled = !busy,
-            keyboardOptions = KeyboardOptions(
-                capitalization = KeyboardCapitalization.Characters,
-                autoCorrectEnabled = false,
-                imeAction = ImeAction.Next,
-            ),
-            keyboardActions = KeyboardActions(onNext = { focus.moveFocus(FocusDirection.Down) }),
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(EacbotDimens.controlRadius),
-        )
-        OutlinedTextField(
-            value = label,
-            onValueChange = { label = it },
-            label = { Text("此手机的名称") },
-            singleLine = true,
-            enabled = !busy,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(onDone = { submit() }),
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(EacbotDimens.controlRadius),
-        )
-
-        if (error != null) {
-            Text(error!!, style = MaterialTheme.typography.bodyMedium, color = colors.danger)
-        }
-
-        Button(
-            onClick = { submit() },
-            enabled = !busy,
-            modifier = Modifier.fillMaxWidth().height(52.dp),
-            shape = RoundedCornerShape(EacbotDimens.controlRadius),
-            colors = ButtonDefaults.buttonColors(containerColor = colors.accent, contentColor = colors.accentInk),
+        PageHeader(title = "连接电脑", onBack = onBack)
+        Column(
+            Modifier
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+                .navigationBarsPadding(),
         ) {
-            if (busy) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(20.dp),
-                    strokeWidth = 2.dp,
-                    color = colors.accentInk,
-                )
-                Spacer(Modifier.size(10.dp))
-                Text("正在配对")
-            } else {
-                Text("配对此手机", style = MaterialTheme.typography.labelLarge)
+            Column(
+                Modifier.fillMaxWidth().padding(horizontal = 32.dp, vertical = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                CompanionAvatar(72.dp)
+                Gap(6.dp)
+                Text(heading, style = MaterialTheme.typography.headlineSmall, color = colors.ink, textAlign = TextAlign.Center)
+                Text(description, style = MaterialTheme.typography.bodyMedium, color = colors.inkMuted, textAlign = TextAlign.Center)
             }
-        }
 
-        Text(
-            text = "配对码仅使用一次，约十分钟后过期。此手机将获得独立会话，可随时撤销。",
-            style = MaterialTheme.typography.bodySmall,
-            color = colors.inkMuted,
-            textAlign = TextAlign.Start,
-        )
+            if (notice != null) {
+                Gap(4.dp)
+                NoticeBanner(notice, tone = StatusTone.Waiting)
+            }
+
+            GroupLabel("电脑上显示的信息")
+            GroupCard {
+                GroupTextField(
+                    label = "服务地址",
+                    value = address,
+                    onValueChange = { address = it.trim() },
+                    placeholder = "192.168.1.20:8789",
+                    enabled = !busy,
+                    divider = true,
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.None,
+                        autoCorrectEnabled = false,
+                        keyboardType = KeyboardType.Uri,
+                        imeAction = ImeAction.Next,
+                    ),
+                    keyboardActions = KeyboardActions(onNext = { focus.moveFocus(FocusDirection.Down) }),
+                )
+                GroupTextField(
+                    label = "配对码",
+                    value = code,
+                    onValueChange = { code = it.trim() },
+                    placeholder = "ABCD-EFGH",
+                    enabled = !busy,
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Characters,
+                        autoCorrectEnabled = false,
+                        imeAction = ImeAction.Done,
+                    ),
+                    keyboardActions = KeyboardActions(onDone = { submit() }),
+                )
+            }
+
+            GroupLabel("此手机")
+            GroupCard {
+                GroupTextField(
+                    label = "设备名称",
+                    value = label,
+                    onValueChange = { label = it },
+                    placeholder = defaultLabel,
+                    enabled = !busy,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { submit() }),
+                )
+            }
+
+            if (error != null) {
+                Gap(14.dp)
+                NoticeBanner(error!!, tone = StatusTone.Failed)
+            }
+
+            Gap(24.dp)
+            PrimaryButton(
+                text = "配对此手机",
+                onClick = { submit() },
+                busy = busy,
+                busyText = "正在配对",
+                modifier = Modifier.fillMaxWidth().padding(horizontal = EacbotDimens.gutter),
+            )
+            Text(
+                text = "配对码仅使用一次，约十分钟后过期。此手机将获得独立会话，可随时撤销。",
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.inkMuted,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp, vertical = 14.dp),
+            )
+            Gap(24.dp)
+        }
     }
 }
 
@@ -222,31 +202,14 @@ fun PairingScreen(
 fun SignedOutScreen(reason: String, onPairAgain: () -> Unit) {
     val colors = LocalEacbotColors.current
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(colors.canvas)
-            .safeDrawingPadding()
-            .padding(EacbotDimens.gutterWide),
+        modifier = Modifier.fillMaxSize().background(colors.canvas).safeDrawingPadding(),
         verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.Start,
     ) {
-        Text("已退出登录", style = MaterialTheme.typography.headlineSmall, color = colors.ink)
-        Spacer(Modifier.height(8.dp))
-        Text(reason, style = MaterialTheme.typography.bodyLarge, color = colors.inkMuted)
-        Spacer(Modifier.height(8.dp))
-        Text(
-            "请重新配对以继续使用此手机，电脑上的内容未更改。",
-            style = MaterialTheme.typography.bodyMedium,
-            color = colors.inkMuted,
+        EmptyHero(
+            title = "已退出登录",
+            detail = "$reason\n请重新配对以继续使用此手机，电脑上的内容未更改。",
+            action = "重新配对",
+            onAction = onPairAgain,
         )
-        Spacer(Modifier.height(20.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(
-                onClick = onPairAgain,
-                shape = RoundedCornerShape(EacbotDimens.controlRadius),
-                colors = ButtonDefaults.buttonColors(containerColor = colors.accent, contentColor = colors.accentInk),
-            ) { Text("重新配对") }
-            TextButton(onClick = onPairAgain) { Text("输入其他地址") }
-        }
     }
 }

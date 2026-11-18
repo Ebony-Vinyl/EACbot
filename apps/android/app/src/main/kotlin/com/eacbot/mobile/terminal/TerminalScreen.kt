@@ -1,5 +1,6 @@
 package com.eacbot.mobile.terminal
 
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -64,6 +65,10 @@ import com.eacbot.mobile.core.TerminalConnectionState
 import com.eacbot.mobile.core.TerminalRole
 import com.eacbot.mobile.design.EacbotDimens
 import com.eacbot.mobile.design.LocalEacbotColors
+import com.eacbot.mobile.ui.ChoicePill
+import com.eacbot.mobile.ui.CircleButton
+import com.eacbot.mobile.ui.PageHeader
+import androidx.compose.foundation.layout.navigationBarsPadding
 
 /**
  * A terminal on a phone.
@@ -92,63 +97,33 @@ fun TerminalScreen(
     Scaffold(
         containerColor = colors.code,
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text = state.title.ifBlank { title },
-                            style = MaterialTheme.typography.titleSmall,
-                            color = colors.ink,
-                            maxLines = 1,
-                        )
-                        Text(
-                            text = statusLine(state),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = when {
-                                state.isReconnecting -> colors.attention
-                                state.error != null -> colors.danger
-                                else -> colors.inkMuted
-                            },
-                        )
-                    }
+            PageHeader(
+                title = state.title.ifBlank { title },
+                subtitle = statusLine(state),
+                subtitleColor = when {
+                    state.isReconnecting -> colors.attention
+                    state.error != null -> colors.danger
+                    else -> colors.inkMuted
                 },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回", tint = colors.ink)
-                    }
-                },
+                onBack = onBack,
+                modifier = Modifier.background(colors.canvas),
                 actions = {
                     if (state.isReconnecting || state.connection is TerminalConnectionState.Failed) {
-                        IconButton(onClick = viewModel::retry) {
-                            Icon(Icons.Filled.Refresh, contentDescription = "立即重新连接", tint = colors.ink)
-                        }
+                        CircleButton(Icons.Filled.Refresh, "立即重新连接", viewModel::retry)
                     }
-                    IconButton(onClick = { keyboardOpen = !keyboardOpen }) {
-                        Icon(Icons.Filled.Keyboard, contentDescription = "键盘", tint = colors.ink)
-                    }
+                    CircleButton(Icons.Filled.Keyboard, "键盘", { keyboardOpen = !keyboardOpen })
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = colors.surface, titleContentColor = colors.ink),
             )
         },
         bottomBar = {
-            Column(Modifier.fillMaxWidth().background(colors.surface).imePadding()) {
+            Column(Modifier.fillMaxWidth().background(colors.canvas).navigationBarsPadding().imePadding()) {
                 Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
+                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    FilterChip(
-                        selected = state.role == TerminalRole.Observe,
-                        onClick = { viewModel.setRole(TerminalRole.Observe) },
-                        label = { Text("观看") },
-                        leadingIcon = { Icon(Icons.Filled.Visibility, contentDescription = null, modifier = Modifier.size(16.dp)) },
-                    )
-                    FilterChip(
-                        selected = state.role == TerminalRole.Control,
-                        onClick = { viewModel.setRole(TerminalRole.Control) },
-                        label = { Text("控制") },
-                        leadingIcon = { Icon(Icons.Filled.Keyboard, contentDescription = null, modifier = Modifier.size(16.dp)) },
-                    )
+                    ChoicePill("观看", state.role == TerminalRole.Observe, { viewModel.setRole(TerminalRole.Observe) })
+                    ChoicePill("控制", state.role == TerminalRole.Control, { viewModel.setRole(TerminalRole.Control) })
                     Spacer(Modifier.weight(1f))
                     Text(
                         text = "${state.cols}×${state.rows}",
@@ -161,7 +136,7 @@ fun TerminalScreen(
                         text = when {
                             state.role == TerminalRole.Observe -> "当前仅查看，切换到“控制”后即可输入。"
                             state.isLive -> "此查看器未获控制权限。"
-                            else -> "Connecting…"
+                            else -> "正在连接终端…"
                         },
                         style = MaterialTheme.typography.labelSmall,
                         color = colors.inkMuted,
@@ -170,11 +145,15 @@ fun TerminalScreen(
                 }
                 if (keyboardOpen && state.canType) {
                     Row(
-                        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+                        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         OutlinedTextField(
+                colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                    unfocusedContainerColor = colors.surfaceRaised, focusedContainerColor = colors.surface,
+                    unfocusedBorderColor = androidx.compose.ui.graphics.Color.Transparent, focusedBorderColor = colors.inkMuted,
+                ),
                             value = typed,
                             onValueChange = {
                                 // Each keystroke goes out as it is typed, the way
@@ -207,8 +186,7 @@ fun TerminalScreen(
             Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .background(colors.code)
-                .safeDrawingPadding(),
+                .background(colors.code),
         ) {
             if (state.loading) {
                 Text("正在打开终端…", style = MaterialTheme.typography.bodyMedium, color = colors.inkMuted, modifier = Modifier.padding(16.dp))
@@ -266,17 +244,17 @@ private fun QuickKeys(onSend: (ByteArray) -> Unit) {
     )
     val colors = LocalEacbotColors.current
     LazyRow(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         items(keys, key = { it.first }) { (label, bytes) ->
             Box(
                 Modifier
-                    .background(colors.surfaceRaised, RoundedCornerShape(8.dp))
+                    .background(colors.surface, RoundedCornerShape(12.dp))
                     .pointerInput(label) { detectTapGestures { onSend(bytes) } }
-                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                    .padding(horizontal = 14.dp, vertical = 9.dp),
             ) {
-                Text(label, style = MaterialTheme.typography.labelSmall, color = colors.ink)
+                Text(label, style = MaterialTheme.typography.labelMedium, color = colors.ink)
             }
         }
     }
