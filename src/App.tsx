@@ -350,10 +350,10 @@ function Shell({ viewer }: { viewer: WelcomeViewer | null }) {
         ref={menuButtonRef}
         aria-label={t("app.openBotList")}
         aria-expanded={drawerOpen}
-        onClick={() => setDrawerOpen(true)}
-        className="absolute left-3 top-3 z-30 rounded-md p-1.5 text-ink-secondary hover:bg-raised hover:text-ink max-md:flex max-md:size-9 max-md:items-center max-md:justify-center max-md:rounded-full max-md:border max-md:border-hairline max-md:bg-card max-md:p-0 max-md:text-ink md:hidden"
+        onClick={() => setDrawerOpen(open => !open)}
+        className="companion-chats absolute left-3 top-3 z-30 rounded-md p-1.5 text-ink-secondary hover:bg-raised hover:text-ink max-md:flex max-md:size-9 max-md:items-center max-md:justify-center max-md:rounded-full max-md:border max-md:border-hairline max-md:bg-card max-md:p-0 max-md:text-ink md:hidden"
       >
-        <Menu size={18} className="max-md:hidden" />
+        <Menu size={15} className="max-md:hidden" /><span className="hidden md:inline">{t("neutral.chat")}</span>
         <ChevronLeft size={20} aria-hidden="true" className="hidden max-md:block" />
       </button>}
       {drawerOpen && !calendarFocus && (
@@ -374,7 +374,7 @@ function Shell({ viewer }: { viewer: WelcomeViewer | null }) {
       {/* The list of bots and the board take the same place: one shows at a time, so a person swaps rather than
           stacking. Both are the left-hand card. The swap is a cross-fade with a small slide, so the two surfaces read
           as one card changing its contents instead of two panes cutting in and out. */}
-      {conversationView && !calendarFocus && (
+      {conversationView && !calendarFocus && (drawerOpen || !sidebarInline) && (
         <SidebarSwap>
           {shellView === "board" ? <TaskBoardCard /> : <Sidebar
             onOpenTasks={() => { dispatch({ type: "showTaskCenter" }); setDrawerOpen(false); }}
