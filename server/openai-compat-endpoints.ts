@@ -57,6 +57,6 @@ export function withEndpointUrls(described: unknown, configs: InstanceConfigMap)
   return described.map((instance: { instanceId?: string }) => {
     const entry = instance.instanceId ? configs[instance.instanceId] : undefined;
     const url = entry && isAddedEndpoint(instance.instanceId!, entry) ? endpointDisplayUrl(entry.config) : undefined;
-    return url ? { ...instance, url } : instance;
+    return url ? { ...instance, url, managedModels: (entry?.config as { managedModels?: string[] })?.managedModels ?? [] } : instance;
   });
 }

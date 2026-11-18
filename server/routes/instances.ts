@@ -17,7 +17,7 @@ import {
 } from "../claude-endpoints.ts";
 import { updateClaudeCli } from "../claude-update.ts";
 import { persistableInstanceConfigs, saveConfig, withInstanceCli, type AppConfig } from "../config.ts";
-import { addEndpoint, addEndpointSchema, isAddedEndpoint, withEndpointUrls } from "../openai-compat-endpoints.ts";
+import { addEndpoint, addEndpointSchema, endpointBaseUrl, isAddedEndpoint, withEndpointUrls } from "../openai-compat-endpoints.ts";
 import type { InstanceConfigMap, ModelSelection, ProviderInstance } from "../contracts.ts";
 import { removeAntigravityProfile } from "../drivers/antigravity-acp.ts";
 import { BUILT_IN_DRIVERS } from "../drivers/builtIn.ts";
@@ -238,7 +238,7 @@ export function createInstanceRoutes(deps: InstanceRouteDeps): RouteHandler {
       if (state.phase !== "waiting") registry.forgetSnapshots();
       return json(res, 200, { auth: state });
     }
-    const instanceAction = /^\/api\/instances\/([\w.-]+)\/(refresh-models|install|check|auth\/start|auth\/complete|auth\/cancel|auth\/sign-out)$/.exec(path);
+    const instanceAction = /^\/api\/instances\/([\w.-]+)\/(pull-models|refresh-models|install|check|auth\/start|auth\/complete|auth\/cancel|auth\/sign-out)$/.exec(path);
     if (method === "POST" && instanceAction) {
       if (!String(req.headers["content-type"] ?? "").toLowerCase().startsWith("application/json")) {
         return json(res, 415, { error: "content-type must be application/json" });
@@ -253,6 +253,22 @@ export function createInstanceRoutes(deps: InstanceRouteDeps): RouteHandler {
           if (!instance) return json(res, 404, { error: "unknown instance" });
           res.setHeader("cache-control", "no-store");
           return json(res, 200, await (deps.checkInstance ?? checkEngine)(instance));
+        }
+        if (action === "pull-models") {
+          const entry = cfg.instances?.[instanceId];
+          if (!isAddedEndpoint(instanceId, entry)) return json(res, 404, { error: "Unknown endpoint" });
+          const config = entry!.config as { url: string; key: string };
+          const base = endpointBaseUrl(config.url);
+          if (!base) return json(res, 400, { error: "Invalid saved base URL" });
+          const upstream = await fetch(`${base}/models`, {
+            headers: { authorization: `Bearer ${config.key}` }, redirect: "error", signal: AbortSignal.timeout(10000),
+          });
+          if (!upstream.ok) return json(res, 502, { error: `拉取模型失败：上游返回 HTTP ${upstream.status}` });
+          const payload = await upstream.json();
+          const rows = Array.isArray(payload) ? payload : payload && typeof payload === "object" && "data" in payload ? payload.data : undefined;
+          if (!Array.isArray(rows)) return json(res, 502, { error: "服务未返回模型列表" });
+          const models = [...new Set(rows.flatMap(row => typeof row?.id === "string" && row.id.trim() ? [row.id.trim()] : []))];
+          return json(res, 200, { models });
         }
         if (action === "refresh-models") {
           if (!(await registry.refreshModels(instanceId))) return json(res, 404, { error: "unknown instance" });
@@ -386,6 +402,21 @@ export function createInstanceRoutes(deps: InstanceRouteDeps): RouteHandler {
         const instances = persistableInstanceConfigs(result.config);
         if (!result.ok || !Object.hasOwn(instances, instanceId)) return json(res, 404, { error: `unknown instance "${instanceId}"` });
         const entry = instances[instanceId];
+        if (body.endpoint) {
+          if (!isAddedEndpoint(instanceId, entry)) return json(res, 400, { error: "Select an added OpenAI-compatible server." });
+          const { displayName, url, key, models } = body.endpoint;
+          const base = endpointBaseUrl(url);
+          if (!base) return json(res, 400, { error: "Invalid base URL." });
+          const config = (entry.config ?? {}) as Record<string, unknown>;
+          if (key && /^https?:\/\//i.test(key)) return json(res, 400, { error: "Enter the API key, not a URL." });
+          if (!key && new URL(base).origin !== new URL(String(config.url)).origin) {
+            return json(res, 400, { error: "更换服务器地址的域名或端口时，请重新输入 API 密钥。" });
+          }
+          entry.displayName = displayName;
+          if (models?.length) config.managedModels = [...new Set(models)];
+          else if (models) delete config.managedModels;
+          entry.config = { ...config, url: base, ...(key ? { key } : {}) };
+        }
         if ((body.configDir !== undefined && entry.driver !== "claudeAgent") || (body.displayName !== undefined && !["claudeAgent", "codex"].includes(entry.driver))) {
           return json(res, 400, { error: "Account settings are available for Claude and ChatGPT accounts only." });
         }

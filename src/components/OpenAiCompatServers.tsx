@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { Loader2, Plus, RotateCw, Trash2 } from "lucide-react";
 import { api, useStore, type InstanceInfo } from "@/state/store";
 import { t } from "@/lib/i18n";
@@ -74,7 +74,7 @@ export function OtherOpenAiCompatServers() {
   return <AddedServers servers={addedServers(state.instances)} />;
 }
 
-function AddedServers({ servers }: { servers: Array<InstanceInfo & { url?: string }> }) {
+function AddedServers({ servers }: { servers: Array<InstanceInfo & { url?: string; managedModels?: string[] }> }) {
   const { dispatch, refreshInstances } = useStore();
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
@@ -82,6 +82,7 @@ function AddedServers({ servers }: { servers: Array<InstanceInfo & { url?: strin
   const [models, setModels] = useState("");
   const [busy, setBusy] = useState<"add" | "other" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [edit, setEdit] = useState<{ id: string; name: string; url: string; key: string; models: string; available?: string[] } | null>(null);
   const ready = Boolean(name.trim() && url.trim() && key.trim());
 
   const run = (kind: "add" | "other", request: () => Promise<{ instances?: unknown }>, onDone?: () => void) => {
@@ -116,11 +117,15 @@ function AddedServers({ servers }: { servers: Array<InstanceInfo & { url?: strin
       <p className="mb-2 text-[12px] leading-4 text-ink-secondary">{t("apiInstances.subtitle")}</p>
       {servers.length === 0 && <p className="text-[12px] leading-4 text-ink-secondary">{t("apiInstances.empty")}</p>}
       {servers.map((server) => (
-        <div key={server.instanceId} className="mb-1.5 flex items-center justify-between gap-2 rounded-lg border border-hairline/60 bg-inset px-3 py-1.5">
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-[12px] text-ink">{server.displayName}</div>
-            {server.url && <div className="truncate font-mono text-[11px] text-ink-secondary">{server.url}</div>}
-          </div>
+        <Fragment key={server.instanceId}><div className="mb-1.5 flex items-center justify-between gap-2 rounded-lg border border-hairline/60 bg-inset px-3 py-1.5">
+          <button type="button" className="min-w-0 flex-1 text-left" disabled={busy !== null}
+            aria-expanded={edit?.id === server.instanceId}
+            onClick={() => setEdit(edit?.id === server.instanceId ? null : {
+              id: server.instanceId, name: server.displayName, url: server.url ?? "", key: "", models: (server.managedModels ?? []).join(", "),
+            })}>
+            <span className="block truncate text-[12px] text-ink">{server.displayName} · {t("claudeEndpoints.edit")} ▾</span>
+            <span className="block truncate font-mono text-[11px] text-ink-secondary">{server.url}</span>
+          </button>
           <ReplyWaitSelect
             server={server}
             disabled={busy !== null}
@@ -132,9 +137,9 @@ function AddedServers({ servers }: { servers: Array<InstanceInfo & { url?: strin
             disabled={busy !== null}
             aria-label={t("apiInstances.refreshModels", { name: server.displayName })}
             title={t("apiInstances.refreshModels", { name: server.displayName })}
-            className={ICON_BUTTON}
+            className="ui-button shrink-0"
           >
-            <RotateCw size={13} aria-hidden="true" />
+            <RotateCw size={13} aria-hidden="true" /> {t("model.refreshTitle")}
           </button>
           <button
             type="button"
@@ -147,6 +152,45 @@ function AddedServers({ servers }: { servers: Array<InstanceInfo & { url?: strin
             <Trash2 size={13} aria-hidden="true" />
           </button>
         </div>
+        {edit?.id === server.instanceId && <form className="mb-3 grid gap-2 rounded-lg border border-hairline p-3" onSubmit={(event) => {
+          event.preventDefault();
+          run("other", () => api(`/api/instances/${encodeURIComponent(edit.id)}`, { method: "PATCH", body: JSON.stringify({ endpoint: {
+            displayName: edit.name.trim(), url: edit.url.trim(), ...(edit.key.trim() ? { key: edit.key.trim() } : {}), models: modelIds(edit.models),
+          } }) }), () => setEdit(null));
+        }}>
+          {(["name", "url", "key", "models"] as const).map((field) => <label key={field} className="grid gap-1 text-xs">
+            {t(`apiInstances.${field}`)}
+            <input className={INPUT} type={field === "key" ? "password" : field === "url" ? "url" : "text"}
+              required={field === "name" || field === "url"} disabled={busy !== null} autoComplete="off"
+              placeholder={field === "key" ? "留空保留现有密钥" : undefined}
+              value={edit[field]} onChange={(event) => setEdit({ ...edit, [field]: event.target.value })}/>
+          </label>)}
+          <button className="ui-button self-start" type="button" disabled={busy !== null || edit.url.trim() !== server.url || Boolean(edit.key.trim())}
+            title="使用已保存的地址和密钥拉取模型。更换连接信息后请先保存。"
+            onClick={async () => {
+              setBusy("other");
+              setError(null);
+              try {
+                const { models } = await api<{ models: string[] }>(`/api/instances/${encodeURIComponent(edit.id)}/pull-models`, { method: "POST" });
+                setEdit(current => current?.id === edit.id ? { ...current, available: models } : current);
+              } catch (cause) {
+                setError(cause instanceof Error ? cause.message : "拉取失败");
+              } finally { setBusy(null); }
+            }}>拉取模型列表</button>
+          {edit.available && <fieldset className="max-h-48 overflow-y-auto rounded border border-hairline p-2">
+            <legend>已拉取 {edit.available.length} 个模型，勾选后保存</legend>
+            {edit.available.map(id => <label key={id} className="flex items-center gap-2 text-xs">
+              <input type="checkbox" checked={modelIds(edit.models).includes(id)} onChange={event => {
+                const selected = modelIds(edit.models).filter(model => model !== id);
+                if (event.target.checked) selected.push(id);
+                setEdit({ ...edit, models: selected.join(", ") });
+              }}/>{id}
+            </label>)}
+          </fieldset>}
+          <div className="flex gap-2"><button className="ui-button" disabled={busy !== null}>{t("common.save")}</button>
+            <button type="button" className="ui-button" disabled={busy !== null} onClick={() => setEdit(null)}>{t("common.cancel")}</button></div>
+        </form>}
+        </Fragment>
       ))}
       <div className="mt-2 flex flex-col gap-1.5">
         <button
