@@ -1,7 +1,7 @@
 // A finished sign-in step changes what an engine reports: the next engine list probes its CLI again.
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { instanceConfigs, type AppConfig } from "../config.ts";
 import type { ProviderAuthenticationStart, ProviderAuthenticationStatus } from "../contracts.ts";
@@ -179,6 +179,22 @@ describe("installing an engine's own build from Settings", () => {
     expect(body.usingAppCopy).toBeUndefined();
     expect(persisted).toEqual([]);
   });
+});
+
+it("edits an endpoint in place and keeps the saved key on the original origin only", async () => {
+  const id = "openai-compat-test";
+  const cfg = { instances: { [id]: { driver: "openai-compat", config: { key: "fixture", url: "https://old.example/v1", managedModels: ["old"] } } } };
+  const persist = vi.fn();
+  const { base } = await serve({ cfg: cfg as unknown as AppConfig, persistProviderInstance: persist });
+  const patch = (url: string) => fetch(`${base}/api/instances/${id}`, {
+    method: "PATCH", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ endpoint: { displayName: "Updated", url, models: [] } }),
+  });
+  expect((await patch("https://other.example/v2")).status).toBe(400);
+  expect(persist).not.toHaveBeenCalled();
+  expect((await patch("https://old.example/v2")).status).toBe(200);
+  expect(persist.mock.calls[0][1][id]).toMatchObject({ displayName: "Updated", config: { key: "fixture", url: "https://old.example/v2" } });
+  expect(persist.mock.calls[0][1][id].config).not.toHaveProperty("managedModels");
 });
 
 describe("a server's reply wait", () => {

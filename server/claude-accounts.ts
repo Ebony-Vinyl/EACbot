@@ -1,5 +1,6 @@
 // Named accounts reuse provider instances. Claude owns login and credentials;
 // removing an EACbot entry never removes its directory or signs it out.
+import { addEndpointSchema } from "./openai-compat-endpoints.ts";
 import { randomUUID } from "node:crypto";
 import { realpathSync } from "node:fs";
 import { join } from "node:path";
@@ -13,6 +14,7 @@ const displayName = z.string().trim().min(1).max(80).refine((value) => !/\p{Cc}/
 const configDir = z.string().trim().max(4096).refine((value) => !/\p{Cc}/u.test(value), "Directory cannot contain control characters");
 export const createClaudeAccountSchema = z.object({ displayName, configDir: configDir.optional() }).strict();
 export const instanceSettingsSchema = z.object({
+  endpoint: addEndpointSchema.omit({ catalog: true }).partial({ key: true }).optional(),
   cli: z.string().max(4096).refine((value) => !/\p{Cc}/u.test(value), "CLI cannot contain control characters").optional(),
   displayName: displayName.optional(),
   configDir: configDir.optional(),
