@@ -265,7 +265,7 @@ export function createInstanceRoutes(deps: InstanceRouteDeps): RouteHandler {
           });
           if (!upstream.ok) return json(res, 502, { error: `拉取模型失败：上游返回 HTTP ${upstream.status}` });
           const payload = await upstream.json();
-          const rows = Array.isArray(payload) ? payload : payload?.data;
+          const rows = Array.isArray(payload) ? payload : payload && typeof payload === "object" && "data" in payload ? payload.data : undefined;
           if (!Array.isArray(rows)) return json(res, 502, { error: "服务未返回模型列表" });
           const models = [...new Set(rows.flatMap(row => typeof row?.id === "string" && row.id.trim() ? [row.id.trim()] : []))];
           return json(res, 200, { models });
