@@ -1,5 +1,6 @@
 package com.eacbot.mobile.desktop
 
+import androidx.compose.material3.CenterAlignedTopAppBar
 import android.annotation.SuppressLint
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -57,6 +58,15 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.unit.dp
 import com.eacbot.mobile.design.EacbotDimens
 import com.eacbot.mobile.design.LocalEacbotColors
+import com.eacbot.mobile.ui.CircleButton
+import com.eacbot.mobile.ui.MessageComposer
+import com.eacbot.mobile.ui.NoticeBanner
+import com.eacbot.mobile.ui.PageHeader
+import com.eacbot.mobile.ui.StatusTone
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 
 /**
  * The user's own computer, through the noVNC entry the core serves.
@@ -84,6 +94,7 @@ fun DesktopScreen(
     var zoom by remember { mutableStateOf(1f) }
     var clipboardOpen by remember { mutableStateOf(false) }
     var keyboardText by remember { mutableStateOf("") }
+    var menuOpen by remember { mutableStateOf(false) }
 
     DisposableEffect(viewerUrl) {
         onDispose {
@@ -104,94 +115,72 @@ fun DesktopScreen(
     Scaffold(
         containerColor = colors.canvas,
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(title, style = MaterialTheme.typography.titleSmall, color = colors.ink, maxLines = 1)
-                        Text(
-                            text = when {
-                                failed -> "已断开连接，重试前保留最后画面。"
-                                loading -> "正在连接你的电脑"
-                                else -> "实时"
-                            },
-                            style = MaterialTheme.typography.labelSmall,
-                            color = if (failed) colors.attention else colors.inkMuted,
-                        )
-                    }
+            PageHeader(
+                title = title,
+                subtitle = when {
+                    failed -> "已断开连接，重试前保留最后画面"
+                    loading -> "正在连接你的电脑"
+                    else -> "实时"
                 },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回", tint = colors.ink)
-                    }
+                subtitleColor = when {
+                    failed -> colors.attention
+                    loading -> colors.inkMuted
+                    else -> colors.success
                 },
+                onBack = onBack,
                 actions = {
-                    IconButton(onClick = { zoom = (zoom - 0.1f).coerceAtLeast(0.6f) }) {
-                        Icon(Icons.Filled.ZoomOut, contentDescription = "缩小", tint = colors.ink)
-                    }
-                    IconButton(onClick = { zoom = (zoom + 0.1f).coerceAtMost(1.6f) }) {
-                        Icon(Icons.Filled.ZoomIn, contentDescription = "放大", tint = colors.ink)
-                    }
-                    IconButton(onClick = { clipboardOpen = true }) {
-                        Icon(Icons.Filled.ContentPaste, contentDescription = "剪贴板", tint = colors.ink)
-                    }
-                    IconButton(onClick = { webView?.reload() }) {
-                        Icon(Icons.Filled.Refresh, contentDescription = "重新连接", tint = colors.ink)
+                    Box {
+                        CircleButton(Icons.Filled.MoreHoriz, "更多操作", { menuOpen = true })
+                        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                            DropdownMenuItem(
+                                text = { Text("放大") },
+                                leadingIcon = { Icon(Icons.Filled.ZoomIn, null) },
+                                onClick = { zoom = (zoom + 0.1f).coerceAtMost(1.6f) },
+                            )
+                            DropdownMenuItem(
+                                text = { Text("缩小") },
+                                leadingIcon = { Icon(Icons.Filled.ZoomOut, null) },
+                                onClick = { zoom = (zoom - 0.1f).coerceAtLeast(0.6f) },
+                            )
+                            DropdownMenuItem(
+                                text = { Text("剪贴板") },
+                                leadingIcon = { Icon(Icons.Filled.ContentPaste, null) },
+                                onClick = { menuOpen = false; clipboardOpen = true },
+                            )
+                            DropdownMenuItem(
+                                text = { Text("全屏") },
+                                leadingIcon = { Icon(Icons.Filled.Fullscreen, null) },
+                                onClick = {
+                                    menuOpen = false
+                                    webView?.evaluateJavascript("document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen()", null)
+                                },
+                            )
+                            DropdownMenuItem(
+                                text = { Text("重新连接") },
+                                leadingIcon = { Icon(Icons.Filled.Refresh, null) },
+                                onClick = { menuOpen = false; webView?.reload(); failed = false },
+                            )
+                        }
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = colors.surface, titleContentColor = colors.ink),
             )
         },
         bottomBar = {
-            Column(Modifier.fillMaxWidth().background(colors.surface).imePadding()) {
+            Column(Modifier.fillMaxWidth().background(colors.canvas).navigationBarsPadding().imePadding()) {
                 if (handover) {
-                    Text(
-                        text = "你正在控制这台电脑，交回控制权前智能体保持暂停。",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = colors.attention,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
-                    )
+                    NoticeBanner("你正在控制这台电脑，交回控制权前智能体保持暂停。", tone = StatusTone.Waiting)
                 }
-                Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    OutlinedTextField(
-                        value = keyboardText,
-                        onValueChange = { keyboardText = it },
-                        placeholder = { Text("向桌面输入文字") },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true,
-                        leadingIcon = { Icon(Icons.Filled.Keyboard, contentDescription = null) },
-                        shape = RoundedCornerShape(EacbotDimens.controlRadius),
-                    )
-                    TextButton(
-                        onClick = {
-                            if (keyboardText.isNotEmpty()) {
-                                // noVNC's own viewer accepts typed input through
-                                // its RFB channel; this field only puts text on
-                                // the system clipboard, which the viewer reads.
-                                copyToClipboard(context, keyboardText)
-                                keyboardText = ""
-                            }
-                        },
-                    ) { Text("发送") }
-                }
-                Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 2.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    TextButton(onClick = { webView?.evaluateJavascript("document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen()", null) }) {
-                        Icon(Icons.Filled.Fullscreen, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.size(6.dp))
-                        Text("全屏")
-                    }
-                    TextButton(onClick = { webView?.evaluateJavascript("navigator.clipboard?.readText?.().then(t => window.dispatchEvent(new CustomEvent('eacbot-clipboard', {detail: t})))", null) }) {
-                        Text("读取剪贴板")
-                    }
-                    Spacer(Modifier.weight(1f))
-                    TextButton(onClick = { webView?.reload(); failed = false }) { Text("重试") }
-                }
+                MessageComposer(
+                    text = keyboardText,
+                    change = { keyboardText = it },
+                    send = {
+                        if (keyboardText.isNotEmpty()) {
+                            copyToClipboard(context, keyboardText)
+                            keyboardText = ""
+                        }
+                    },
+                    hint = "输入文字，复制到桌面剪贴板",
+                )
             }
         },
     ) { padding ->
@@ -199,8 +188,7 @@ fun DesktopScreen(
             Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .background(colors.code)
-                .safeDrawingPadding(),
+                .background(colors.code),
         ) {
             AndroidView(
                 modifier = Modifier.fillMaxSize(),
@@ -334,13 +322,17 @@ private fun ClipboardDialog(
         containerColor = colors.surface,
         title = { Text("剪贴板", style = MaterialTheme.typography.titleMedium, color = colors.ink) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
                     "文字会放入系统剪贴板供桌面查看器读取，不会发送到服务器。",
                     style = MaterialTheme.typography.bodySmall,
                     color = colors.inkMuted,
                 )
                 OutlinedTextField(
+                colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                    unfocusedContainerColor = colors.surfaceRaised, focusedContainerColor = colors.surface,
+                    unfocusedBorderColor = androidx.compose.ui.graphics.Color.Transparent, focusedBorderColor = colors.inkMuted,
+                ),
                     value = text,
                     onValueChange = { text = it },
                     minLines = 3,

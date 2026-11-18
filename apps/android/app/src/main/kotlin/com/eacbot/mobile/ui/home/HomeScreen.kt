@@ -5,29 +5,26 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -35,28 +32,39 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.eacbot.mobile.core.Mission
 import com.eacbot.mobile.core.MissionFilter
 import com.eacbot.mobile.core.MissionStatus
 import com.eacbot.mobile.design.EacbotDimens
 import com.eacbot.mobile.design.LocalEacbotColors
 import com.eacbot.mobile.design.enterAnimation
-import com.eacbot.mobile.ui.EmptyNote
-import com.eacbot.mobile.ui.StatusPill
+import com.eacbot.mobile.ui.AgentHeader
+import com.eacbot.mobile.ui.Chevron
+import com.eacbot.mobile.ui.ChoiceRow
+import com.eacbot.mobile.ui.CircleButton
+import com.eacbot.mobile.ui.EmptyHero
+import com.eacbot.mobile.ui.Gap
+import com.eacbot.mobile.ui.Hairline
+import com.eacbot.mobile.ui.LargeTitle
+import com.eacbot.mobile.ui.MenuButton
+import com.eacbot.mobile.ui.StatusHeading
+import com.eacbot.mobile.ui.StatusTone
+import com.eacbot.mobile.ui.floating
 import com.eacbot.mobile.ui.statusLabel
+import com.eacbot.mobile.ui.statusTone
+
+private const val CollapsedCount = 3
 
 /**
- * The phone's first screen: the bots (missions) this core is running.
- *
- * A phone shows one list and one conversation, not the desktop's three panes.
- * Each row carries the four states that do not compete: working, needs you,
- * finished, failed. "等待你处理" wins over unread because it is the only one
- * that blocks someone else.
+ * The phone's task list, grouped the way a person acts on it: what needs them,
+ * what is working, what finished. "等待你处理" sorts first because it is the
+ * only state that blocks someone else.
  */
-@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     missions: Map<String, Mission>,
@@ -70,8 +78,10 @@ fun HomeScreen(
 ) {
     val colors = LocalEacbotColors.current
     var filter by remember { mutableStateOf(MissionFilter.All) }
+    var menuOpen by remember { mutableStateOf(false) }
+    val expanded = remember { mutableStateOf(setOf<StatusTone>()) }
     val all = missions.values.toList()
-    val filtered = all
+    val visible = all
         .filter { filter.matches(it.status) }
         .sortedWith(
             compareBy<Mission>(
@@ -79,92 +89,88 @@ fun HomeScreen(
                 { -it.revision },
             ),
         )
+    val groups = listOf(
+        StatusTone.Waiting to "等你处理",
+        StatusTone.Working to "进行中",
+        StatusTone.Failed to "失败",
+        StatusTone.Done to "已完成",
+        StatusTone.Quiet to "已取消",
+    ).mapNotNull { (tone, title) ->
+        val rows = visible.filter { statusTone(it.status) == tone }
+        if (rows.isEmpty()) null else Triple(tone, title, rows)
+    }
 
-    Scaffold(
-        containerColor = colors.canvas,
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text("Hermes 助理", style = MaterialTheme.typography.titleLarge, color = colors.ink)
-                        Text(
-                            text = when {
-                                offlineNote != null -> offlineNote
-                                streamConnected -> "实时"
-                                else -> "重新连接中"
-                            },
-                            style = MaterialTheme.typography.labelSmall,
-                            color = if (offlineNote != null) colors.danger else colors.inkMuted,
+    Box(Modifier.fillMaxSize().background(colors.canvas)) {
+        Column(Modifier.fillMaxSize()) {
+            AgentHeader(
+                name = "EACbot",
+                status = offlineNote ?: if (streamConnected) "实时同步" else "重新连接中",
+                statusColor = when {
+                    offlineNote != null -> colors.danger
+                    streamConnected -> colors.success
+                    else -> colors.attention
+                },
+                leading = { MenuButton() },
+                trailing = {
+                    Box {
+                        CircleButton(Icons.Filled.MoreHoriz, "更多", { menuOpen = true })
+                        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                            DropdownMenuItem(
+                                text = { Text("智能体") },
+                                leadingIcon = { Icon(Icons.Filled.AutoAwesome, null) },
+                                onClick = { menuOpen = false; onOpenAgents() },
+                            )
+                            DropdownMenuItem(
+                                text = { Text("设置与设备") },
+                                leadingIcon = { Icon(Icons.Filled.Settings, null) },
+                                onClick = { menuOpen = false; onOpenSettings() },
+                            )
+                        }
+                    }
+                },
+            )
+            LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = 120.dp)) {
+                item { LargeTitle("任务") }
+                item {
+                    ChoiceRow(MissionFilter.entries, filter, { it.label }, { filter = it })
+                    Gap(8.dp)
+                }
+                if (groups.isEmpty()) {
+                    item {
+                        EmptyHero(
+                            title = if (all.isEmpty()) "还没有任务" else "这里没有任务",
+                            detail = if (all.isEmpty()) "告诉智能体你想完成什么，它会在你的电脑上处理。" else "切换到“全部”查看其他任务。",
+                            action = if (all.isEmpty()) "新建任务" else "查看全部",
+                            onAction = { if (all.isEmpty()) onCreate() else filter = MissionFilter.All },
+                            modifier = Modifier.padding(top = 40.dp),
                         )
                     }
-                },
-                actions = {
-                    TextAction("智能体", onOpenAgents)
-                    IconButton(onClick = onOpenSettings) {
-                        Icon(Icons.Filled.Settings, contentDescription = "设置与设备", tint = colors.ink)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = colors.canvas),
-            )
-        },
-        floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = onCreate,
-                containerColor = colors.accent,
-                contentColor = colors.accentInk,
-                icon = { Icon(Icons.Filled.Add, contentDescription = null) },
-                text = { Text("新建任务") },
-            )
-        },
-    ) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding).safeDrawingPadding()) {
-            TabRow(
-                selectedTabIndex = filter.ordinal,
-                containerColor = colors.canvas,
-                contentColor = colors.accent,
-            ) {
-                MissionFilter.entries.forEach { option ->
-                    Tab(
-                        selected = filter == option,
-                        onClick = { filter = option },
-                        text = {
-                            Text(
-                                option.label,
-                                style = MaterialTheme.typography.labelMedium,
-                                color = if (filter == option) colors.ink else colors.inkMuted,
-                            )
-                        },
-                    )
                 }
-            }
-
-            if (filtered.isEmpty()) {
-                EmptyNote(
-                    title = when {
-                        all.isEmpty() -> "暂无任务"
-                        else -> "暂无${filter.label.lowercase()}项目"
-                    },
-                    detail = when {
-                        all.isEmpty() -> "新建任务后，Hermes 将在你的电脑上运行。"
-                        else -> "切换到“全部”以查看此服务的所有任务。"
-                    },
-                )
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                        start = EacbotDimens.gutter,
-                        end = EacbotDimens.gutter,
-                        top = 8.dp,
-                        bottom = 96.dp,
-                    ),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    items(filtered, key = { it.id }) { mission ->
+                groups.forEachIndexed { index, (tone, title, rows) ->
+                    val open = tone in expanded.value
+                    val shown = if (open) rows else rows.take(CollapsedCount)
+                    item(key = "head-$tone") {
+                        if (index > 0) Hairline(Modifier.padding(vertical = 8.dp))
+                        StatusHeading(title, tone, count = rows.size)
+                    }
+                    items(shown, key = { it.id }) { mission ->
                         MissionRow(mission) { onOpenMission(mission.id) }
                     }
+                    if (rows.size > CollapsedCount) {
+                        item(key = "more-$tone") {
+                            ShowMoreRow(open, rows.size - CollapsedCount) {
+                                expanded.value = if (open) expanded.value - tone else expanded.value + tone
+                            }
+                        }
+                    }
                 }
             }
+        }
+        if (groups.isNotEmpty()) {
+            NewTaskButton(
+                onCreate,
+                Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 20.dp),
+            )
         }
     }
 }
@@ -172,58 +178,81 @@ fun HomeScreen(
 @Composable
 private fun MissionRow(mission: Mission, onClick: () -> Unit) {
     val colors = LocalEacbotColors.current
-    val shape = RoundedCornerShape(EacbotDimens.cardRadius)
+    val (ink, soft) = statusTone(mission.status).colors(colors)
     Row(
-        modifier = Modifier
+        Modifier
             .fillMaxWidth()
             .enterAnimation(mission.id)
-            .background(colors.surface, shape)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 12.dp),
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(horizontal = EacbotDimens.gutterWide, vertical = 12.dp),
         verticalAlignment = Alignment.Top,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Box(
+            Modifier.padding(top = 2.dp).size(22.dp).clip(CircleShape).background(soft),
+            contentAlignment = Alignment.Center,
+        ) {
+            Box(Modifier.size(8.dp).clip(CircleShape).background(ink))
+        }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(
-                text = mission.title.ifBlank { "未命名任务" },
-                style = MaterialTheme.typography.titleSmall,
+                mission.title.ifBlank { "未命名任务" },
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold,
                 color = colors.ink,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                StatusPill(mission.status, compact = true)
+            Text(
+                listOfNotNull(statusLabel(mission.status), mission.model?.display ?: mission.rawAgent.ifBlank { null })
+                    .joinToString(" · "),
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (mission.status == MissionStatus.WaitingInput) colors.attention else colors.inkMuted,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (mission.prompt.isNotBlank()) {
                 Text(
-                    text = mission.model?.display ?: mission.rawAgent,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = colors.inkMuted,
-                    maxLines = 1,
-                )
-            }
-            if (mission.status == MissionStatus.WaitingInput) {
-                Text(
-                    text = "等待你处理后继续",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = colors.attention,
+                    mission.prompt,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.inkFaint,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
         }
-        Text(
-            text = statusLabel(mission.status),
-            style = MaterialTheme.typography.labelSmall,
-            color = colors.inkMuted,
-        )
+        Chevron()
     }
 }
 
 @Composable
-private fun TextAction(label: String, onClick: () -> Unit) {
+private fun ShowMoreRow(open: Boolean, hidden: Int, onClick: () -> Unit) {
     val colors = LocalEacbotColors.current
-    Box(
-        Modifier
-            .clickable(onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 8.dp),
+    Text(
+        if (open) "收起" else "再显示 $hidden 个",
+        style = MaterialTheme.typography.bodyMedium,
+        color = colors.inkMuted,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(start = 56.dp, end = 20.dp, top = 8.dp, bottom = 12.dp),
+    )
+}
+
+@Composable
+private fun NewTaskButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val colors = LocalEacbotColors.current
+    Row(
+        modifier
+            .floating(CircleShape, 14.dp)
+            .clip(CircleShape)
+            .background(colors.primaryBrush)
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(horizontal = 24.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text(label, style = MaterialTheme.typography.labelMedium, color = colors.accent)
+        Icon(Icons.Filled.Add, null, tint = colors.accentInk, modifier = Modifier.size(20.dp))
+        Text("新建任务", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = colors.accentInk)
     }
 }

@@ -1,29 +1,33 @@
 package com.eacbot.mobile
 
 import android.content.Context
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.eacbot.mobile.data.SessionStore
-import com.eacbot.mobile.legacy.LegacyScreen
-import com.eacbot.mobile.legacy.LegacyViewModel
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.Surface
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -31,11 +35,17 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.eacbot.mobile.data.CoreConnection
 import com.eacbot.mobile.data.SessionPhase
-import com.eacbot.mobile.desktop.DesktopScreen
+import com.eacbot.mobile.data.SessionStore
 import com.eacbot.mobile.design.EacbotTheme
+import com.eacbot.mobile.desktop.DesktopScreen
+import com.eacbot.mobile.legacy.LegacyScreen
+import com.eacbot.mobile.legacy.LegacyViewModel
 import com.eacbot.mobile.terminal.TerminalScreen
 import com.eacbot.mobile.terminal.TerminalViewModel
-import com.eacbot.mobile.ui.PairingScreen
+import com.eacbot.mobile.ui.AppDrawer
+import com.eacbot.mobile.ui.AppSection
+import com.eacbot.mobile.ui.DisconnectedHome
+import com.eacbot.mobile.ui.LocalOpenDrawer
 import com.eacbot.mobile.ui.SignedOutScreen
 import com.eacbot.mobile.ui.agents.AgentsScreen
 import com.eacbot.mobile.ui.agents.AgentsViewModel
@@ -48,25 +58,43 @@ import com.eacbot.mobile.ui.home.NewMissionScreen
 import com.eacbot.mobile.ui.home.NewMissionViewModel
 import com.eacbot.mobile.ui.settings.SettingsScreen
 import com.eacbot.mobile.ui.settings.SettingsViewModel
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT),
+        )
         val app = application as EacbotApplication
         setContent {
-            EacbotTheme {
+            EacbotTheme(darkTheme = false) {
                 val preferences = remember { getSharedPreferences("eacbot-backend", Context.MODE_PRIVATE) }
-                var legacy by remember { mutableStateOf(preferences.getBoolean("legacy", true)) }
+                var section by remember {
+                    mutableStateOf(if (preferences.getBoolean("legacy", true)) AppSection.Chat else AppSection.Tasks)
+                }
                 val legacyModel = viewModel { LegacyViewModel(SessionStore(applicationContext, "eacbot-legacy-session")) }
-                Column(Modifier.fillMaxSize().statusBarsPadding()) {
-                    TextButton(onClick = {
-                        legacy = !legacy
-                        preferences.edit().putBoolean("legacy", legacy).apply()
-                    }) { Text(if (legacy) "EACbot · 切换到任务中心" else "任务中心 · 切换到 EACbot") }
-                    Box(Modifier.weight(1f)) {
-                        if (legacy) LegacyScreen(legacyModel)
-                        else EacbotShell(connection = app.connection, sessions = app.sessions)
+                val drawer = rememberDrawerState(DrawerValue.Closed)
+                val scope = rememberCoroutineScope()
+                ModalNavigationDrawer(
+                    drawerState = drawer,
+                    scrimColor = Color(0x52000000),
+                    drawerContent = {
+                        AppDrawer(section) { next ->
+                            section = next
+                            preferences.edit().putBoolean("legacy", next == AppSection.Chat).apply()
+                            scope.launch { drawer.close() }
+                        }
+                    },
+                ) {
+                    CompositionLocalProvider(LocalOpenDrawer provides { scope.launch { drawer.open() } }) {
+                        Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                            when (section) {
+                                AppSection.Chat -> LegacyScreen(legacyModel)
+                                AppSection.Tasks -> EacbotShell(connection = app.connection, sessions = app.sessions)
+                            }
+                        }
                     }
                 }
             }
@@ -100,7 +128,8 @@ private fun EacbotShell(connection: CoreConnection, sessions: com.eacbot.mobile.
     when (current) {
         SessionPhase.NeedsPairing, is SessionPhase.SignedOut -> {
             val notice = (current as? SessionPhase.SignedOut)?.reason
-            PairingScreen(
+            DisconnectedHome(
+                title = "任务",
                 defaultLabel = defaultLabel(),
                 notice = notice,
                 onPair = { baseUrl, code, label ->

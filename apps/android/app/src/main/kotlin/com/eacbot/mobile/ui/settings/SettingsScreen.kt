@@ -1,49 +1,40 @@
 package com.eacbot.mobile.ui.settings
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.PhonelinkErase
+import androidx.compose.material.icons.filled.Smartphone
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.eacbot.mobile.core.DeviceSession
-import com.eacbot.mobile.design.EacbotDimens
 import com.eacbot.mobile.design.LocalEacbotColors
-import com.eacbot.mobile.ui.Hairline
-import com.eacbot.mobile.ui.SectionLabel
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import com.eacbot.mobile.ui.ActionText
+import com.eacbot.mobile.ui.Gap
+import com.eacbot.mobile.ui.GroupCard
+import com.eacbot.mobile.ui.GroupLabel
+import com.eacbot.mobile.ui.GroupRow
+import com.eacbot.mobile.ui.IconTile
+import com.eacbot.mobile.ui.PageHeader
+import com.eacbot.mobile.ui.ValueRow
 
 /**
  * Settings, and the device list this phone appears in.
@@ -52,7 +43,6 @@ import kotlinx.coroutines.withContext
  * and says what it does. Forgetting this phone revokes its own session before
  * clearing the local credential.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     viewModel: SettingsViewModel,
@@ -65,83 +55,69 @@ fun SettingsScreen(
 
     LaunchedEffect(Unit) { viewModel.load() }
 
-    Scaffold(
-        containerColor = colors.canvas,
-        topBar = {
-            TopAppBar(
-                title = { Text("设置", style = MaterialTheme.typography.titleMedium) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = colors.canvas, titleContentColor = colors.ink),
-            )
-        },
-    ) { padding ->
+    Column(Modifier.fillMaxSize().background(colors.canvasGrouped)) {
+        PageHeader(title = "设置", onBack = onBack)
         Column(
             Modifier
-                .fillMaxSize()
-                .padding(padding)
+                .weight(1f)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = EacbotDimens.gutterWide, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+                .navigationBarsPadding(),
         ) {
-            SectionLabel("此服务")
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("地址", style = MaterialTheme.typography.labelSmall, color = colors.inkMuted)
-                Text(state.core?.baseUrl ?: "—", style = MaterialTheme.typography.labelSmall, color = colors.ink)
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("此手机", style = MaterialTheme.typography.labelSmall, color = colors.inkMuted)
-                Text(state.core?.label ?: "—", style = MaterialTheme.typography.labelSmall, color = colors.ink)
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("权限范围", style = MaterialTheme.typography.labelSmall, color = colors.inkMuted)
-                Text(
-                    text = when (state.core?.scope) {
+            GroupLabel("此服务")
+            GroupCard {
+                ValueRow("地址", state.core?.baseUrl ?: "—", divider = true)
+                ValueRow("此手机", state.core?.label ?: "—", divider = true)
+                ValueRow(
+                    "权限范围",
+                    when (state.core?.scope) {
                         "owner" -> "所有者 · 可更改电脑和设备"
                         "device" -> "设备 · 可运行任务、审批和输入"
                         "readonly" -> "只读 · 可查看，不能操作"
                         else -> state.core?.scope ?: "—"
                     },
-                    style = MaterialTheme.typography.labelSmall,
-                    color = colors.ink,
                 )
             }
 
-            Spacer(Modifier.height(6.dp))
-            Hairline()
-            SectionLabel("与此服务配对的设备")
-            if (state.loading) {
-                Text("正在读取设备列表…", style = MaterialTheme.typography.bodySmall, color = colors.inkMuted)
-            }
-            state.error?.let { message ->
-                Text(message, style = MaterialTheme.typography.bodySmall, color = colors.danger)
-                TextButton(onClick = viewModel::load) { Text("重试") }
-            }
-            state.sessions.forEach { session ->
-                DeviceRow(
-                    session = session,
-                    isThisPhone = session.id == state.core?.sessionId,
-                    onRevoke = { revokeTarget = session },
-                )
+            GroupLabel("已配对的设备")
+            when {
+                state.loading -> GroupCard {
+                    GroupRow("正在读取设备列表…", trailing = {
+                        CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = colors.accent)
+                    })
+                }
+                state.error != null -> GroupCard {
+                    GroupRow(
+                        title = "暂时无法读取设备",
+                        subtitle = state.error,
+                        leading = { IconTile(Icons.Filled.CloudOff, colors.danger, colors.dangerSoft) },
+                        trailing = { ActionText("重试", viewModel::load) },
+                    )
+                }
+                state.sessions.isEmpty() -> GroupCard { GroupRow("没有其他设备", trailing = null) }
+                else -> GroupCard {
+                    state.sessions.forEachIndexed { index, session ->
+                        DeviceRow(
+                            session = session,
+                            isThisPhone = session.id == state.core?.sessionId,
+                            divider = index < state.sessions.lastIndex,
+                            onRevoke = { revokeTarget = session },
+                        )
+                    }
+                }
             }
 
-            Spacer(Modifier.height(8.dp))
-            Hairline()
-            SectionLabel("此手机")
-            Text(
-                "忘记后会撤销电脑上的手机会话，并删除本机保存的凭据，任务会继续运行。",
-                style = MaterialTheme.typography.bodySmall,
-                color = colors.inkMuted,
-            )
-            Button(
-                onClick = { confirmForget = true },
-                shape = RoundedCornerShape(EacbotDimens.controlRadius),
-                colors = ButtonDefaults.buttonColors(containerColor = colors.danger, contentColor = colors.canvas),
-            ) { Text("忘记此手机") }
-            Spacer(Modifier.height(24.dp))
+            GroupLabel("此手机")
+            GroupCard {
+                GroupRow(
+                    title = "忘记此手机",
+                    subtitle = "撤销电脑上的手机会话并删除本机凭据，任务会继续运行。",
+                    titleColor = colors.danger,
+                    leading = { IconTile(Icons.Filled.PhonelinkErase, colors.danger, colors.dangerSoft) },
+                    trailing = null,
+                    onClick = { confirmForget = true },
+                )
+            }
+            Gap(32.dp)
         }
     }
 
@@ -190,30 +166,30 @@ fun SettingsScreen(
 }
 
 @Composable
-private fun DeviceRow(session: DeviceSession, isThisPhone: Boolean, onRevoke: () -> Unit) {
+private fun DeviceRow(session: DeviceSession, isThisPhone: Boolean, divider: Boolean, onRevoke: () -> Unit) {
     val colors = LocalEacbotColors.current
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .background(colors.surface, RoundedCornerShape(EacbotDimens.controlRadius))
-            .padding(horizontal = 12.dp, vertical = 10.dp),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
-    ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(session.label.ifBlank { "未命名设备" }, style = MaterialTheme.typography.titleSmall, color = colors.ink)
-            if (isThisPhone) {
-                Text("此手机", style = MaterialTheme.typography.labelSmall, color = colors.accent)
-            }
-        }
-        Text(
-            text = "${session.scope} · 上次使用 ${session.lastUsedAt}",
-            style = MaterialTheme.typography.labelSmall,
-            color = colors.inkMuted,
-        )
-        if (session.revokedAt != null) {
-            Text("已撤销", style = MaterialTheme.typography.labelSmall, color = colors.danger)
-        } else if (!isThisPhone) {
-            TextButton(onClick = onRevoke) { Text("退出登录", style = MaterialTheme.typography.labelSmall) }
-        }
-    }
+    GroupRow(
+        title = session.label.ifBlank { "未命名设备" } + if (isThisPhone) " · 此手机" else "",
+        subtitle = "${scopeLabel(session.scope)} · 上次使用 ${session.lastUsedAt.take(16).replace('T', ' ')}",
+        leading = {
+            IconTile(
+                Icons.Filled.Smartphone,
+                tint = if (isThisPhone) colors.accent else colors.inkMuted,
+                background = if (isThisPhone) colors.accentSoft else colors.surfaceRaised,
+            )
+        },
+        trailing = when {
+            session.revokedAt != null -> { { Text("已撤销", style = MaterialTheme.typography.labelMedium, color = colors.danger) } }
+            !isThisPhone -> { { ActionText("退出登录", onRevoke, color = colors.danger) } }
+            else -> null
+        },
+        divider = divider,
+    )
+}
+
+private fun scopeLabel(scope: String) = when (scope) {
+    "owner" -> "所有者"
+    "device" -> "设备"
+    "readonly" -> "只读"
+    else -> scope
 }
