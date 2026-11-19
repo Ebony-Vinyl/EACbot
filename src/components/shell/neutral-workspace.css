@@ -206,3 +206,17 @@
   .neutral-shell .herdr-page { grid-template-columns: minmax(0, 1fr); }
   .neutral-shell .herdr-page[data-sidebar="false"] { grid-template-rows: minmax(0, 1fr); }
 }
+
+@media (min-width: 768px) {
+  .neutral-workspace-header { display: none; }
+  .neutral-navigation.companion-rail { flex: 0 0 56px; background: var(--card); flex-direction: column; align-items: center; gap: 6px; padding: 50px 0 10px; }
+  .companion-rail > button { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 50%; color: var(--fg-2); cursor: pointer; }
+  .companion-rail > button:hover, .companion-rail > button[aria-current] { background: var(--pill); color: var(--fg); }
+  .companion-rail-menu { margin-top: auto; }
+  .neutral-shell .companion-chats { display: inline-flex; align-items: center; gap: 6px; left: 66px; top: 10px; border-radius: 99px; padding: 6px 10px; background: var(--card); box-shadow: 0 2px 9px #0001; }
+  .neutral-shell [data-chathead-pill][data-tour="bot-pill"] { flex-direction: column; height: auto; gap: 2px; padding: 4px 10px; border: 0; background: transparent; box-shadow: none; }
+  .neutral-shell [data-chathead-pill][data-tour="bot-pill"] > span.truncate { border-radius: 20px; background: var(--pill); padding: 1px 8px; font-size: 12px; }
+  .neutral-shell [data-chat-pane] [role="log"] { max-width: 800px; margin-inline: auto; padding-inline: 20px; }
+  .neutral-shell [data-tour="composer"] { max-width: 760px; margin-inline: auto; width: 100%; border-radius: 28px; box-shadow: 0 3px 18px #0000000b; }
+  [data-mp-theme="light"] .neutral-shell { --color-bubble-user: #cbe8ff; --color-bubble-bot: #f1f1f2; }
+}

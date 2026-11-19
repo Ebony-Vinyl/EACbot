@@ -80,7 +80,21 @@ function Navigation({ onNavigate }: { onNavigate?: () => void }) {
 }
 
 export function WorkspaceNavigation() {
-  return <aside className="neutral-navigation"><Navigation /></aside>;
+  const { state, dispatch } = useStore();
+  const [open, setOpen] = useState(false);
+  return <aside className="neutral-navigation companion-rail" aria-label={t("neutral.navigation")}>
+    {["chat", "herdr", "hermes", "missions", "task-center"].map(view => {
+      const item = sections[0].items.find(item => item.view === view)!;
+      return <button type="button" key={view} title={t(item.label)} aria-label={t(item.label)}
+        aria-current={state.activeView === view ? "page" : undefined} onClick={() => dispatch(item.action)}>
+        <item.icon size={19} strokeWidth={1.65} />
+      </button>;
+    })}
+    <div className="companion-rail-menu"><Drawer title={t("neutral.navigation")} side="left" open={open} onOpenChange={setOpen}
+      trigger={<Button variant="ghost" size="icon" aria-label={t("neutral.more")}><Menu size={18} /></Button>}>
+      <Navigation onNavigate={() => setOpen(false)} />
+    </Drawer></div>
+  </aside>;
 }
 
 export function WorkspaceHeader({ theme }: { theme: "light" | "dark" }) {

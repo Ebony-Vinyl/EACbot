@@ -34,7 +34,7 @@ function privacyLabelOf(privacy: ChatHeadPrivacy): string | null {
  * look; a team chat says who can read it with one quiet glyph. */
 export function ChatHeadPill({ bot, avatar, privacy, onToggle }: {
   bot: Bot;
-  avatar: Pick<ComponentProps<typeof BotAvatar>, "state" | "motion" | "motionKey" | "animated">;
+  avatar: Pick<ComponentProps<typeof BotAvatar>, "size" | "state" | "motion" | "motionKey" | "animated">;
   privacy: ChatHeadPrivacy;
   onToggle: () => void;
 }) {
@@ -60,7 +60,7 @@ export function ChatHeadPill({ bot, avatar, privacy, onToggle }: {
       aria-controls={open ? BOT_PANEL_ID : undefined}
       className={cn("group flex min-w-0 max-w-full items-center gap-2 rounded-full py-[7.5px] pl-[7.5px] pr-[13.5px] text-ink", ELEVATED_FLOAT, ELEVATED_HOVER)}
     >
-      <BotAvatar bot={bot} size={24} {...avatar} />
+      <BotAvatar bot={bot} {...avatar} size={avatar.size ?? 24} />
       <span dir="auto" className="min-w-0 truncate text-[14px] font-medium leading-5">{bot.name}</span>
       {conversation && (
         <>
