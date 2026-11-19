@@ -195,10 +195,10 @@
 .neutral-shell .herdr-sidebar { background: var(--card); border-radius: 0; box-shadow: none; }
 .neutral-shell .herdr-sidebar-toolbar { margin-bottom: 12px; }
 .neutral-shell .herdr-history { padding-inline: max(24px, calc((100% - 840px) / 2)); }
-.neutral-shell .herdr-composer { width: min(calc(100% - 48px), 840px); margin: 0 auto 16px; border-radius: 12px; }
+.neutral-shell .herdr-composer:where(:not(.herdr-delegate)) { width: min(calc(100% - 48px), 840px); margin: 0 auto 16px; border-radius: 12px; }
 .neutral-shell .herdr-message[data-role="user"] { background: var(--pill); }
 @media (max-width: 767px) {
-  .neutral-shell .herdr-composer { width: calc(100% - 24px); margin-bottom: 12px; }
+  .neutral-shell .herdr-composer:where(:not(.herdr-delegate)) { width: calc(100% - 24px); margin-bottom: 12px; }
   .neutral-shell .herdr-history { padding-inline: 16px; }
 }
 
