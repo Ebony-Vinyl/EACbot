@@ -147,3 +147,28 @@
   .herdr-tool-group::details-content, .herdr-tool::details-content,
   .herdr-tool-group > summary > svg:last-child, .herdr-tool > summary > svg:last-child { transition: none; }
 }
+
+.herdr-workspace { display: flex; flex-direction: column; flex: 1; min-height: 0; min-width: 0; }
+.herdr-grid-tools, .herdr-grid-pane > header { display: flex; align-items: center; gap: 8px; padding: 5px 10px; border-bottom: 1px solid var(--color-hairline); }
+.herdr-grid-tools strong, .herdr-grid-pane > header strong { margin-right: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.herdr-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: minmax(0, 1fr); gap: 4px; padding: 4px; }
+.herdr-grid[data-count="1"] { grid-template-columns: 1fr; }
+.herdr-grid-pane { min-height: 0; min-width: 0; display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--color-hairline); border-radius: 8px; }
+.herdr-grid-pane[data-active="true"] { border-color: var(--color-accent); }
+.herdr-grid-pane > header span { color: var(--color-ink-secondary); }
+.herdr-grid-pane .herdr-terminal > header { padding: 2px 6px; flex-wrap: wrap; }
+@media (max-width: 767px) {
+  .herdr-grid { grid-template-columns: minmax(0, 1fr); grid-auto-rows: minmax(280px, 1fr); overflow-y: auto; }
+}
+.herdr-delegate { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 8px 12px; border-top: 1px solid var(--color-hairline); }
+.herdr-delegate input { flex: 1 1 180px; min-width: 0; padding: 6px 9px; border: 1px solid var(--color-hairline); border-radius: 7px; }
+.herdr-workspace output { padding: 3px 12px; color: var(--color-ink-secondary); }
+
+.herdr-grid-nav { padding-bottom: 10px; margin-bottom: 10px; border-bottom: 1px solid var(--color-hairline); }
+
+.herdr-grid-nav-row { display: flex; align-items: center; }
+.herdr-grid-nav-row > .herdr-session { flex: 1; }
+.herdr-grid-nav-row button[aria-expanded="false"] svg { transform: rotate(-90deg); }
+.herdr-grid-members { margin: 2px 0 6px 13px; padding-left: 5px; border-left: 1px solid var(--color-hairline); }
+.herdr-grid-members .herdr-session span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.herdr-grid-members small { margin-left: auto; }

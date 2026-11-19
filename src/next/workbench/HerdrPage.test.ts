@@ -18,7 +18,27 @@ vi.mock("./terminal-registry", () => { const connection = { state: { kind: "fail
 vi.mock("./TerminalSurface", () => ({ TerminalSurface: () => h("div", null, "native-terminal") }));
 const { HerdrPage } = await import("./HerdrPage");
 let root: Root; let host: HTMLDivElement;
-afterEach(() => { act(() => root.unmount()); host.remove(); localStorage.clear(); });
+afterEach(() => { act(() => root.unmount()); host.remove(); localStorage.clear(); sessionStorage.clear(); });
+it("dismisses the computer menu on an outside press and Escape", async () => {
+  host = document.createElement("div"); document.body.append(host); root = createRoot(host);
+  await act(async () => root.render(h(HerdrPage)));
+  const menu = host.querySelector<HTMLDetailsElement>(".herdr-machine details")!;
+  const open = async () => {
+    await act(async () => menu.querySelector("summary")!.click());
+    expect(menu.open).toBe(true);
+  };
+  await open();
+  await act(async () => menu.querySelector("button")!.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true })));
+  expect(menu.open).toBe(true);
+  await act(async () => host.querySelector("main")!.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true })));
+  expect(menu.open).toBe(false);
+  await open();
+  await act(async () => window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", cancelable: true })));
+  expect(menu.open).toBe(false);
+  await open();
+  await act(async () => menu.querySelector("summary")!.click());
+  expect(menu.open).toBe(false);
+});
 it("creates one project session, switches views without restarting and restores the selection", async () => {
   host = document.createElement("div"); document.body.append(host); root = createRoot(host);
   await act(async () => root.render(h(HerdrPage)));
@@ -41,4 +61,40 @@ it("creates one project session, switches views without restarting and restores 
   await click("终端");
   await click("在此项目新建会话");
   expect(host.querySelector<HTMLInputElement>('input[placeholder="/path/to/project"]')!.value).toBe("/fixture/project");
+});
+
+it("tiles four existing sessions and requests delegation through the focused agent", async () => {
+  fixture.sessions = Array.from({ length: 4 }, (_, i) => ({
+    id: `s${i}`, title: `Agent ${i}`, project: "/fixture/project", tool: "codex",
+    terminalId: `term${i}`, nativeAddress: `t${i + 1}`, createdAt: "2026-11-16", conversation: true,
+  }));
+  localStorage.setItem("eac-herdr-session", "s0");
+  host = document.createElement("div"); document.body.append(host); root = createRoot(host);
+  await act(async () => root.render(h(HerdrPage)));
+  sessionStorage.setItem("eac-herdr-panes:/fixture/project", JSON.stringify(["s0"]));
+  const button = host.querySelector<HTMLButtonElement>('nav[aria-label="分屏工作区"] button')!;
+  await act(async () => button.click());
+  const picker = host.querySelector<HTMLSelectElement>('[aria-label="添加已有会话"]')!;
+  expect(host.querySelectorAll(".herdr-grid-pane")).toHaveLength(4);
+  expect(picker.disabled).toBe(true);
+  const input = host.querySelector<HTMLInputElement>('[aria-label="协作任务"]')!;
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, "检查登录");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await act(async () => host.querySelector(".herdr-delegate")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
+  expect(fixture.requests.at(-1)).toMatchObject({path: "/herdr/sessions/s0/messages", body: {text: expect.stringMatching(/t2.*t1.*\n检查登录/s)}});
+  expect(host.querySelectorAll(".herdr-projects > section .herdr-session")).toHaveLength(0);
+  const toggle = host.querySelector<HTMLButtonElement>(".herdr-grid-nav-row [aria-expanded]")!;
+  await act(async () => toggle.click());
+  expect(host.querySelector(".herdr-grid-members")).toBeNull();
+  await act(async () => toggle.click());
+  await act(async () => host.querySelectorAll<HTMLButtonElement>(".herdr-grid-members button")[3].click());
+  expect(host.querySelectorAll(".herdr-grid-pane")).toHaveLength(0);
+  await act(async () => button.click());
+  expect([...host.querySelectorAll(".herdr-grid-pane > header strong")].map(el => el.textContent)).toEqual(["Agent 0", "Agent 1", "Agent 2", "Agent 3"]);
+  expect(host.querySelector('.herdr-grid-pane[data-active="true"] strong')?.textContent).toBe("Agent 3");
+  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="移除面板：Agent 3"]')!.click());
+  expect(host.querySelectorAll(".herdr-grid-pane")).toHaveLength(3);
+  expect(host.querySelector<HTMLSelectElement>('[aria-label="添加已有会话"]')!.disabled).toBe(false);
 });

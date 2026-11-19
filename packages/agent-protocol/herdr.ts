@@ -5,6 +5,7 @@ export interface HerdrSession {
   project: string;
   tool: string;
   terminalId: string;
+  nativeAddress?: string;
   createdAt: string;
   endedAt?: string;
   conversation: boolean;

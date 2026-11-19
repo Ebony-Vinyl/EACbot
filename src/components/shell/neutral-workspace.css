@@ -56,7 +56,7 @@
 .neutral-breadcrumb-current { font-size: 12px; font-weight: 550; color: var(--fg); }
 .neutral-header-actions { display: flex; gap: 6px; margin-left: auto; }
 .neutral-workspace-body { overflow: hidden; }
-.neutral-navigation { display: flex; flex: 0 0 200px; min-width: 0; border-right: 1px solid var(--line); background: var(--bg); z-index: 2; }
+.neutral-navigation { display: flex; flex: 0 0 200px; min-width: 0; border-right: 1px solid var(--line); background: var(--bg); }
 .neutral-navigation-content { display: flex; flex-direction: column; min-height: 0; width: 100%; padding: 22px 12px 12px; }
 .neutral-brand { display: flex; align-items: center; gap: 10px; padding: 0 9px 24px; text-align: left; color: var(--fg); font-size: 16px; font-weight: 650; letter-spacing: -.04em; cursor: pointer; }
 .neutral-brand-mark { display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); box-shadow: 0 2px 4px color-mix(in srgb, var(--fg) 4%, transparent); }

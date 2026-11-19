@@ -58,7 +58,8 @@ export interface HcClientEvents {
 export class HcClient extends EventEmitter<HcClientEvents> {
   readonly #connection: HcConnection;
   readonly #registry = new TerminalRegistry();
-  readonly #lease: ControlLease;
+  readonly #leases = new Map<string, ControlLease>();
+  readonly #leaseOptions: LeaseOptions | undefined;
   readonly #streams = new Set<AttachStream>();
   #subscribeChannel: number | null = null;
 
@@ -70,7 +71,7 @@ export class HcClient extends EventEmitter<HcClientEvents> {
       spawner: options.spawner,
       requestTimeoutMs: options.requestTimeoutMs,
     });
-    this.#lease = new ControlLease(options.lease);
+    this.#leaseOptions = options.lease;
     this.#connection.onNotification((method, params) => this.#onNotification(method, params));
     this.#connection.onClose((error) => this.#onDisconnected(error));
   }
@@ -81,10 +82,6 @@ export class HcClient extends EventEmitter<HcClientEvents> {
 
   get registry(): TerminalRegistry {
     return this.#registry;
-  }
-
-  get lease(): ControlLease {
-    return this.#lease;
   }
 
   get hello(): HelloResult | null {
@@ -164,9 +161,14 @@ export class HcClient extends EventEmitter<HcClientEvents> {
    * paint can never arrive before the channel is known.
    */
   async attach(options: AttachOptions): Promise<AttachStream> {
-    const stream = new AttachStream(this.#connection, options, this.#lease);
+    const lease = this.#leases.get(options.terminal) ?? new ControlLease(this.#leaseOptions);
+    this.#leases.set(options.terminal, lease);
+    const stream = new AttachStream(this.#connection, options, lease);
     this.#streams.add(stream);
-    const forget = () => this.#streams.delete(stream);
+    const forget = () => {
+      this.#streams.delete(stream);
+      if (!lease.holders.length && this.#leases.get(options.terminal) === lease) this.#leases.delete(options.terminal);
+    };
     stream.once("close", forget);
     stream.once("lost", forget);
     try {
