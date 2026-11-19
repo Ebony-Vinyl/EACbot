@@ -50,8 +50,11 @@
 .herdr-welcome h2 { font-size: 25px; font-weight: 600; }
 .herdr-welcome p, .herdr-empty { font-size: 13px; color: var(--color-ink-secondary); }
 .herdr-empty { padding: 18px 0; }
-.herdr-welcome button, .herdr-create > button { background: var(--color-ink); color: var(--color-card); }
-.herdr-create { display: flex; flex-direction: column; gap: 20px; width: min(100%, 600px); margin: auto; padding: 32px; overflow-y: auto; }
+.herdr-welcome button, .herdr-create button[type="submit"] { background: var(--color-ink); color: var(--color-card); }
+.herdr-create-dialog { margin: auto; width: min(480px, calc(100% - 32px)); max-height: calc(100dvh - 48px); padding: 0; border: 1px solid var(--color-hairline); border-radius: 16px; color: var(--color-ink); background: var(--color-card); box-shadow: 0 18px 64px #0003; }
+.herdr-create-dialog::backdrop { background: #0005; }
+.herdr-create footer { display: flex; justify-content: flex-end; gap: 8px; }
+.herdr-create { display: flex; flex-direction: column; gap: 14px; padding: 24px; overflow-y: auto; }
 .herdr-create h2 { font-size: 21px; font-weight: 600; }
 .herdr-create p { font-size: 12px; line-height: 1.7; color: var(--color-ink-secondary); }
 .herdr-create label { display: flex; flex-direction: column; gap: 9px; font-size: 12px; }

@@ -72,7 +72,7 @@ it("tiles four existing sessions and requests delegation through the focused age
   host = document.createElement("div"); document.body.append(host); root = createRoot(host);
   await act(async () => root.render(h(HerdrPage)));
   sessionStorage.setItem("eac-herdr-panes:/fixture/project", JSON.stringify(["s0"]));
-  const button = host.querySelector<HTMLButtonElement>('nav[aria-label="分屏工作区"] button')!;
+  const button = host.querySelector<HTMLButtonElement>('nav[aria-label="分屏工作区"] .herdr-grid-nav-row button')!;
   await act(async () => button.click());
   const picker = host.querySelector<HTMLSelectElement>('[aria-label="添加已有会话"]')!;
   expect(host.querySelectorAll(".herdr-grid-pane")).toHaveLength(4);
@@ -112,4 +112,21 @@ it("tiles four existing sessions and requests delegation through the focused age
   await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="移除面板：Agent 3"]')!.click());
   expect(host.querySelectorAll(".herdr-grid-pane")).toHaveLength(3);
   expect(host.querySelector<HTMLSelectElement>('[aria-label="添加已有会话"]')!.disabled).toBe(false);
+});
+
+it("opens a new project directly in the grid from the sidebar create button", async () => {
+  fixture.sessions = [];
+  host = document.createElement("div"); document.body.append(host); root = createRoot(host);
+  await act(async () => root.render(h(HerdrPage)));
+  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="新建分屏工作区"]')!.click());
+  expect(host.querySelector("dialog h2")?.textContent).toBe("新建分屏工作区");
+  const folder = host.querySelector<HTMLInputElement>('dialog input[required]')!;
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(folder, "/fixture/project");
+    folder.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await act(async () => host.querySelector("dialog form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
+  expect(host.querySelector("dialog")).toBeNull();
+  expect(host.querySelectorAll(".herdr-grid-pane")).toHaveLength(1);
+  expect(host.querySelector('[aria-label="添加 Agent"]')).toBeTruthy();
 });
