@@ -259,6 +259,11 @@ export class TerminalService extends EventEmitter<TerminalServiceEvents> {
     return [...this.#records.values()].map(toTerminalRef);
   }
 
+  nativeAddress(terminalId: string): string | undefined {
+    const record = this.#records.get(terminalId);
+    return record && !record.closedAt ? record.nativeId : undefined;
+  }
+
   get(terminalId: string): TerminalRef | undefined {
     const record = this.#records.get(terminalId);
     return record === undefined ? undefined : toTerminalRef(record);
@@ -353,7 +358,7 @@ export class TerminalService extends EventEmitter<TerminalServiceEvents> {
       viewerId: input.viewerId,
       stream,
       terminal,
-      canControl: client.lease.canControl(leaseId),
+      canControl: stream.role === "control",
       cols,
       rows,
       credit: async (bytes: number): Promise<void> => {

@@ -11,10 +11,11 @@ const directories: string[] = [];
 afterEach(() => { for (const directory of directories.splice(0)) rmSync(directory, { recursive: true, force: true }); });
 it("starts a native CLI without an app server, forwards input to it and preserves its binding after restart", async () => {
   const directory = mkdtempSync("/tmp/eac-herdr-native-"); directories.push(directory);
-  const terminals = { start: vi.fn(async (_input: StartTerminalInput) => ({ id: "terminal-1" })), send: vi.fn(async () => ({ turn: 1 })), interrupt: vi.fn(), inspect: vi.fn(async () => ({ state: "live", pid: null, labels: {} })), kill: vi.fn(), get: vi.fn(() => ({ id: "terminal-1" })) };
+  const terminals = { nativeAddress: () => "t7", start: vi.fn(async (_input: StartTerminalInput) => ({ id: "terminal-1" })), send: vi.fn(async () => ({ turn: 1 })), interrupt: vi.fn(), inspect: vi.fn(async () => ({ state: "live", pid: null, labels: {} })), kill: vi.fn(), get: vi.fn(() => ({ id: "terminal-1" })) };
   const local = { id: "local", capabilities: { homeDir: directory }, tools: [{ name: "codex", status: "installed" }] } as EnvironmentRecord;
   let sessions = new HerdrSessions(terminals as unknown as TerminalService, local, directory);
   const session = await sessions.create({ project: directory, tool: "codex", title: "原生会话" });
+  expect(session.nativeAddress).toBe("t7");
   expect(terminals.start).toHaveBeenCalledTimes(1);
   expect(terminals.start.mock.calls[0]?.[0]).toMatchObject({ cwd: realpathSync(directory), tool: "codex" });
   expect(terminals.start.mock.calls[0]?.[0]).not.toHaveProperty("args");

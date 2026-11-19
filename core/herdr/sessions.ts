@@ -31,7 +31,7 @@ export class HerdrSessions {
   list(): HerdrSession[] {
     return this.#records.map(({ transcript, threadId, socket, serverTerminalId, runtimeDir, ...session }) => {
       void transcript; void threadId; void serverTerminalId; void runtimeDir;
-      return { ...session, conversation: session.tool === "codex" && !socket };
+      return { ...session, nativeAddress: !socket && !session.endedAt ? this.terminals.nativeAddress(session.terminalId) : undefined, conversation: session.tool === "codex" && !socket };
     });
   }
   async create(input: { project: string; tool: ToolName; title: string }): Promise<HerdrSession> {
