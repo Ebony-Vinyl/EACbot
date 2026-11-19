@@ -160,8 +160,18 @@
 @media (max-width: 767px) {
   .herdr-grid { grid-template-columns: minmax(0, 1fr); grid-auto-rows: minmax(280px, 1fr); overflow-y: auto; }
 }
-.herdr-delegate { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 8px 12px; border-top: 1px solid var(--color-hairline); }
-.herdr-delegate input { flex: 1 1 180px; min-width: 0; padding: 6px 9px; border: 1px solid var(--color-hairline); border-radius: 7px; }
+.herdr-delegate { align-self: stretch; margin: 0 4px 4px; padding: 8px 12px; }
+.herdr-routing, .herdr-task-line { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.herdr-routing { flex-wrap: wrap; color: var(--color-ink-secondary); font-size: 12px; }
+.herdr-agent-choice { display: inline-flex; align-items: center; position: relative; max-width: 100%; }
+.herdr-agent-choice select { appearance: none; max-width: 100%; text-overflow: ellipsis; border-radius: 7px; padding: 4px 23px 4px 8px; color: var(--color-ink); background: var(--color-app); cursor: pointer; }
+.herdr-agent-choice svg { position: absolute; right: 7px; pointer-events: none; }
+.herdr-task-line { margin-top: 6px; }
+.herdr-task-line input { min-width: 0; flex: 1; border: 0; padding: 5px 2px; font-size: 14px; background: transparent; }
+.herdr-task-line input:focus-visible { outline: none; }
+.herdr-task-line input::placeholder { color: var(--color-ink-tertiary); }
+.herdr-task-line button { display: grid; place-items: center; width: 29px; height: 29px; border-radius: 50%; padding: 0; background: var(--color-ink); color: var(--color-card); }
+.herdr-task-line button:hover { background: var(--color-ink-secondary); }
 .herdr-workspace output { padding: 3px 12px; color: var(--color-ink-secondary); }
 
 .herdr-grid-nav { padding-bottom: 10px; margin-bottom: 10px; border-bottom: 1px solid var(--color-hairline); }

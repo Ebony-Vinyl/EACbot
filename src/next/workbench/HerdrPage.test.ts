@@ -77,13 +77,28 @@ it("tiles four existing sessions and requests delegation through the focused age
   const picker = host.querySelector<HTMLSelectElement>('[aria-label="添加已有会话"]')!;
   expect(host.querySelectorAll(".herdr-grid-pane")).toHaveLength(4);
   expect(picker.disabled).toBe(true);
+  const sender = host.querySelector<HTMLSelectElement>('[aria-label="发送终端"]')!;
+  await act(async () => { sender.value = "s1"; sender.dispatchEvent(new Event("change", { bubbles: true })); });
+  expect(host.querySelector('[aria-label="协作目标"] option[value="s1"]')).toBeNull();
   const input = host.querySelector<HTMLInputElement>('[aria-label="协作任务"]')!;
   await act(async () => {
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, "检查登录");
     input.dispatchEvent(new Event("input", { bubbles: true }));
   });
   await act(async () => host.querySelector(".herdr-delegate")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
-  expect(fixture.requests.at(-1)).toMatchObject({path: "/herdr/sessions/s0/messages", body: {text: expect.stringMatching(/t2.*t1.*\n检查登录/s)}});
+  expect(fixture.requests.at(-1)).toMatchObject({path: "/herdr/sessions/s1/messages", body: {text: expect.stringMatching(/t1.*t2.*\n检查登录/s)}});
+  await act(async () => [...host.querySelectorAll<HTMLButtonElement>('[aria-label="协作模式"] button')].find(b => b.textContent === "团队统筹")!.click());
+  {
+    const select = host.querySelector<HTMLSelectElement>('[aria-label="主 Agent"]')!;
+    await act(async () => { select.value = "s2"; select.dispatchEvent(new Event("change", { bubbles: true })); });
+  }
+  await act(async () => {
+    const task = host.querySelector<HTMLInputElement>('[aria-label="总任务"]')!;
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(task, "分工检查");
+    task.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await act(async () => host.querySelector(".herdr-delegate")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })));
+  expect(fixture.requests.at(-1)).toMatchObject({ path: "/herdr/sessions/s2/messages", body: { text: expect.stringMatching(/主 Agent.*t3.*t1.*t2.*t4.*统一回复.*分工检查/s) } });
   expect(host.querySelectorAll(".herdr-projects > section .herdr-session")).toHaveLength(0);
   const toggle = host.querySelector<HTMLButtonElement>(".herdr-grid-nav-row [aria-expanded]")!;
   await act(async () => toggle.click());
