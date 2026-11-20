@@ -42,6 +42,7 @@ import { cacheUntilConfigChanges,
   browserEngineAttachCdpUrl,
   withInstanceCli,
   WORKSPACE_CREDENTIAL_ENV,
+  LEGACY_WORKSPACE_CREDENTIAL_ENV,
   PROVIDER_CREDENTIAL_ENV,
   mergeOpenCodeProviderKeys,
   openCodeProviderKeys,
@@ -1969,6 +1970,15 @@ describe("workspace credential env strip", () => {
     };
     stripWorkspaceCredentialEnv(env);
     expect(env).toEqual({ PATH: "/usr/bin", MY_FLAG: "1" });
+  });
+
+  it("removes the names earlier releases used for every workspace credential", () => {
+    const env = {
+      PATH: "/usr/bin",
+      ...Object.fromEntries(LEGACY_WORKSPACE_CREDENTIAL_ENV.map((name) => [name, "secret"])),
+    };
+    stripWorkspaceCredentialEnv(env);
+    expect(env).toEqual({ PATH: "/usr/bin" });
   });
 
   it("keeps a hosted tenant's control-plane secrets out of every child env, and only those", () => {
