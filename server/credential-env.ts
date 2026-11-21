@@ -43,11 +43,14 @@ export const WORKSPACE_CREDENTIAL_ENV = [
 /** Operator secrets only this process reads, plus every `EAC_CLOUD_` var (the underscore leaves out EAC_CLOUDFLARED_PATH). */
 export const CONTROL_PLANE_ENV = ["EAC_LICENSE_KEY", "EAC_INSTALLATION_CREDENTIAL"] as const;
 export const CONTROL_PLANE_ENV_PREFIX = "EAC_CLOUD_";
+/** The OpenMausBot tree this repo was renamed from spelled these `OMB_CLOUD_`; a host migrated from it still exports them. */
+const LEGACY_CONTROL_PLANE_ENV_PREFIX = "OMB_CLOUD_";
 
 /** Credential names earlier releases used: a shell must not inherit them either. */
 const EARLIER_CREDENTIAL_NAMES = [
   "OPENMAUSBOT_TOKEN", "OPENMAUSBOT_COMPANY_API_KEY", "OPENMAUSBOT_CHATGPT_TOKEN",
   "MAUSBOT_TOKEN", "MAUSBOT_COMPANY_API_KEY", "MAUSBOT_CHATGPT_TOKEN",
+  "OMB_LICENSE_KEY", "OMB_INSTALLATION_CREDENTIAL",
 ] as const;
 /** Earlier credential prefixes only: EACBOT_ also names settings a child legitimately reads. */
 const EARLIER_CREDENTIAL_PREFIXES = ["OPENMAUSBOT_", "OPENMAUS_", "MAUSBOT_"] as const;
@@ -56,7 +59,8 @@ const EARLIER_CREDENTIAL_PREFIXES = ["OPENMAUSBOT_", "OPENMAUS_", "MAUSBOT_"] as
 export function stripControlPlaneEnv(env: Record<string, string | undefined>): void {
   for (const key of Object.keys(env)) {
     const name = key.toUpperCase();
-    if (name.startsWith(CONTROL_PLANE_ENV_PREFIX) || (CONTROL_PLANE_ENV as readonly string[]).includes(name)
+    if (name.startsWith(CONTROL_PLANE_ENV_PREFIX) || name.startsWith(LEGACY_CONTROL_PLANE_ENV_PREFIX)
+      || (CONTROL_PLANE_ENV as readonly string[]).includes(name)
       || (EARLIER_CREDENTIAL_NAMES as readonly string[]).includes(name)
       || EARLIER_CREDENTIAL_PREFIXES.some((prefix) => name.startsWith(prefix))) {
       delete env[key];

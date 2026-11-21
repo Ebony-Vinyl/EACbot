@@ -1977,6 +1977,7 @@ describe("workspace credential env strip", () => {
       EAC_CLOUD_READY_TOKEN: "ready", EAC_CLOUD_BOOTSTRAP: "bootstrap", EAC_CLOUD_GATEWAY_TOKEN: "gateway",
       EAC_CLOUD_MODELS: "models", EAC_CLOUD_REVISION: "revision", EAC_CLOUD_FUTURE_SECRET: "later",
       EAC_LICENSE_KEY: "license", EAC_INSTALLATION_CREDENTIAL: "fleet", omb_cloud_ready_token: "windows-spelling",
+      OMB_LICENSE_KEY: "legacy-license", OMB_INSTALLATION_CREDENTIAL: "legacy-fleet",
     };
     // What an engine deliberately receives (the hosted model token as its provider key), plus look-alike names.
     const engine = {
