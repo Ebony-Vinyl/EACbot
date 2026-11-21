@@ -40,14 +40,47 @@ export const WORKSPACE_CREDENTIAL_ENV = [
   "EAC_BROWSER_CONNECTION", "EAC_USER_DATA", "EAC_BOAT_API",
 ] as const;
 
+/** Workspace credential names the OpenMausBot tree used; a host migrated from it still exports them. */
+export const LEGACY_WORKSPACE_CREDENTIAL_ENV = [
+  "OMB_GROQ_API_KEY",
+  "OMB_GREENFERENCE_API_KEY",
+  "OMB_MODELGO_API_KEY",
+  "OMB_META_API_KEY",
+  "OMB_DEEPSEEK_API_KEY",
+  "OMB_ANTHROPIC_API_KEY",
+  "OMB_ANTHROPIC_API_URL",
+  "OMB_HOSTED_MODEL_TOKEN",
+  "OMB_HOSTED_MODELS",
+  "OMB_OPENAI_API_KEY",
+  "OMB_OPENROUTER_API_KEY",
+  "OMB_TTS_KEY",
+  "OMB_FISH_AUDIO_API_KEY",
+  "OMB_GEMINI_API_KEY",
+  "OMB_JEV_API_KEY",
+  "OMB_OPENROUTER_DECIDER_KEY",
+  "OMB_WORKERS_AI_TOKEN",
+  "OMB_CUSTOM_DECIDER_KEY",
+  "OMB_OPENAI_IMAGE_KEY",
+  "OMB_CUSTOM_IMAGE_KEY",
+  "OMB_GEMINI_IMAGE_KEY",
+  "OMB_OPENAI_LIVE_KEY", "OMB_TREG_KEY", "OMB_POSTIZ_API_KEY",
+  "OMB_COMPOSIO_BROKER_TOKEN",
+  // OMB_CLOUD_* names are stripped by LEGACY_CONTROL_PLANE_ENV_PREFIX, so they are not repeated here.
+  // Not credentials, but they point a shell-capable agent at app-owned state.
+  "OMB_BROWSER_CONNECTION", "OMB_USER_DATA", "OMB_BOAT_API",
+] as const;
+
 /** Operator secrets only this process reads, plus every `EAC_CLOUD_` var (the underscore leaves out EAC_CLOUDFLARED_PATH). */
 export const CONTROL_PLANE_ENV = ["EAC_LICENSE_KEY", "EAC_INSTALLATION_CREDENTIAL"] as const;
 export const CONTROL_PLANE_ENV_PREFIX = "EAC_CLOUD_";
+/** The OpenMausBot tree this repo was renamed from spelled these `OMB_CLOUD_`; a host migrated from it still exports them. */
+const LEGACY_CONTROL_PLANE_ENV_PREFIX = "OMB_CLOUD_";
 
 /** Credential names earlier releases used: a shell must not inherit them either. */
 const EARLIER_CREDENTIAL_NAMES = [
   "OPENMAUSBOT_TOKEN", "OPENMAUSBOT_COMPANY_API_KEY", "OPENMAUSBOT_CHATGPT_TOKEN",
   "MAUSBOT_TOKEN", "MAUSBOT_COMPANY_API_KEY", "MAUSBOT_CHATGPT_TOKEN",
+  "OMB_LICENSE_KEY", "OMB_INSTALLATION_CREDENTIAL",
 ] as const;
 /** Earlier credential prefixes only: EACBOT_ also names settings a child legitimately reads. */
 const EARLIER_CREDENTIAL_PREFIXES = ["OPENMAUSBOT_", "OPENMAUS_", "MAUSBOT_"] as const;
@@ -56,7 +89,8 @@ const EARLIER_CREDENTIAL_PREFIXES = ["OPENMAUSBOT_", "OPENMAUS_", "MAUSBOT_"] as
 export function stripControlPlaneEnv(env: Record<string, string | undefined>): void {
   for (const key of Object.keys(env)) {
     const name = key.toUpperCase();
-    if (name.startsWith(CONTROL_PLANE_ENV_PREFIX) || (CONTROL_PLANE_ENV as readonly string[]).includes(name)
+    if (name.startsWith(CONTROL_PLANE_ENV_PREFIX) || name.startsWith(LEGACY_CONTROL_PLANE_ENV_PREFIX)
+      || (CONTROL_PLANE_ENV as readonly string[]).includes(name)
       || (EARLIER_CREDENTIAL_NAMES as readonly string[]).includes(name)
       || EARLIER_CREDENTIAL_PREFIXES.some((prefix) => name.startsWith(prefix))) {
       delete env[key];
@@ -66,6 +100,7 @@ export function stripControlPlaneEnv(env: Record<string, string | undefined>): v
 
 export function stripWorkspaceCredentialEnv(env: Record<string, string | undefined>): void {
   for (const key of WORKSPACE_CREDENTIAL_ENV) delete env[key];
+  for (const key of LEGACY_WORKSPACE_CREDENTIAL_ENV) delete env[key];
   stripControlPlaneEnv(env);
 }
 

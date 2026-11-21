@@ -42,6 +42,7 @@ import { cacheUntilConfigChanges,
   browserEngineAttachCdpUrl,
   withInstanceCli,
   WORKSPACE_CREDENTIAL_ENV,
+  LEGACY_WORKSPACE_CREDENTIAL_ENV,
   PROVIDER_CREDENTIAL_ENV,
   mergeOpenCodeProviderKeys,
   openCodeProviderKeys,
@@ -1971,12 +1972,22 @@ describe("workspace credential env strip", () => {
     expect(env).toEqual({ PATH: "/usr/bin", MY_FLAG: "1" });
   });
 
+  it("removes the names earlier releases used for every workspace credential", () => {
+    const env = {
+      PATH: "/usr/bin",
+      ...Object.fromEntries(LEGACY_WORKSPACE_CREDENTIAL_ENV.map((name) => [name, "secret"])),
+    };
+    stripWorkspaceCredentialEnv(env);
+    expect(env).toEqual({ PATH: "/usr/bin" });
+  });
+
   it("keeps a hosted tenant's control-plane secrets out of every child env, and only those", () => {
     // What a hosting control plane and a fleet put in the server's env; EAC_CLOUD_FUTURE_SECRET stands for a name added later.
     const operator = {
       EAC_CLOUD_READY_TOKEN: "ready", EAC_CLOUD_BOOTSTRAP: "bootstrap", EAC_CLOUD_GATEWAY_TOKEN: "gateway",
       EAC_CLOUD_MODELS: "models", EAC_CLOUD_REVISION: "revision", EAC_CLOUD_FUTURE_SECRET: "later",
       EAC_LICENSE_KEY: "license", EAC_INSTALLATION_CREDENTIAL: "fleet", omb_cloud_ready_token: "windows-spelling",
+      OMB_LICENSE_KEY: "legacy-license", OMB_INSTALLATION_CREDENTIAL: "legacy-fleet",
     };
     // What an engine deliberately receives (the hosted model token as its provider key), plus look-alike names.
     const engine = {
