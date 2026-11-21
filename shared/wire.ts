@@ -390,8 +390,8 @@ export interface WireBot extends DefaultBotFields, BotAccessFields {
   healthTools?: boolean;
   /** What this bot may do with the home's devices; absent follows the workspace's `home.botAccess`. */
   homeAccess?: "off" | "read" | "control" | "full";
-  /** Zones this bot may touch; absent: every zone. */
-  homeZones?: string[];
+  /** Zones this bot may touch; absent: every zone. `musicAccess`: what it may do with the player. */
+  homeZones?: string[]; musicAccess?: "off" | "read" | "control";
   /** Ordered backups used only by opt-in, pre-prompt startup recovery. */
   fallback?: Array<{ instanceId: string; model: string }>;
   /** Whether this bot gets the app's built-in browser. */
@@ -1002,5 +1002,5 @@ export type ServerFrame =
   | { kind: "live.call"; botId: string; threadId: string; call: LiveCallState | null }
   /** A job is waiting for the phone whose registry key this is; it polls now. */
   | { kind: "device.job"; phone: string; id: string }
-  /** The config status object spread flat into the frame. */
-  | ({ kind: "config" } & Record<string, unknown>);
+  /** The config status spread flat into the frame. Music: the player moved, the account changed, or the EQ/theme did. */
+  | ({ kind: "config" } & Record<string, unknown>) | { kind: "music.state"; playback: import("./music.ts").MusicPlayback } | { kind: "music.account"; account: import("./music.ts").MusicAccount } | { kind: "music.eq"; eq: import("./music.ts").MusicEq } | { kind: "music.theme"; theme: import("./music.ts").NowPlayingTheme };

@@ -339,6 +339,9 @@ export const CLIENT_ALLOW: ReadonlyArray<{ methods: readonly string[]; path: Reg
   // a link into the organisation's Admin: identifiers only, and Admin authorizes its own visitor
   { methods: ["GET"], path: /^\/api\/bots\/[\w-]+\/slack-management$/ },
   { methods: ["GET"], path: /^\/api\/search$/ },
+  // The music player: a paired phone or a remote client plays from the same queue and reports its own receipts.
+  { methods: ["GET"], path: /^\/api\/music(?:\/.*)?$/ },
+  { methods: ["POST", "PUT", "PATCH", "DELETE"], path: /^\/api\/music(?:\/.*)?$/ },
   { methods: ["GET"], path: /^\/api\/threads\/[\w-]+\/messages$/ },
   { methods: ["GET"], path: /^\/api\/threads\/[\w-]+\/messages\/[\w-]+\/image$/ },
   { methods: ["GET"], path: /^\/api\/threads\/[\w-]+\/messages\/[\w-]+\/tool$/ },

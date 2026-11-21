@@ -5,6 +5,7 @@
 // fading its own background in: a single moving piece is what makes the two read as one control.
 
 import { useEffect, useRef } from "react";
+import { IconLayoutGrid, IconMessageCircle } from "@tabler/icons-react";
 
 import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
@@ -17,7 +18,7 @@ const SEGMENTS: readonly { id: ShellView; label: LocaleKey }[] = [
   { id: "sidebar", label: "board.segment.chat" },
 ];
 
-export function ShellViewSwitch({ className }: { className?: string }) {
+export function ShellViewSwitch({ className, compact = false }: { className?: string; compact?: boolean }) {
   const view = useShellView();
   const track = useRef<HTMLDivElement | null>(null);
   const pill = useRef<HTMLSpanElement | null>(null);
@@ -44,7 +45,7 @@ export function ShellViewSwitch({ className }: { className?: string }) {
     if (from === left) return;
     // Slide from where it was to where it belongs. The spring easing overshoots slightly, so the highlight has weight.
     springTo(pillEl, { x: from, opacity: 1 }, { x: left, opacity: 1 });
-  }, [view]);
+  }, [view, compact]);
 
   return (
     <div
@@ -73,13 +74,16 @@ export function ShellViewSwitch({ className }: { className?: string }) {
             role="tab"
             data-segment={segment.id}
             aria-selected={active}
+            aria-label={t(segment.label)}
+            title={compact ? t(segment.label) : undefined}
             onClick={() => setShellView(segment.id)}
             className={cn(
-              "relative z-10 rounded-full px-4 py-1.5 text-[13px] transition-colors duration-150",
+              "relative z-10 rounded-full transition-colors duration-150",
+              compact ? "flex size-7 items-center justify-center" : "px-4 py-1.5 text-[13px]",
               active ? "text-ink" : "text-ink-secondary hover:text-ink",
             )}
           >
-            {t(segment.label)}
+            {compact ? segment.id === "board" ? <IconLayoutGrid size={16} aria-hidden="true" /> : <IconMessageCircle size={16} aria-hidden="true" /> : t(segment.label)}
           </button>
         );
       })}

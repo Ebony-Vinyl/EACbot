@@ -305,6 +305,30 @@ const bridge = {
     input: (serial, payload) =>
       ipcRenderer.invoke("android-device:input", serial, payload).then(() => undefined),
   },
+  /** The desktop lyric strip: this computer's window, so a remote page never sees it. */
+  musicLyrics: {
+    show: (state) => ipcRenderer.invoke("music-lyrics:show", state),
+    hide: () => ipcRenderer.invoke("music-lyrics:hide"),
+    state: () => ipcRenderer.invoke("music-lyrics:state"),
+    lock: (locked) => ipcRenderer.invoke("music-lyrics:lock", locked),
+    layout: (layout) => ipcRenderer.invoke("music-lyrics:layout", layout),
+    clickThrough: (through) => ipcRenderer.invoke("music-lyrics:click-through", through),
+    trayState: (state) => ipcRenderer.invoke("music:tray-state", state),
+    onTrayCommand: (cb) => {
+      const handler = (_event, command) => cb(command);
+      ipcRenderer.on("music:tray-command", handler);
+      return () => ipcRenderer.removeListener("music:tray-command", handler);
+    },
+  },
+  musicShortcuts: {
+    state: () => ipcRenderer.invoke("music:shortcut-state"),
+    set: (change) => ipcRenderer.invoke("music:shortcut-set", change),
+    onCommand: (cb) => {
+      const handler = (_event, command) => cb(command);
+      ipcRenderer.on("music:shortcut-command", handler);
+      return () => ipcRenderer.removeListener("music:shortcut-command", handler);
+    },
+  },
   speechStart: (options) => ipcRenderer.invoke("speech:start", options),
   speechStop: () => ipcRenderer.invoke("speech:stop"),
   speechFinish: () => ipcRenderer.invoke("speech:finish"),

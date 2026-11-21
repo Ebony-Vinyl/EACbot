@@ -14,6 +14,7 @@ const SPRING_EASING = "cubic-bezier(0.22, 1.35, 0.36, 1)";
 const SPRING_MS = 360;
 const LEAVE_MS = 220;
 const LEAVE_EASING = "cubic-bezier(0.4, 0, 0.6, 1)";
+const ownedAnimations = new WeakMap<HTMLElement, Animation>();
 
 export interface SpringFrame {
   x?: number;
@@ -23,8 +24,7 @@ export interface SpringFrame {
 }
 
 function frameToKeyframes(from: SpringFrame, to: SpringFrame): Keyframe[] {
-  const style = (f: SpringFrame) =>
-    `translate3d(${f.x ?? 0}px, ${f.y ?? 0}px, 0) scale(${f.scale ?? 1})`;
+  const style = (f: SpringFrame) => `translate3d(${f.x ?? 0}px, ${f.y ?? 0}px, 0) scale(${f.scale ?? 1})`;
   return [
     { transform: style(from), opacity: String(from.opacity ?? 1) },
     { transform: style(to), opacity: String(to.opacity ?? 1) },
@@ -33,6 +33,9 @@ function frameToKeyframes(from: SpringFrame, to: SpringFrame): Keyframe[] {
 
 function reducedMotion(): boolean {
   try {
+    if (typeof document !== "undefined" && document.documentElement.dataset.reducedMotion === "true") return true;
+  } catch {}
+  try {
     return globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
   } catch {
     return false;
@@ -40,16 +43,54 @@ function reducedMotion(): boolean {
 }
 
 /**
- * Plays `element` from `from` to `to` with the spring easing, cancelling whatever was already running on it so a
- * retarget turns around smoothly instead of stacking.
+ * Plays `element` from `from` to `to` with the spring easing, replacing only motion started by this helper.
  */
-export function springTo(element: HTMLElement, from: SpringFrame, to: SpringFrame, leaving = false): Animation {
-  element.getAnimations().forEach((animation) => animation.cancel());
-  const animation = element.animate(frameToKeyframes(from, to), {
-    duration: reducedMotion() ? 0 : (leaving ? LEAVE_MS : SPRING_MS),
-    easing: leaving ? LEAVE_EASING : SPRING_EASING,
-    fill: "both",
-  });
+export function springTo(element: HTMLElement, from: SpringFrame, to: SpringFrame, leaving = false): Animation | null {
+  const previous = ownedAnimations.get(element);
+  let interrupted: Keyframe | undefined;
+  if (previous) {
+    try {
+      const computed = globalThis.getComputedStyle?.(element);
+      if (computed) interrupted = { transform: computed.transform === "none" ? undefined : computed.transform, opacity: computed.opacity || "1" };
+    } catch {
+      interrupted = undefined;
+    }
+    ownedAnimations.delete(element);
+    previous.cancel();
+  }
+
+  const finishImmediately = () => {
+    element.style.transform = `translate3d(${to.x ?? 0}px, ${to.y ?? 0}px, 0) scale(${to.scale ?? 1})`;
+    element.style.opacity = String(to.opacity ?? 1);
+  };
+  if (reducedMotion() || typeof element.animate !== "function") {
+    finishImmediately();
+    return null;
+  }
+
+  let animation: Animation;
+  try {
+    const frames = frameToKeyframes(from, to);
+    animation = element.animate(interrupted ? [interrupted, frames[1]] : frames, {
+      duration: leaving ? LEAVE_MS : SPRING_MS,
+      easing: leaving ? LEAVE_EASING : SPRING_EASING,
+      fill: "both",
+    });
+  } catch {
+    finishImmediately();
+    return null;
+  }
+
+  ownedAnimations.set(element, animation);
+  animation.onfinish = () => {
+    if (ownedAnimations.get(element) !== animation) return;
+    ownedAnimations.delete(element);
+    finishImmediately();
+    animation.cancel();
+  };
+  animation.oncancel = () => {
+    if (ownedAnimations.get(element) === animation) ownedAnimations.delete(element);
+  };
   return animation;
 }
 
@@ -60,6 +101,7 @@ export function useSpringIn(ref: React.RefObject<HTMLElement | null>, token: unk
     const element = ref.current;
     if (!element || played.current === token) return;
     played.current = token;
-    springTo(element, from, { x: 0, y: 0, scale: 1, opacity: 1 });
+    const animation = springTo(element, from, { x: 0, y: 0, scale: 1, opacity: 1 });
+    return () => animation?.cancel();
   }, [ref, token, from]);
 }

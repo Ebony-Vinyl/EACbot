@@ -4,6 +4,7 @@ import { DATA_INSTRUCTIONS } from "./data/instructions.ts";
 import { EMAIL_INSTRUCTIONS } from "./email/instructions.ts";
 import { HEALTH_INSTRUCTIONS } from "./health/tools.ts";
 import { HOME_INSTRUCTIONS } from "./home/tools.ts";
+import { MUSIC_INSTRUCTIONS } from "./music/tools.ts";
 import { PHONE_INSTRUCTIONS, PHONE_RECOVERY } from "./phones/instructions.ts";
 import { PLUGINS_INSTRUCTIONS } from "./plugins-instructions.ts";
 import { HARNESS_PROXY_TIMEOUT_MS, HARNESS_PROXY_TIMEOUTS_MS } from "./harness-budget.ts";
@@ -12,10 +13,10 @@ import { capToolListResult } from "./tool-count-limit.ts";
 export const MAX_INPUT_BYTES = 1_048_576;
 export const MAX_OUTPUT_BYTES = 16_777_216;
 export type RpcId = string | number | null;
-export type HarnessMcpKind = "browser" | "computer" | "data" | "email" | "device" | "health" | "home" | "plugins";
+export type HarnessMcpKind = "browser" | "computer" | "data" | "email" | "device" | "health" | "home" | "music" | "plugins";
 
-const NAMES: Record<HarnessMcpKind, string> = { browser: "Browser", computer: "Cloud computer", data: "Data", email: "Email", device: "Phone", health: "Health", home: "Home", plugins: "Plugins" };
-const INSTRUCTIONS: Partial<Record<HarnessMcpKind, string>> = { data: DATA_INSTRUCTIONS, email: EMAIL_INSTRUCTIONS, device: PHONE_INSTRUCTIONS, health: HEALTH_INSTRUCTIONS, home: HOME_INSTRUCTIONS, plugins: PLUGINS_INSTRUCTIONS };
+const NAMES: Record<HarnessMcpKind, string> = { browser: "Browser", computer: "Cloud computer", data: "Data", email: "Email", device: "Phone", health: "Health", home: "Home", music: "Music", plugins: "Plugins" };
+const INSTRUCTIONS: Partial<Record<HarnessMcpKind, string>> = { data: DATA_INSTRUCTIONS, email: EMAIL_INSTRUCTIONS, device: PHONE_INSTRUCTIONS, health: HEALTH_INSTRUCTIONS, home: HOME_INSTRUCTIONS, music: MUSIC_INSTRUCTIONS, plugins: PLUGINS_INSTRUCTIONS };
 const RECOVERY: Record<HarnessMcpKind, string> = {
   browser: " This failure does not establish that all browsers are unavailable. Inspect available connections with select_computer if that tool is present. Keep the requested computer and account; do not bypass a permission refusal or human takeover, and do not repeat an uncertain action without checking its result.",
   computer: " Keep working on the assigned cloud computer only; do not bypass a person's control of it, and take a fresh screenshot before repeating an action whose result is uncertain.",
@@ -24,11 +25,12 @@ const RECOVERY: Record<HarnessMcpKind, string> = {
   device: PHONE_RECOVERY,
   health: " A reading that failed to save did not save; check with HEALTH_QUERY before writing it again, and never invent a reading to fill a gap.",
   home: " A home command marked indeterminate may or may not have taken effect: read the device again with HOME_GET before saying anything about it, and never send the same command twice.",
+  music: " A music control request is not a play: call MUSIC_NOW_PLAYING and check playbackConfirmed before saying a song is playing, and do not repeat a queue change whose result is uncertain.",
   plugins: " A refused plugin call did not run: the owner must issue a grant from the plugin's page, and no other path grants it. Do not retry the call or route the action through another tool.",
 };
 
 export function parseHarnessMcpKind(value: unknown): HarnessMcpKind | null {
-  return value === "browser" || value === "computer" || value === "data" || value === "email" || value === "device" || value === "health" || value === "home" || value === "plugins" ? value : null;
+  return value === "browser" || value === "computer" || value === "data" || value === "email" || value === "device" || value === "health" || value === "home" || value === "music" || value === "plugins" ? value : null;
 }
 
 /** Node's fetch (undici) rejects with the socket error as its `cause`: refused before anything was sent, reset or closed after. */

@@ -110,6 +110,7 @@ const VERBS: Record<string, { options: ParseArgsOptionsConfig; positionals: numb
   "token create": { options: { out: { type: "string" }, scope: { type: "string" }, expires: { type: "string" }, force: { type: "boolean" } }, positionals: 1 },
   "token list": { options: {}, positionals: 0 },
   "token revoke": { options: {}, positionals: 1 },
+  music: { options: { seconds: { type: "string" } }, positionals: 2 },
 };
 
 export const HEADLESS_VERBS: ReadonlySet<string> = new Set(Object.keys(VERBS).map((verb) => verb.split(" ")[0]!));

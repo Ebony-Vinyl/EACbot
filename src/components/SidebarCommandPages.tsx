@@ -3,7 +3,7 @@
 // Inbox because that row is the one place the sidebar shows on every plan and
 // in both densities, and these pages are where a person does the work Inbox
 // tells them about.
-import { Bot, LayoutGrid, ListTree, MonitorSmartphone, TerminalSquare } from "lucide-react";
+import { Bot, LayoutGrid, ListTree, MonitorSmartphone, Music4, TerminalSquare } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
 import { NEW_PAGES, useStore, type NewPage } from "@/state/store";
@@ -16,6 +16,9 @@ const PAGE_ICONS: Readonly<Record<NewPage, typeof Bot>> = {
   agents: LayoutGrid,
   terminals: TerminalSquare,
 };
+
+/** The music page is its own row group: it is not a command-centre page, but it is where a person plays something. */
+const MUSIC_ROW = { page: "music" as const, icon: Music4, labelKey: "sidebar.nav.music" };
 
 export function SidebarCommandPages({ icons, large }: {
   /** The avatars-only density: one square per page, no words. */
@@ -72,6 +75,49 @@ export function SidebarCommandPages({ icons, large }: {
           </button>
         );
       })}
+      {(() => {
+        const active = state.activeView === "music";
+        const label = t(MUSIC_ROW.labelKey as never);
+        const onClick = () => dispatch({ type: "showMusic" });
+        if (icons) {
+          return (
+            <button
+              type="button"
+              data-sidebar-page="music"
+              aria-label={label}
+              title={label}
+              aria-current={active ? "page" : undefined}
+              onClick={onClick}
+              className={cn(
+                "mx-auto mb-1 flex size-[46px] shrink-0 items-center justify-center rounded-xl text-ink-secondary hover:bg-raised hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
+                active && "bg-raised text-ink",
+              )}
+            >
+              <Music4 size={20} strokeWidth={1.5} aria-hidden="true" />
+            </button>
+          );
+        }
+        return (
+          <button
+            type="button"
+            data-sidebar-page="music"
+            aria-label={label}
+            aria-current={active ? "page" : undefined}
+            onClick={onClick}
+            className={cn(
+              "flex w-full min-w-0 items-center gap-2.5 rounded-lg px-2 py-1.5 text-left outline-none hover:bg-raised/60 focus-visible:ring-2 focus-visible:ring-accent/60",
+              active && "bg-raised",
+            )}
+          >
+            <span className={cn("grid shrink-0 place-items-center rounded-full bg-raised text-ink-secondary", large ? "size-9" : "size-8")}>
+              <Music4 size={large ? 18 : 16} strokeWidth={1.75} aria-hidden="true" />
+            </span>
+            <span className={cn("min-w-0 flex-1 truncate text-ink", large ? "text-[14px] font-medium leading-5" : "text-[15px] font-semibold leading-5")}>
+              {label}
+            </span>
+          </button>
+        );
+      })()}
     </nav>
   );
 }

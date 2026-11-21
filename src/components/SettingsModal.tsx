@@ -1,5 +1,5 @@
 import { ResourceSettings } from "./ResourceSettings";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { Archive, ChartNoAxesColumn, Cloud, CloudDownload, Coins, Download, FlaskConical, KeyRound, LockKeyhole, Megaphone, Monitor, Palette, ScrollText, Search, Settings, Sparkles, TabletSmartphone, Terminal, User, Users, X, Building2, Zap, BookOpen, ImagePlus } from "lucide-react";
 import { useStore, type AppSettingsSection } from "@/state/store";
 import { skillsLibraryEnabled } from "@/lib/feature-flags";
@@ -63,13 +63,13 @@ import { CompanyBackupSettings } from "./CompanyBackupSettings";
 import { ImportSettings } from "./ImportSettings";
 import { cn } from "@/lib/cn";
 import { scrollWithin } from "@/lib/scroll-within";
-import { glassPopupFrameStyle } from "@/lib/glass-popup";
 import { NotificationRows } from "./NotificationSettingsRows";
 import { useAdvancedMode } from "@/lib/interface-mode";
 import { Select } from "./Select";
 import { SavedStepsRow } from "./SavedStepsRow";
 import { BrowserProfilesRow, ColorUserBubblesRow, AdvancedModeRow, Live2dRow, ExperimentalFeaturesRow, LanguageRow, NewBotEffortRow, PinnedCirclesRow, ReplayTourRow, RunCardRow, FollowUpRow, SendKeyRow, ShowThreadsRow, ToolCallsRow, UniversalPinsRow, UpdatesRow } from "./AppSettingsRows";
 import { SIMPLE_ADVANCED_ONLY, SimpleAiPage, SimpleBillingPage, SimpleComputerPage, SimpleGeneralPage, SimpleLooksPage, SimpleUpdatesPage, type Disclose, type SimpleDisclosureId } from "./SettingsSimplePages";
+import "./settings-workspace.css";
 
 // labelKey, not a label: t() reads the active pack when called, so a label resolved at module scope would freeze the
 // boot language.
@@ -184,6 +184,15 @@ export function keySearchResults(query: string): KeyEntry[] {
 
 export const openKeyResult = (entry: KeyEntry) => entry.uses ? openKeySettings(entry.uses, entry.id) : openKeySettings(entry.id);
 
+function isVisible(element: Element) {
+  return !element.closest('[hidden], [inert], [aria-hidden="true"]') &&
+    (element.checkVisibility?.({ visibilityProperty: true }) ?? element.getClientRects().length > 0);
+}
+
+function hasOpenDialog() {
+  return Array.from(document.querySelectorAll('dialog[open], [role="dialog"], [role="alertdialog"]')).some(isVisible);
+}
+
 export function SettingsModal() {
   const { state, dispatch } = useStore();
   const advanced = useAdvancedMode();
@@ -193,7 +202,9 @@ export function SettingsModal() {
     (remoteActive && !["appearance", "desktopWorkspaces"].includes(requested)) || requested === "remote"
       ? "companion"
       : advanced && requested === "updates" ? "general" : requested;
-  const dialogRef = useRef<HTMLDivElement>(null);
+  const workspaceRef = useRef<HTMLElement>(null);
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const searchFirst = useRef(advanced);
   const [query, setQuery] = useState("");
@@ -241,8 +252,8 @@ export function SettingsModal() {
   const [reveal, setReveal] = useState<string | null>(null);
   const advancedMatches = advanced || !q ? [] : SIMPLE_ADVANCED_ONLY.filter((key) => t(key).toLowerCase().includes(q));
   const keyResults = remoteActive || !availableSections.some((entry) => entry.id === "connections") ? [] : keySearchResults(q);
-  const keyResultButtons = (className: string) => keyResults.map((entry) => (
-    <button key={entry.id} type="button" data-settings-key-result={entry.id} className={className}
+  const keyResultButtons = keyResults.map((entry) => (
+    <button key={entry.id} type="button" data-settings-key-result={entry.id} className="settings-workspace-link"
       onClick={() => { setQuery(""); setLooks(false); dispatch(openKeyResult(entry)); }}>
       <span>{t(entry.labelKey)} <span className="text-ink-secondary">· {t(keySection(entry).titleKey)}</span></span>
     </button>
@@ -261,59 +272,35 @@ export function SettingsModal() {
   }, [reveal]);
 
   useEffect(() => {
-    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const dialog = dialogRef.current;
-    const search = dialog?.querySelector<HTMLInputElement>("[data-settings-search]");
-    if (searchFirst.current && search?.checkVisibility()) search.focus();
-    else dialog?.focus();
-
-    const onKey = (event: KeyboardEvent) => {
-      if (!searchFirst.current && dialog && document.activeElement === dialog && event.key.length === 1 && !event.metaKey && !event.ctrlKey && !event.altKey
-        && search?.checkVisibility()) {
-        event.preventDefault();
-        search.focus();
-        setQuery((current) => current + event.key);
-        return;
-      }
-      // A child editor owns Escape and its focus trap, including while saving.
-      if (event.defaultPrevented || (dialog && [...dialog.querySelectorAll<HTMLElement>('[role="dialog"], [role="alertdialog"]')]
-        .some(child => child.getClientRects().length))) return;
-      if (event.key === "Escape") {
-        event.preventDefault();
-        dispatch({ type: "toggleAppSettings", open: false });
-        return;
-      }
-      if (event.key !== "Tab" || !dialog) return;
-
-      const focusable = Array.from(
-        dialog.querySelectorAll<HTMLElement>(
-          'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), summary, [tabindex]:not([tabindex="-1"])',
-        ),
-      ).filter((element) => element.checkVisibility());
-      if (focusable.length === 0) {
-        event.preventDefault();
-        dialog.focus();
-        return;
-      }
-
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      const active = document.activeElement;
-      if (event.shiftKey && (active === first || !dialog.contains(active))) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && active === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-
-    window.addEventListener("keydown", onKey);
+    const workspace = workspaceRef.current;
+    const opener = document.activeElement;
+    if (!workspace || !(opener instanceof HTMLElement) || workspace.contains(opener)) return;
+    (searchFirst.current ? searchRef.current : titleRef.current)?.focus({ preventScroll: true });
     return () => {
-      window.removeEventListener("keydown", onKey);
-      previousFocus?.focus();
+      queueMicrotask(() => {
+        if (!workspace.isConnected && document.activeElement === document.body && opener.isConnected && isVisible(opener)) {
+          opener.focus({ preventScroll: true });
+        }
+      });
     };
-  }, [dispatch]);
+  }, []);
+
+  const close = () => dispatch({ type: "toggleAppSettings", open: false });
+  const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
+    if (event.defaultPrevented || event.nativeEvent.isComposing || !(event.target instanceof Element) || !event.currentTarget.contains(event.target)) return;
+    if (event.key === "Escape" && hasOpenDialog()) return;
+    if (event.key === "Escape") {
+      if (event.repeat) return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (event.target === searchRef.current && query) setQuery("");
+      else close();
+    } else if (event.target === titleRef.current && event.key.length === 1 && !event.metaKey && !event.ctrlKey && !event.altKey) {
+      event.preventDefault();
+      searchRef.current?.focus();
+      setQuery((current) => current + event.key);
+    }
+  };
 
   const openSection = (id: AppSettingsSection) => dispatch({ type: "toggleAppSettings", open: true, section: id });
 
@@ -459,239 +446,146 @@ export function SettingsModal() {
     }
   };
 
-  const close = () => dispatch({ type: "toggleAppSettings", open: false });
-  const searchField = (className: string, inputClassName: string) => (
-    <div className={className}>
-      <Search size={15} aria-hidden="true" className="shrink-0 text-ink-secondary" />
-      <input
-        data-settings-search
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key !== "Escape") return;
-          e.stopPropagation();
-          if (query) setQuery("");
-          else close();
-        }}
-        placeholder={t("settings.search")}
-        aria-label={t("settings.searchAria")}
-        className={inputClassName}
-      />
-    </div>
-  );
+  const looksOpen = !advanced && looks && currentPage?.id === "general";
+  const pageTitle = looksOpen ? t("settings.simple.page.looks") : sectionLabelKey ? t(sectionLabelKey) : null;
+  const subtitleKey = advanced && section === "connections" ? "settings.connections.subtitle"
+    : advanced && section === "engines" ? "settings.engines.subtitle"
+      : advanced && section === "experimental" ? "settings.experimental.subtitle" : undefined;
+  const goTo = (id: AppSettingsSection) => { setLooks(false); openSection(id); };
+  const groups = SETTINGS_GROUPS.map((group) => ({
+    ...group,
+    entries: availableSections.filter((entry) => entry.group === group.id),
+    matches: visibleSections.filter((entry) => entry.group === group.id),
+  }));
+  const noResults = advanced ? keyResults.length === 0 && visibleSections.length === 0 :
+    keyResults.length === 0 && visiblePages.length === 0 && advancedMatches.length === 0;
 
-  if (!advanced) {
-    const looksOpen = looks && currentPage?.id === "general";
-    const goTo = (id: AppSettingsSection) => { setLooks(false); openSection(id); };
-    return (
-      <div
-        className="glass-popup-frame"
-        data-settings-sheet
-        data-settings-look="simple"
-        style={glassPopupFrameStyle()}
-        onMouseDown={(e) => e.target === e.currentTarget && close()}
-      >
-        <div aria-hidden="true" className="glass-scrim pointer-events-none absolute inset-0" />
-        <div
-          ref={dialogRef}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="app-settings-title"
-          tabIndex={-1}
-          style={{ outline: "none" }}
-          className="glass-surface glass-popup animate-pop-in relative flex overflow-hidden rounded-2xl text-ink"
+  return (
+    <section
+      ref={workspaceRef}
+      data-settings-workspace
+      data-settings-look={advanced ? "advanced" : "simple"}
+      aria-labelledby="app-settings-title"
+      className="settings-workspace"
+      onKeyDown={onKeyDown}
+    >
+      <header className="settings-workspace-header">
+        <h1 ref={titleRef} id="app-settings-title" tabIndex={-1}>{t("settings.title")}</h1>
+        <button
+          type="button"
+          onClick={close}
+          aria-label={t("settings.close")}
+          title={`${t("settings.close")} (${shortcutLabel("close-panel")})`}
+          className="settings-workspace-icon-button"
         >
-          <span id="app-settings-title" className="sr-only">{t("settings.title")}</span>
-          <nav aria-label={t("settings.title")} className="glass-rail hidden min-h-0 w-[198px] shrink-0 flex-col gap-0.5 overflow-y-auto px-3 py-4 sm:flex">
-            {searchField(
-              "mb-2 flex h-8 shrink-0 items-center gap-2 rounded-lg bg-ink/[0.05] px-[9px] text-[13px] focus-within:ring-2 focus-within:ring-focus/60",
-              "w-full min-w-0 bg-transparent text-[13px] text-ink placeholder:text-ink-secondary focus:outline-none",
-            )}
-            {visiblePages.length === 0 && advancedMatches.length === 0 && keyResults.length === 0 && (
-              <div className="px-[9px] py-3 text-[13px] leading-[18px] text-ink-secondary">{t("settings.noMatch", { query: query.trim() })}</div>
-            )}
-            {visiblePages.map((page) => {
-              const Icon = page.icon;
-              const current = page === currentPage;
-              return (
-                <button
-                  key={page.id}
-                  type="button"
-                  data-settings-page={page.id}
-                  onClick={() => goTo(page.sections[0]!)}
-                  aria-current={current ? "page" : undefined}
-                  className={cn(
-                    "flex h-8 shrink-0 cursor-pointer items-center gap-[9px] rounded-lg px-[9px] text-left text-[13px] text-ink transition-colors motion-reduce:transition-none",
-                    current ? "bg-ink/[0.08]" : "hover:bg-ink/[0.06]",
-                  )}
-                >
-                  <Icon size={15} aria-hidden="true" className="shrink-0" />
-                  <span className="truncate">{t(page.labelKey)}</span>
-                </button>
-              );
-            })}
+          <X size={18} aria-hidden="true" />
+        </button>
+      </header>
+
+      <div className="settings-workspace-layout">
+        <nav aria-label={t("settings.title")} className="settings-workspace-nav">
+          <div className="settings-workspace-search">
+            <Search size={16} aria-hidden="true" />
+            <input
+              ref={searchRef}
+              data-settings-search
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder={t("settings.search")}
+              aria-label={t("settings.searchAria")}
+            />
+            {query && <button
+              type="button"
+              aria-label={t("model.simple.clearSearch")}
+              onClick={() => { setQuery(""); searchRef.current?.focus(); }}
+              className="settings-workspace-icon-button"
+            ><X size={14} aria-hidden="true" /></button>}
+          </div>
+          <div className="settings-workspace-picker-wrap">
+            <Select
+              className="settings-workspace-picker"
+              aria-label={t("settings.title")}
+              value={advanced ? section : currentPage?.id ?? ""}
+              onChange={(event) => {
+                setQuery("");
+                if (advanced) openSection(event.target.value as AppSettingsSection);
+                else {
+                  const page = simplePages.find((candidate) => candidate.id === event.target.value);
+                  if (page) goTo(page.sections[0]!);
+                }
+              }}
+            >
+              {advanced ? groups.map(({ id, labelKey, entries }) => entries.length > 0 && (
+                <optgroup key={id} label={t(labelKey)}>
+                  {entries.map((entry) => <option key={entry.id} value={entry.id}>{t(entry.labelKey)}</option>)}
+                </optgroup>
+              )) : simplePages.map((page) => <option key={page.id} value={page.id}>{t(page.labelKey)}</option>)}
+            </Select>
+          </div>
+          <div className="settings-workspace-links" data-searching={q ? "true" : undefined}>
+            {noResults && <p role="status">{t("settings.noMatch", { query: query.trim() })}</p>}
+            {advanced ? groups.map(({ id, labelKey, matches }) => matches.length > 0 && (
+              <div key={id} role="group" aria-labelledby={`settings-group-${id}`} data-settings-group={id} className="settings-workspace-group">
+                <div id={`settings-group-${id}`} className="settings-workspace-group-title">{t(labelKey)}</div>
+                {matches.map(({ id, labelKey, icon: Icon }) => (
+                  <button
+                    key={id}
+                    type="button"
+                    data-settings-section={id}
+                    aria-current={section === id ? "page" : undefined}
+                    className="settings-workspace-link"
+                    onClick={() => openSection(id)}
+                  >
+                    <Icon size={16} aria-hidden="true" />
+                    <span>{t(labelKey)}</span>
+                  </button>
+                ))}
+              </div>
+            )) : visiblePages.map(({ id, sections, labelKey, icon: Icon }) => (
+              <button
+                key={id}
+                type="button"
+                data-settings-page={id}
+                aria-current={id === currentPage?.id ? "page" : undefined}
+                className="settings-workspace-link"
+                onClick={() => goTo(sections[0]!)}
+              >
+                <Icon size={16} aria-hidden="true" />
+                <span>{t(labelKey)}</span>
+              </button>
+            ))}
             {advancedMatches.map((key) => (
               <button
                 key={key}
                 type="button"
                 data-settings-advanced-only={key}
-                onClick={() => { setQuery(""); goTo("general"); setReveal("advanced-mode"); }}
-                className="flex min-h-8 shrink-0 cursor-pointer items-center rounded-lg px-[9px] py-1.5 text-left text-[13px] leading-[18px] text-ink transition-colors hover:bg-ink/[0.06] motion-reduce:transition-none"
+                onClick={() => { setQuery(""); goTo("general"); setReveal("advanced-mode"); searchRef.current?.focus(); }}
+                className="settings-workspace-link"
               >
                 <span>{t(key)} <span className="text-ink-secondary">· {t("settings.simple.advanced")}</span></span>
               </button>
             ))}
-            {keyResultButtons("flex min-h-8 shrink-0 cursor-pointer items-center rounded-lg px-[9px] py-1.5 text-left text-[13px] leading-[18px] text-ink transition-colors hover:bg-ink/[0.06] motion-reduce:transition-none")}
-          </nav>
-
-          <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
-            <header className="flex shrink-0 items-center gap-3 py-3 pl-4 pr-14 sm:pb-1.5 sm:pl-12 sm:pt-8">
-              <Select className="min-w-0 sm:hidden"
-                aria-label={t("settings.title")}
-                value={currentPage?.id ?? ""}
-                onChange={(event) => {
-                  setQuery("");
-                  const page = simplePages.find((candidate) => candidate.id === event.target.value);
-                  if (page) goTo(page.sections[0]!);
-                }}
-              >
-                {simplePages.map((page) => (
-                  <option key={page.id} value={page.id}>{t(page.labelKey)}</option>
-                ))}
-              </Select>
-              <h2 className="hidden truncate text-[17px] font-medium leading-6 tracking-[-0.008em] text-ink sm:block">
-                {looksOpen ? t("settings.simple.page.looks") : currentPage ? t(currentPage.labelKey) : null}
-              </h2>
-            </header>
-            <button
-              type="button"
-              onClick={close}
-              aria-label={t("settings.close")}
-              title={`${t("settings.close")} (${shortcutLabel("close-panel")})`}
-              className="absolute right-3 top-3 flex size-8 cursor-pointer items-center justify-center rounded-full text-ink-secondary transition-colors hover:bg-ink/[0.06] hover:text-ink motion-reduce:transition-none"
-            >
-              <X size={16} aria-hidden="true" />
-            </button>
-
-            <div
-              ref={scrollRef}
-              data-settings-scroll
-              className={cn(
-                "flex min-h-0 flex-1 flex-col gap-7 overflow-y-auto px-4 pb-8 pt-4 sm:px-8 sm:pb-7 sm:pt-[22px]",
-                SIMPLE_BUTTONS,
-                "[&_.uppercase]:normal-case [&_.uppercase]:tracking-normal",
-              )}
-            >
-              <LicenseExpiryBanner config={state.config} />
-              {currentPage ? renderSimplePage(currentPage) : null}
-            </div>
+            {keyResultButtons}
           </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div
-      className="glass-popup-frame"
-      data-settings-sheet
-      data-settings-look="advanced"
-      style={glassPopupFrameStyle()}
-      onMouseDown={(e) => e.target === e.currentTarget && close()}
-    >
-      {/* A sibling, not the parent: a backdrop-filter on an ancestor would stop the pop-up's own glass from seeing the app behind it. */}
-      <div aria-hidden="true" className="glass-scrim pointer-events-none absolute inset-0" />
-      <div
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="app-settings-title"
-        tabIndex={-1}
-        className="glass-surface glass-popup animate-pop-in relative flex overflow-hidden rounded-2xl outline-none"
-      >
-        <span id="app-settings-title" className="sr-only">{t("settings.title")}</span>
-        <nav className="glass-rail hidden min-h-0 w-[200px] shrink-0 flex-col gap-1 overflow-y-auto border-r border-hairline/30 p-3 sm:flex">
-          <div className="shrink-0 px-2 py-3 text-[15px] font-semibold text-ink">
-            {t("settings.title")}
-          </div>
-          {searchField(
-            "mb-2 mt-1 flex h-8 shrink-0 items-center gap-2 rounded-lg bg-ink/[0.05] px-[9px] text-[13px] focus-within:ring-2 focus-within:ring-focus/60",
-            "w-full min-w-0 bg-transparent text-[13px] text-ink placeholder:text-ink-tertiary focus:outline-none",
-          )}
-          {visibleSections.length === 0 && (
-            <div className="px-2.5 py-4 text-[13px] leading-relaxed text-ink-secondary">
-              {t("settings.noMatch", { query: query.trim() })}
-            </div>
-          )}
-          {SETTINGS_GROUPS.map((group) => {
-            const entries = visibleSections.filter((entry) => entry.group === group.id);
-            if (entries.length === 0) return null;
-            return (
-              <div key={group.id} role="group" aria-labelledby={`settings-group-${group.id}`} data-settings-group={group.id} className="flex flex-col gap-0.5 pb-2">
-                <div id={`settings-group-${group.id}`} className="px-[9px] pb-1 pt-2 text-[12px] font-medium leading-4 text-ink-tertiary">
-                  {t(group.labelKey)}
-                </div>
-                {entries.map(({ id, labelKey, icon: Icon }) => (
-                  <button
-                    key={id}
-                    data-settings-section={id}
-                    onClick={() => openSection(id)}
-                    aria-current={section === id ? "page" : undefined}
-                    className={cn(
-                      "flex h-8 shrink-0 cursor-pointer items-center gap-[9px] rounded-lg px-[9px] text-left text-[13px] text-ink transition-colors motion-reduce:transition-none",
-                      section === id ? "bg-ink/[0.08]" : "hover:bg-ink/[0.06]",
-                    )}
-                  >
-                    <Icon size={15} className="shrink-0" />
-                    {t(labelKey)}
-                  </button>
-                ))}
-              </div>
-            );
-          })}
-          {keyResultButtons("cursor-pointer flex min-h-9 items-center rounded-lg px-2.5 py-2 text-left text-[13px] text-ink transition-colors hover:bg-control/50 motion-reduce:transition-none")}
         </nav>
 
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <div className="flex shrink-0 items-center justify-between gap-3 border-b border-hairline/30 px-3 py-3 sm:pl-9">
-            <Select className="min-w-0 sm:hidden"
-              aria-label={t("settings.title")}
-              value={section}
-              onChange={(event) => {
-                setQuery("");
-                openSection(event.target.value as AppSettingsSection);
-              }}
-            >
-              {SETTINGS_GROUPS.map((group) => {
-                const entries = availableSections.filter((entry) => entry.group === group.id);
-                return entries.length === 0 ? null : (
-                  <optgroup key={group.id} label={t(group.labelKey)}>
-                    {entries.map(({ id, labelKey }) => (
-                      <option key={id} value={id}>{t(labelKey)}</option>
-                    ))}
-                  </optgroup>
-                );
-              })}
-            </Select>
-            <span className="hidden text-[15px] font-semibold text-ink sm:block">
-              {sectionLabelKey ? t(sectionLabelKey) : null}
-            </span>
-            <button
-              onClick={close}
-              aria-label={t("settings.close")}
-              title={`${t("settings.close")} (${shortcutLabel("close-panel")})`}
-              className="ui-icon-button cursor-pointer shrink-0 max-md:size-9 max-md:rounded-full max-md:border max-md:border-hairline max-md:bg-card"
-            >
-              <X size={18} />
-            </button>
-          </div>
-
-          <div ref={scrollRef} className="flex flex-1 flex-col gap-4 overflow-y-auto px-3 py-4 sm:px-5 sm:pb-5">
-            <LicenseExpiryBanner config={state.config} />
-            {renderSection(section)}
+        <div className="settings-workspace-content">
+          {pageTitle && <div className="settings-workspace-section-header">
+            <h2>{pageTitle}</h2>
+            {subtitleKey && <p>{t(subtitleKey)}</p>}
+          </div>}
+          <div ref={scrollRef} data-settings-scroll className={cn(
+            "settings-workspace-scroll",
+            !advanced && SIMPLE_BUTTONS,
+            !advanced && "[&_.uppercase]:normal-case [&_.uppercase]:tracking-normal",
+          )}>
+            <div className="settings-workspace-items">
+              <LicenseExpiryBanner config={state.config} />
+              {advanced ? renderSection(section) : currentPage && renderSimplePage(currentPage)}
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </section>
   );
 }

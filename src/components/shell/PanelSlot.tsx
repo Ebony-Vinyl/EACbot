@@ -19,9 +19,12 @@ const SETTLE_MS = 260;
 
 export function PanelSlot({ open, side, children }: { open: boolean; side: "left" | "right"; children: ReactNode }) {
   const element = useRef<HTMLDivElement | null>(null);
+  const animation = useRef<Animation | null>(null);
   const wasOpen = useRef(false);
   // Stays true for one settle after closing, so the exit has a node to play on.
   const [mounted, setMounted] = useState(open);
+
+  useEffect(() => () => animation.current?.cancel(), []);
 
   useEffect(() => {
     if (open) {
@@ -36,9 +39,9 @@ export function PanelSlot({ open, side, children }: { open: boolean; side: "left
     if (!element.current || !mounted) return;
     const offset = side === "left" ? -TRAVEL : TRAVEL;
     if (open) {
-      springTo(element.current, wasOpen.current ? { x: 0, opacity: 0.4 } : { x: offset, opacity: 0 }, { x: 0, opacity: 1 });
+      animation.current = springTo(element.current, wasOpen.current ? { x: 0, opacity: 0.4 } : { x: offset, opacity: 0 }, { x: 0, opacity: 1 });
     } else {
-      springTo(element.current, { x: 0, opacity: 1 }, { x: offset, opacity: 0 }, true);
+      animation.current = springTo(element.current, { x: 0, opacity: 1 }, { x: offset, opacity: 0 }, true);
     }
     wasOpen.current = open;
   }, [open, side, mounted]);
@@ -49,9 +52,11 @@ export function PanelSlot({ open, side, children }: { open: boolean; side: "left
     <div
       ref={element}
       data-panel-slot={side}
+      aria-hidden={!open}
+      inert={!open}
       className={cn("pointer-events-none absolute inset-y-0 z-30", side === "right" ? "right-0" : "left-0")}
     >
-      <div className="pointer-events-auto h-full">{children}</div>
+      <div className={cn("h-full", open && "pointer-events-auto")}>{children}</div>
     </div>
   );
 }

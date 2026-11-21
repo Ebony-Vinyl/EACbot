@@ -67,6 +67,7 @@ import { departmentNames, moveBotsToSection } from "./bot-sections";
 import { sidebarSectionAttention } from "@/lib/sidebar-attention";
 import { botListItemPointerIntent } from "@/lib/sidebar-selection";
 import { SidebarFooterBar } from "./SidebarFooterBar";
+import { SimpleSidebarFooter } from "./SidebarFooter";
 import { PhoneHero } from "./SidebarPhoneHero";
 import { SidebarProfileMenu } from "./SidebarProfileMenu";
 import { PHONE_LAYOUT, useMediaQuery } from "@/lib/use-media-query";
@@ -143,11 +144,13 @@ export function GroupListItem({
   density,
   query = "",
   onMenu,
+  workspace = false,
 }: {
   group: Group;
   density: SidebarDensity;
   query?: string;
   onMenu: (menu: { groupId: string; x: number; y: number }) => void;
+  workspace?: boolean;
 }) {
   const { state, dispatch } = useStore();
   const advanced = useAdvancedMode();
@@ -169,7 +172,7 @@ export function GroupListItem({
   const last = group.messages.at(-1);
   return (
     <>
-    <div className={cn("group relative", railTile && "mx-auto w-[54px]")}>
+    <div className={cn("group relative", railTile && "mx-auto w-[54px]")} data-conversation-disclosure={workspace && !group.dm && hasThreadList ? "" : undefined}>
     <button
       data-sidebar-group-row={group.id}
       aria-current={selected && !expanded ? "page" : undefined}
@@ -196,9 +199,9 @@ export function GroupListItem({
     >
       <StackedMascots members={members} density={railTile ? "comfortable" : density} large={simpleRow || railTile} />
       <div className={cn("min-w-0 flex-1", density === "icons" && "hidden")}>
-        <div className={cn("flex items-baseline justify-between gap-2", simpleRow && "pr-7")}>
+        <div className={cn("flex items-baseline justify-between gap-2", simpleRow && !workspace && "pr-7")}>
           <span className={cn("truncate text-[14px] text-ink", simpleRow ? "font-medium leading-5" : "font-semibold")}>{group.name}</span>
-          {advanced && selected && last && !expanded && <span className="shrink-0 text-[10px] text-ink-secondary">{formatTime(last.at)}</span>}
+          {(workspace || (advanced && selected)) && last && !expanded && <span data-conversation-time={workspace ? "" : undefined} className="shrink-0 text-[10px] text-ink-secondary">{formatTime(last.at)}</span>}
           {!simpleRow && expanded && group.unread && <span className="size-1.5 shrink-0 rounded-full bg-accent" aria-label={t("task.unreadMany")} />}
           {simpleRow && !expanded && group.unread && <RowDot />}
         </div>
@@ -646,6 +649,7 @@ export function BotThreadList({ bot, selected, query, pendingQueued, reveal, loc
 }
 
 export interface BotRowProps {
+  workspace?: boolean;
   bot: Bot;
   selected: boolean;
   deleting: boolean;
@@ -670,7 +674,7 @@ export function botRowProps(
   state: AppState,
   dispatch: Dispatch<Action>,
   bot: Bot,
-  layout: Pick<BotRowProps, "density" | "query" | "onMenu" | "renameRequest" | "botDrag" | "botDrop" | "botDragging">,
+  layout: Pick<BotRowProps, "workspace" | "density" | "query" | "onMenu" | "renameRequest" | "botDrag" | "botDrop" | "botDragging">,
 ): BotRowProps {
   const selected = state.activeView === "chat" && state.selectedId === bot.id;
   const reveal = state.revealThread;
@@ -709,10 +713,10 @@ export const BotListItem = memo(function BotListItem(props: BotRowProps) {
   const iconOnly = density === "icons";
   const expanded = showThreads && !iconOnly && threadsOpen && hasThreadList;
   useEffect(() => { if (iconOnly) setRenaming(false); }, [iconOnly]);
-  const simpleRow = !advanced && !showThreads && density === "comfortable";
+  const simpleRow = !props.workspace && !advanced && !showThreads && density === "comfortable";
   const simpleList = !advanced && !iconOnly;
   const railTile = iconOnly && !advanced;
-  const avatarSize = iconOnly ? (railTile ? 36 : 44) : showThreads ? 32 : simpleRow ? 36 : 44;
+  const avatarSize = iconOnly ? (railTile ? 36 : 44) : props.workspace ? 44 : showThreads ? 32 : simpleRow ? 36 : 44;
   const tooltip = simpleList ? botTooltip(bot, instances) : undefined;
   const visible = useVisibleMessages(bot);
   const last = lastNonReceipt(visible);
@@ -777,7 +781,7 @@ export const BotListItem = memo(function BotListItem(props: BotRowProps) {
       </span>
       <div className={cn("min-w-0 flex-1", iconOnly && "hidden")}>
         <div className={cn("flex items-baseline justify-between gap-2", simpleRow && "pr-7")}>
-          <span className={cn("flex min-w-0 grow items-center gap-1.5 truncate text-ink", simpleRow ? "text-[14px] font-medium leading-5" : "text-[15px] font-semibold leading-5")}>
+          <span className={cn("flex min-w-0 grow items-center gap-1.5 truncate text-ink", simpleRow || props.workspace ? "text-[14px] font-medium leading-5" : "text-[15px] font-semibold leading-5")}>
             {!simpleList && bot.pinned && <Pin size={12} className="shrink-0 text-ink-secondary" />}
             <RenameTitle
               key={iconOnly ? "icons" : "expanded"}
@@ -807,14 +811,13 @@ export const BotListItem = memo(function BotListItem(props: BotRowProps) {
                 <title>{t("call.live.badge")}</title>
               </Phone>
             )}
-            {!simpleList && title && !renaming && <SidebarBotRole role={title} />}
+            {(props.workspace || !simpleList) && title && !renaming && <SidebarBotRole role={title} />}
           </span>
           {last && !renaming && !expanded && (
             <span className={cn(
               "shrink-0 text-[12px] tabular-nums text-ink-secondary transition-opacity",
-              // Phones show the time on every row; elsewhere only the selected row, until its actions appear.
-              selected && !simpleList ? "group-hover:opacity-0 group-focus-within:opacity-0 touch:opacity-0 max-md:touch:opacity-100" : "hidden max-md:inline",
-            )}>
+              props.workspace ? "" : selected && !simpleList ? "group-hover:opacity-0 group-focus-within:opacity-0 touch:opacity-0 max-md:touch:opacity-100" : "hidden max-md:inline",
+            )} data-conversation-time={props.workspace ? "" : undefined}>
               {formatTime(last.at)}
             </span>
           )}
@@ -856,7 +859,8 @@ export const BotListItem = memo(function BotListItem(props: BotRowProps) {
 
   return (
     <>
-    <div className={cn("group relative", railTile && "mx-auto w-[54px]", botRowDropClass(drop, dragging))} data-bot-drop={drop ?? undefined} {...(drag && !renaming ? drag.row(bot.id) : {})}
+    <div className={cn("group relative", railTile && "mx-auto w-[54px]", botRowDropClass(drop, dragging))} data-bot-drop={drop ?? undefined}
+      data-conversation-disclosure={props.workspace && showThreads && hasThreadList ? "" : undefined} {...(drag && !renaming ? drag.row(bot.id) : {})}
       title={railTile ? botTooltip(bot, instances) : iconOnly ? [bot.name, bot.title?.trim()].filter(Boolean).join(" · ") : undefined}><BotDropLine place={drop} />
       {/* Keep this wrapper mounted: replacing it remounts RenameTitle and leaves the row stuck in rename mode. */}
       <div
@@ -904,7 +908,7 @@ export const BotListItem = memo(function BotListItem(props: BotRowProps) {
           className="pointer-events-none absolute right-8 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded text-ink-secondary opacity-0 hover:bg-raised hover:text-ink group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 max-md:hidden touch:pointer-events-auto touch:opacity-70"><FolderPlus size={14} /></button>}
         <button type="button" data-bot-actions={bot.id} aria-label={t("sidebar.bot.actions", { name: bot.name })} title={t("sidebar.bot.actions", { name: bot.name })} aria-haspopup="menu" onClick={(event) => { const rect = event.currentTarget.getBoundingClientRect(); onMenu({ botId: bot.id, x: rect.left, y: rect.bottom }); }}
           className={cn("absolute right-1 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded text-ink-secondary hover:bg-raised hover:text-ink", simpleRow && "right-2 top-1 translate-y-0 rounded-lg",
-            selected && !simpleRow ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 max-md:pointer-events-auto max-md:opacity-70 touch:pointer-events-auto touch:opacity-70")}><MoreHorizontal size={15} /></button>
+            selected && !simpleRow && !props.workspace ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 max-md:pointer-events-auto max-md:opacity-70 touch:pointer-events-auto touch:opacity-70")}><MoreHorizontal size={15} /></button>
       </>}
       {deleting && iconOnly && (
         <span className="pointer-events-none absolute bottom-1 right-1 rounded-full bg-card p-1 text-ink-secondary">
@@ -921,11 +925,12 @@ export const BotListItem = memo(function BotListItem(props: BotRowProps) {
   );
 });
 
-export function Sidebar({ open, onClose, onOpenTasks, collapseToIcons = false }: {
+export function Sidebar({ open, onClose, onOpenTasks, collapseToIcons = false, workspace = false }: {
   open: boolean;
   onClose: () => void;
   collapseToIcons?: boolean;
   onOpenTasks?: () => void;
+  workspace?: boolean;
 }) {
   const { state, dispatch } = useStore();
   const now = useRelativeNow();
@@ -936,6 +941,7 @@ export function Sidebar({ open, onClose, onOpenTasks, collapseToIcons = false }:
   const remoteClient = window.ogb?.remoteClient?.active === true;
   const { capabilities } = useDesktopCapabilities();
   const phone = useMediaQuery(PHONE_LAYOUT, false);
+  const workspaceDesktop = workspace && !phone;
   const importReturnRef = useRef<HTMLButtonElement>(null);
   const sidebarRef = useRef<HTMLElement>(null);
   const [confirm, setConfirm] = useState<{ kind: BotConfirmKind; bot: Bot } | null>(null);
@@ -989,13 +995,19 @@ export function Sidebar({ open, onClose, onOpenTasks, collapseToIcons = false }:
   const storedDensity = useSidebarDensity();
   const density = collapseToIcons ? "icons" : storedDensity;
   const simple = !advanced && density !== "icons";
-  const simpleDesk = simple && !phone;
+  const simpleDesk = simple && !phone && !workspace;
   const rail = !advanced && density === "icons";
   const sidePanelOpen = state.computerOpen || state.inspectorOpen;
-  const sizing = useSidebarWidth({ simple: !advanced, sidePanelOpen, sidebarRef });
+  const sizing = useSidebarWidth({ simple: !advanced, sidePanelOpen, sidebarRef, defaultWidth: workspace ? 280 : undefined });
   const [searchOpen, setSearchOpen] = useState(false);
   const searchShown = searchOpen || query !== "";
   const searchToggleRef = useRef<HTMLButtonElement>(null);
+  const focusExpandedSearch = useRef(false);
+  const attachWorkspaceSearch = useCallback((input: HTMLInputElement | null) => {
+    if (!input || !focusExpandedSearch.current) return;
+    focusExpandedSearch.current = false;
+    input.focus({ preventScroll: true });
+  }, []);
   const closeSearch = () => { setSearchOpen(false); setQuery(""); searchToggleRef.current?.focus(); };
   const pinnedCircles = usePinnedCircles();
   const universalPins = useUniversalPins();
@@ -1016,13 +1028,13 @@ export function Sidebar({ open, onClose, onOpenTasks, collapseToIcons = false }:
   }, [collapseToIcons, phone, density]);
 
   useEffect(() => {
-    if (!open || confirm || deletingRoom) return;
+    if (workspace || !open || confirm || deletingRoom) return;
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
     };
     document.addEventListener("keydown", closeOnEscape);
     return () => document.removeEventListener("keydown", closeOnEscape);
-  }, [open, onClose, confirm, deletingRoom]);
+  }, [workspace, open, onClose, confirm, deletingRoom]);
 
   const plusMenuRef = useRef<HTMLDivElement>(null);
   usePopoverDismiss(plusOpen, plusMenuRef, () => setPlusOpen(false));
@@ -1069,9 +1081,6 @@ export function Sidebar({ open, onClose, onOpenTasks, collapseToIcons = false }:
     }
   };
 
-  // A framed window (WindowFrameBar) holds the traffic lights and the rail's button in its top bar, so the top row keeps
-  // no room for them; in Simple it is only the corner holding Search and New, with the bot tiles beside it. With the
-  // frame off on macOS, the traffic lights sit in the top row's corner.
   const framed = windowFramed(capabilities), corner = framed && simpleDesk;
   const lights = capabilities.windowChrome === "mac-inset" && !framed;
   const draggableChrome = capabilities.windowChrome !== "native";
@@ -1140,9 +1149,10 @@ export function Sidebar({ open, onClose, onOpenTasks, collapseToIcons = false }:
   const attention = crossBotAttentionThreads(state.bots, state.pendingQueued, undefined, state.groups);
   const pinnedThreads = crossBotPinnedThreads(state.bots, state.groups, state.pendingQueued);
   const pendingBotUndo = teamFeedback?.restoreBot;
-  const botRow = (bot: Bot) => botRowProps(state, dispatch, bot, { density, query: q, onMenu: setMenu, renameRequest: renameRequest?.botId === bot.id ? renameRequest.nonce : 0, ...drops.row(bot.id) });
+  const botRow = (bot: Bot) => botRowProps(state, dispatch, bot, { workspace, density, query: q, onMenu: setMenu, renameRequest: renameRequest?.botId === bot.id ? renameRequest.nonce : 0, ...drops.row(bot.id) });
   const railSearch = () => {
     if (collapseToIcons) return openCommandPalette();
+    if (workspaceDesktop) focusExpandedSearch.current = true;
     setSearchOpen(true);
     toggleCollapsed();
   };
@@ -1151,6 +1161,9 @@ export function Sidebar({ open, onClose, onOpenTasks, collapseToIcons = false }:
     <div ref={plusMenuRef} className="contents">
     <button
       ref={importReturnRef}
+      data-sidebar-workspace-new={workspace ? "" : undefined}
+      aria-haspopup={workspace ? "menu" : undefined}
+      aria-expanded={workspace ? plusOpen : undefined}
       onClick={() => setPlusOpen((o) => !o)}
       aria-label={remoteClient ? t("sidebar.new") : t("sidebar.newOrShare")}
       className={phone ? PHONE_TOP_BUTTON : corner ? SIMPLE_CORNER_BUTTON : rail || simple ? SIMPLE_TOP_BUTTON : cn(
@@ -1235,6 +1248,9 @@ export function Sidebar({ open, onClose, onOpenTasks, collapseToIcons = false }:
     )}
     </div>
   );
+  const mobileConversationRows = workspace
+    ? "[data-sidebar-bot-row], [data-sidebar-group-row], [data-sidebar-hero]"
+    : "[data-sidebar-bot-row], [data-sidebar-hero]";
 
   return (
     <aside
@@ -1243,35 +1259,32 @@ export function Sidebar({ open, onClose, onOpenTasks, collapseToIcons = false }:
       aria-label={t("sidebar.aria")}
       data-native-view-overlay
       data-sidebar
+      data-workspace-sidebar={workspace ? "" : undefined} data-sidebar-density={workspace ? density : undefined}
       onClick={(event) => {
         // The phone's list covers the whole screen: choosing the bot that is already open has to dismiss it too.
-        if (phone && open && event.target instanceof Element && !(event.target instanceof HTMLInputElement) && event.target.closest("[data-sidebar-bot-row], [data-sidebar-hero]")) onClose();
+        if (phone && open && event.target instanceof Element && !(event.target instanceof HTMLInputElement) && event.target.closest(mobileConversationRows)) onClose();
       }}
-      style={{ "--sidebar-width": `${sizing.width}px` } as CSSProperties}
+      style={{ "--sidebar-width": `${sizing.width}px`, "--workspace-sidebar-max": workspace ? `${sizing.maxWidth}px` : undefined } as CSSProperties}
       className={cn(
         "relative flex h-full shrink-0 flex-col max-md:[--scroll-fade-surface:var(--color-app)]",
-        // From `md` up the sidebar meets the window's top, bottom and left edges; its only rounded corners are the two
-        // on the side facing the conversation. The gap between the two panes is what makes them two surfaces, and a gap
-        // at the window's own edges would make them read as chips floating in a picture instead of as the window.
-        // No `backdrop-filter`: the ground is already blurred, and a second blur here would hide the picture entirely.
         "md:rounded-r-[16px] md:bg-[color-mix(in_srgb,var(--color-panel)_46%,transparent)]",
         sizing.resizing && !sizing.snapping ? "transition-none" : "transition-[width] duration-200 motion-reduce:transition-none",
         density === "icons" ? rail ? "w-[92px]" : "w-[80px]" : advanced ? "w-[320px] md:w-[var(--sidebar-width)]" : "w-[280px] md:w-[var(--sidebar-width)]",
         sidePanelOpen ? advanced ? "md:max-w-[320px]" : "md:max-w-[280px]" : "md:max-w-[calc(100vw-320px)]",
         // max-md: rather than an md: cancel: Tailwind v4 emits the native `translate`, and any value but `none` makes
         // this a containing block for its `fixed` descendants.
-        "max-md:absolute max-md:inset-y-0 max-md:left-0 max-md:z-40 max-md:w-full max-md:bg-app",
-        "max-md:transition-transform max-md:duration-200",
-        open ? "max-md:translate-x-0" : "max-md:-translate-x-full",
+        workspace ? "max-md:w-full max-md:bg-app" : cn(
+          "max-md:absolute max-md:inset-y-0 max-md:left-0 max-md:z-40 max-md:w-full max-md:bg-app",
+          "max-md:transition-transform max-md:duration-200",
+          open ? "max-md:translate-x-0" : "max-md:-translate-x-full",
+        ),
       )}
     >
       <GlassScrollFrame className="flex-1" fade><PlaceTint />
       <GlassBar edge="top">
-      {/* The switch between the list of bots and the board sits at the top of this card, above everything else in it:
-          the two surfaces are the same pane, so the control that swaps them belongs to the pane. */}
-      <div data-sidebar-view-switch className="flex justify-center px-3 pt-2" style={windowNoDragStyle}>
-        <ShellViewSwitch />
-      </div>
+      {!workspaceDesktop && <div data-sidebar-view-switch className="flex justify-center px-3 pt-2" style={windowNoDragStyle}>
+        <ShellViewSwitch compact={workspace && density === "icons"} />
+      </div>}
       <div
         data-sidebar-top-row={corner ? "corner" : true}
         className={cn(
@@ -1280,22 +1293,25 @@ export function Sidebar({ open, onClose, onOpenTasks, collapseToIcons = false }:
           density === "icons" ? "flex-col gap-1 px-2 pt-3.5 pb-1" : corner ? "pointer-events-none relative h-[34px] items-start justify-end px-1.5 pt-1.5" : simpleDesk ? "relative h-[60px] items-start pl-4 pr-4 pt-3" : "relative pl-4 pr-2",
           density !== "icons" && !simpleDesk && !lights && "h-12 max-md:h-16",
         )}
-        style={corner ? undefined : density !== "icons" && lights && !simpleDesk ? { ...windowDragStyle, height: MAC_TRAFFIC_LIGHT_CENTER_Y * 2 } : windowDragStyle}
+        style={workspaceDesktop ? undefined : corner ? undefined : density !== "icons" && lights && !simpleDesk ? { ...windowDragStyle, height: MAC_TRAFFIC_LIGHT_CENTER_Y * 2 } : windowDragStyle}
       >
         {phone ? (
           <div className="shrink-0" style={windowNoDragStyle}><SidebarProfileMenu iconOnly circle /></div>
-        ) : lights ? (
+        ) : lights && !workspaceDesktop ? (
           // The traffic lights span 16-76px of the window; nothing clickable starts before 88px, with the window's rail
           // beside the page or not.
           <div aria-hidden="true" data-traffic-light-space className={density === "icons" ? "h-5 w-full" : "w-[72px] shrink-0 md:w-[calc(72px_-_var(--rail-beside,0px))]"} />
-        ) : null}{!phone && !framed && <ChromeRailToggle advanced={advanced} icons={density === "icons"} style={windowNoDragStyle} />}
+        ) : null}{!phone && !framed && !workspaceDesktop && <ChromeRailToggle advanced={advanced} icons={density === "icons"} style={windowNoDragStyle} />}
         {rail && <div data-sidebar-rail-top className="flex flex-col items-center gap-2 pt-1" style={windowNoDragStyle}>
           <button type="button" onClick={railSearch} aria-label={t("sidebar.searchAria")} title={t("sidebar.searchAria")} className={SIMPLE_TOP_BUTTON}>
             <Search size={18} strokeWidth={1.5} aria-hidden="true" />
           </button>
           <div className="relative flex">{plusControl}</div>
         </div>}
-        {density !== "icons" && (simpleDesk ? <div data-sidebar-top-slot className="min-w-0 flex-1" /> : (
+        {workspaceDesktop && density !== "icons" ? <label data-sidebar-workspace-search className="min-w-0 flex-1">
+          <Search size={15} aria-hidden="true" />
+          <input ref={attachWorkspaceSearch} value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); setQuery(""); } }} placeholder={t("sidebar.search")} aria-label={t("sidebar.searchAria")} />
+        </label> : density !== "icons" && (simpleDesk ? <div data-sidebar-top-slot className="min-w-0 flex-1" /> : (
           <div data-sidebar-top-slot className={cn("@container/sidebar-top flex min-w-0 flex-1 items-center", simple && "justify-end")}>
             {!simple && <div data-sidebar-top-spacer className="min-w-0 flex-1 @min-[96px]/sidebar-top:min-w-6" />}
             <div data-sidebar-top-switcher className={simple ? "flex min-w-0 items-center" : "flex min-w-0 max-w-[140px] items-center"}>
@@ -1325,7 +1341,7 @@ export function Sidebar({ open, onClose, onOpenTasks, collapseToIcons = false }:
 
       {density === "icons" && !rail && <DesktopWorkspaceSwitcher compact cloudHome={state.config?.cloudHome === true} place={state.config?.team?.name} owner={cloudOwner} howTo={state.cloudHowTo} onMenuClosed={endHowTo} />}
       <OrganizationIdentity compact={density === "icons"} />
-      {phone ? null : simple ? searchShown && <SidebarSearchPill query={query} onQuery={setQuery} onClose={closeSearch} /> : <div className={cn("pt-1 pb-3", density === "icons" ? "hidden" : "px-3")}>
+      {phone || workspace ? null : simple ? searchShown && <SidebarSearchPill query={query} onQuery={setQuery} onClose={closeSearch} /> : <div className={cn("pt-1 pb-3", density === "icons" ? "hidden" : "px-3")}>
         <div className={cn("flex h-8 items-center gap-2 rounded-full px-3 focus-within:ring-focus", ELEVATED_CONTROL)}>
           <Search size={15} className="shrink-0 text-ink-secondary" />
           <input
@@ -1338,8 +1354,8 @@ export function Sidebar({ open, onClose, onOpenTasks, collapseToIcons = false }:
           />
         </div>
       </div>}
-      {!q && <SidebarInboxRow icons={density === "icons"} large={!advanced} running={attentionHasRunningWork(attention)} onOpened={phone ? onClose : undefined} />}
-      {!q && <SidebarCommandPages icons={density === "icons"} large={!advanced} />}
+      {!workspace && !q && <SidebarInboxRow icons={density === "icons"} large={!advanced} running={attentionHasRunningWork(attention)} onOpened={phone ? onClose : undefined} />}
+      {!workspace && !q && <SidebarCommandPages icons={density === "icons"} large={!advanced} />}
       {universalPins && pinnedBots.length > 0 && !simpleDesk && (
         <div
           data-sidebar-universal-pins=""
@@ -1388,8 +1404,8 @@ export function Sidebar({ open, onClose, onOpenTasks, collapseToIcons = false }:
       {!collapseToIcons && !phone && <SidebarResizeHandle sizing={sizing} sidebarRef={sidebarRef} avatars={density === "icons"} avatarsWidth={rail ? 92 : 80}
         onAvatars={(avatars) => setSidebarDensity(avatars ? "icons" : "comfortable")} style={windowNoDragStyle} />}
 
-      <GlassScroller className={rail ? "[scrollbar-gutter:stable_both-edges]" : simpleDesk ? "px-3" : "px-2"}>
-        <div className={cn("flex flex-col", simpleDesk ? cn("gap-0.5 pb-2", !tiles && "pt-2") : advanced ? "gap-0.5" : "gap-1 pb-2 pt-2")}>
+      <GlassScroller data-workspace-conversations={workspace ? "" : undefined} className={rail ? "[scrollbar-gutter:stable_both-edges]" : simpleDesk ? "px-3" : "px-2"}>
+        <div className={cn("flex flex-col", simpleDesk ? cn("gap-0.5 pb-2", !tiles && "pt-2") : advanced ? "gap-0.5" : cn("gap-1 pb-2", !workspaceDesktop && "pt-2"))}>
           {matchingBots.length === 0 && visibleGroups.length === 0 && q && q.length < MIN_QUERY && (
             <div className="px-3 py-6 text-center text-[13px] text-ink-secondary">{t("sidebar.noMatch", { query })}</div>
           )}
@@ -1445,7 +1461,7 @@ export function Sidebar({ open, onClose, onOpenTasks, collapseToIcons = false }:
               >
                 {rail && index > 0 && <SidebarRailSeparator />}
                 {layout.dropLine(id, "before")}
-                {density !== "icons" && !headless && (
+                {density !== "icons" && !headless && !(workspace && id === BOTS_SECTION_ID && index === 0) && (
                   <SidebarSectionHeader
                     name={sectionLabel(id)}
                     line={simple}
@@ -1480,6 +1496,7 @@ export function Sidebar({ open, onClose, onOpenTasks, collapseToIcons = false }:
                         density={density}
                         query={q}
                         onMenu={setRoomMenu}
+                        workspace={workspace}
                       />
                     ))}
                     {id === PINNED_SECTION_ID ? (
@@ -1518,12 +1535,18 @@ export function Sidebar({ open, onClose, onOpenTasks, collapseToIcons = false }:
         {sections.announcement}
       </p>
 
-      <SidebarFooterBar rail={rail} phone={phone} query={query} onQuery={setQuery} onOpenTasks={onOpenTasks}
-        currentBotId={state.activeView === "chat" ? state.selectedId : null}
-        onOpenChat={(botId, threadId) => openThread(dispatch, { botId, threadId }, state, showThreads)}
-        density={density} simple={simpleDesk} owner={cloudOwner} archived={archivedEntry}
-        toolsCollapsed={sectionCollapsed(TOOLS_SECTION_ID)} onToggleTools={layoutInteractive ? () => toggleSection(TOOLS_SECTION_ID) : undefined} />
+      <SidebarFooterBar rail={rail} phone={phone} query={query} onQuery={setQuery} onOpenTasks={workspace ? undefined : onOpenTasks}
+          currentBotId={state.activeView === "chat" ? state.selectedId : null}
+          onOpenChat={(botId, threadId) => openThread(dispatch, { botId, threadId }, state, showThreads)}
+          density={density} simple={!workspaceDesktop && simpleDesk} owner={cloudOwner} archived={archivedEntry}
+          toolsCollapsed={sectionCollapsed(TOOLS_SECTION_ID)} onToggleTools={layoutInteractive ? () => toggleSection(TOOLS_SECTION_ID) : undefined} />
+      {workspaceDesktop ? <div data-workspace-connectors>
+        <SimpleSidebarFooter owner={cloudOwner} archived={archivedEntry} />
+      </div> : null}
       </GlassScrollFrame>
+      {workspaceDesktop && <div data-sidebar-view-switch className="workspace-conversation-switch" style={windowNoDragStyle}>
+        <ShellViewSwitch compact />
+      </div>}
 
       <BotContextMenu
           menu={menu}

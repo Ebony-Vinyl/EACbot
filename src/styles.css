@@ -1,5 +1,6 @@
 @import "tailwindcss";
-@import "@neutral-reference/ui/styles.css";
+@import "./components/shell/workspace-shell.css";
+@import "./components/shell/workspace-conversations.css";
 @import "./components/shell/neutral-workspace.css";
 @import "@fontsource-variable/inter";
 @import "@fontsource-variable/geist";

@@ -37,6 +37,7 @@ export function turnStdioMcpServers(turn: SendTurnInput, options: { schemaProfil
   add("device", turn.integrations?.device);
   add("health", turn.integrations?.health);
   add("home", turn.integrations?.home);
+  add("music", turn.integrations?.music);
   // Cua connections expose Cua Driver's own MCP server; a cloud turn runs on its boat, so none is mounted.
   add("computer", turn.integrations?.localComputer);
   // User servers after the built-ins: a residual name collision keeps the built-in.

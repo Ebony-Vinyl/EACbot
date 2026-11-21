@@ -280,6 +280,13 @@ export function createBotPatchRoutes(deps: BotPatchRouteDeps): RouteHandler {
           return json(res, 400, { error: "homeAccess must be off, read, control, full or null" });
         } else patch.homeAccess = body.homeAccess as "off" | "read" | "control" | "full";
       }
+      // Per-bot music access: a platform bot may queue for the person without taking the speaker.
+      if (body.musicAccess !== undefined) {
+        if (body.musicAccess === null) patch.musicAccess = undefined;
+        else if (typeof body.musicAccess !== "string" || !["off", "read", "control"].includes(body.musicAccess)) {
+          return json(res, 400, { error: "musicAccess must be off, read, control or null" });
+        } else patch.musicAccess = body.musicAccess as "off" | "read" | "control";
+      }
       if (body.homeZones !== undefined) {
         if (body.homeZones === null) patch.homeZones = undefined;
         else if (!Array.isArray(body.homeZones) || body.homeZones.length > 64 || body.homeZones.some((zone: unknown) => typeof zone !== "string" || !/^[a-z][a-z0-9_-]{0,63}$/.test(zone))) {

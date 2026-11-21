@@ -13,7 +13,7 @@ import { StdioPluginSupervisor } from "./supervisor.ts";
 import { installLocalPlugin } from "./local-install.ts";
 
 const PACK_ROOT = join(import.meta.dirname, "..", "..", "plugins", "eac");
-const PACKS = ["bilibili", "douyin", "health", "home-assistant", "muse", "qq", "tieba", "xianyu", "xiaohongshu"];
+const PACKS = ["bilibili", "douyin", "health", "home-assistant", "qq", "tieba", "xianyu", "xiaohongshu"];
 
 const folders: string[] = [];
 afterEach(() => {
@@ -88,7 +88,6 @@ describe("bundled plugins", () => {
 function configFor(pack: string, fakeUrl: string): Record<string, unknown> {
   if (pack === "home-assistant") return { baseUrl: fakeUrl, token: "test-token" };
   if (pack === "bilibili") return { apiBase: fakeUrl, cookie: "SESSDATA=x; bili_jct=csrf123" };
-  if (pack === "muse") return { apiBase: fakeUrl };
   if (pack === "tieba") return { apiBase: fakeUrl, cookie: "TIEBA_USERTYPE=test", tbs: "tbs123" };
   if (pack === "xianyu") return { cookie: "_m_h5_tk=abc_123; unb=77" };
   // The QQ bridge reads its OneBot address from config; this port is closed on purpose, so no tool below sends.
@@ -101,7 +100,6 @@ function toolFor(pack: string): { id: string; args: Record<string, unknown> } {
   switch (pack) {
     case "health": return { id: "health-record-add", args: { metric: "steps", value: 6000 } };
     case "home-assistant": return { id: "ha-get-states", args: { domain: "light" } };
-    case "muse": return { id: "muse-search", args: { keyword: "test" } };
     case "douyin": return { id: "dy-idea", args: { action: "add", title: "测试选题" } };
     case "xiaohongshu": return { id: "xhs-idea", args: { action: "add", title: "测试选题" } };
     case "tieba": return { id: "tieba-reply-draft", args: { action: "save", threadId: "1234567890", text: "草稿" } };

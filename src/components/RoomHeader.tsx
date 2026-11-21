@@ -153,7 +153,7 @@ export function RoomHeader({
   if (simple) {
     const more = members.length - SIMPLE_FACES;
     return (
-      <div {...headerDragProps} className="@container/roomhead px-5 py-3 pl-11 md:pl-5">
+      <div {...headerDragProps} data-conversation-header className="@container/roomhead px-5 py-3 pl-11 md:pl-5">
         <div data-roomhead-row className="flex items-center justify-between gap-3">
           <div data-roomhead-identity className="flex min-w-0 flex-col items-start" style={headerNoDragStyle}>
             <button
@@ -199,6 +199,7 @@ export function RoomHeader({
   return (
       <div
         {...headerDragProps}
+        data-conversation-header
         className={cn(
           // A container query never matches the container itself, so the row that wraps is the child below.
           "@container/roomhead px-5 py-3",

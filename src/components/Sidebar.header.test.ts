@@ -33,8 +33,8 @@ vi.mock("./DesktopCapabilities", async (importOriginal) => ({
 
 import { Sidebar } from "./Sidebar";
 
-const render = () => renderToStaticMarkup(
-  createElement(StoreProvider, null, createElement(Sidebar, { open: true, onClose: () => {} })),
+const render = (workspace = false) => renderToStaticMarkup(
+  createElement(StoreProvider, null, createElement(Sidebar, { open: true, onClose: () => {}, workspace })),
 );
 
 beforeEach(() => {
@@ -55,6 +55,16 @@ afterEach(() => {
 
 describe("sidebar header", () => {
   const collapse = /aria-label="(Collapse sidebar to avatars|Expand sidebar)"|data-sidebar-edge-toggle/;
+
+  it.each([false, true])("keeps one permanent workspace search in %s Advanced mode", (advanced) => {
+    fixture.advanced = advanced;
+    const html = render(true);
+    expect(html).toContain('data-workspace-sidebar=""');
+    expect(html).toContain('data-sidebar-workspace-search="true"');
+    expect(html.match(/<input[^>]*aria-label="Search bots and messages"/g)).toHaveLength(1);
+    expect(html).not.toContain("data-sidebar-search-toggle");
+    expect(html).toContain('aria-label="New or share"');
+  });
 
   it.each(["comfortable", "icons"] as const)("keeps the Inbox and add, and no button collapses or expands it, at %s density in Advanced mode", (density) => {
     fixture.density = density;

@@ -7,6 +7,7 @@ import type { VerbContext, VerbOutcome } from "./context.ts";
 import { engineVerb } from "./engine.ts";
 import { eventsVerb } from "./events.ts";
 import { exportVerb } from "./export.ts";
+import { music } from "./music.ts";
 import { Output, processIo, type HeadlessIo } from "./output.ts";
 import { runVerb, waitVerb } from "./run.ts";
 import { teamApplyVerb, teamExportVerb } from "./team-apply.ts";
@@ -92,6 +93,24 @@ eacbot doctor --host [--data-dir DIR] [--port 8799] [--domain HOST]
   Then: --url URL --token-file FILE. It is listed with eacbot sessions too.`,
   "token list": "eacbot token list\n  The access tokens, their scope, when each ends and when it was last used (never the token).",
   "token revoke": "eacbot token revoke ID\n  End an access token at once (eacbot token list shows the ids).",
+  music: `eacbot music [status]
+  What the player holds: the track, whether a client has confirmed it, the queue and the account.
+eacbot music search WORDS
+  Search Kugou. With --json, the ids it prints are what play and queue take.
+eacbot music play (ID | WORDS)
+  Queue one track by id, or search and queue the first hit, then ask it to play.
+eacbot music pause | resume | next | previous
+  Control the player. A request counts as playing only once the player reports back.
+eacbot music volume N
+  Set the volume, 0-100.
+eacbot music queue [--json] | queue-remove ID | clear
+  Read, edit or empty the queue. --json shows the queueItemId that queue-remove takes.
+eacbot music lyrics [ID]
+  The timed lyrics of a track, or of the one playing.
+eacbot music login
+  Whether this workspace is signed in to Kugou.
+eacbot music identify [--seconds N]
+  Says where to identify from: a terminal cannot record audio, so this verb never pretends to listen.`,
 };
 
 export interface HeadlessOptions {
@@ -109,7 +128,7 @@ const VERBS: Record<string, (ctx: VerbContext) => Promise<VerbOutcome>> = {
   doctor, bots: list, channels: list, models: list, messages, send, "send-channel": send, run: runVerb, wait: waitVerb,
   interrupt, "new-bot": newBot, "new-channel": newChannel, "set-model": setModel, edit, export: exportVerb, events: eventsVerb,
   "team apply": teamApplyVerb, "team export": teamExportVerb, "engine set": engineVerb, "engine list": engineVerb, connect: connectVerb,
-  "token create": tokenVerb, "token list": tokenVerb, "token revoke": tokenVerb,
+  "token create": tokenVerb, "token list": tokenVerb, "token revoke": tokenVerb, music,
 };
 
 async function execute(argv: readonly string[], options: HeadlessOptions, io: HeadlessIo): Promise<{ outcome: VerbOutcome; output: Output; client?: HeadlessClient }> {

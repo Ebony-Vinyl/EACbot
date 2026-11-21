@@ -82,6 +82,7 @@ export const SettingsModal = lazyScreen("SettingsModal", async () => (await impo
 export const TeamMapPage = lazyScreen("TeamMapPage", async () => (await import("./TeamMapPage")).TeamMapPage);
 export const HealthPage = lazyScreen("HealthPage", async () => (await import("./health/HealthPage")).HealthPage);
 export const HomePage = lazyScreen("HomePage", async () => (await import("./home/HomePage")).HomePage);
+export const MusicPage = lazyScreen("MusicPage", async () => (await import("./music/MusicPage")).MusicPage);
 export const PlatformCenter = lazyScreen("PlatformCenter", async () => (await import("./platforms/PlatformCenter")).PlatformCenter);
 export const PlatformDashboard = lazyScreen("PlatformDashboard", async () => (await import("./platforms/PlatformDashboard")).PlatformDashboard);
 

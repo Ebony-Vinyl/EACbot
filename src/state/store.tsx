@@ -587,7 +587,7 @@ export interface AppState {
   liveCallVersion: number;
   liveCallLookupSeq: number;
   selectedId: string;
-  activeView: "chat" | "task-center" | "team-map" | "routines" | "files" | "web-panel" | "health" | "home" | "platforms" | "platform" | NewPage;
+  activeView: "chat" | "task-center" | "team-map" | "routines" | "files" | "web-panel" | "health" | "home" | "music" | "platforms" | "platform" | NewPage;
   /** Which platform board is open when `activeView` is "platform". */
   platformId?: PlatformId;
   /** Folders a finished move left on this computer, for Files to offer sharing. */
@@ -674,7 +674,7 @@ export type Action =
   | { type: "showRoutines"; section?: "schedule" | "logs"; view?: "calendar" | "list"; botId?: string; routineId?: string; runStatus?: RoutineRunStatusFilter }
   | { type: "showTeamMap" } | { type: "showWebPanel"; id: string }
   | { type: "showFiles"; suggest?: string[] }
-  | { type: "showHealth" } | { type: "showHome" }
+  | { type: "showHealth" } | { type: "showHome" } | { type: "showMusic" }
   | { type: "showPlatforms" } | { type: "showPlatform"; platform: PlatformId }
   | { type: "showChat" }
   | { type: "showTaskCenter" }
@@ -1032,11 +1032,10 @@ export function reducer(state: AppState, action: Action): AppState {
       };
     case "showTaskCenter":
     case "showTeamMap":
-    case "showHealth":
-    case "showHome":
+    case "showHealth": case "showHome": case "showMusic":
       return {
         ...state,
-        activeView: action.type === "showTaskCenter" ? "task-center" : action.type === "showHealth" ? "health" : action.type === "showHome" ? "home" : "team-map",
+        activeView: action.type === "showTaskCenter" ? "task-center" : action.type === "showHealth" ? "health" : action.type === "showHome" ? "home" : action.type === "showMusic" ? "music" : "team-map",
         filesSuggest: null,
         settingsOpen: false, computerOpen: false, inspectorOpen: false, activityOpen: false, appSettingsOpen: false, pluginsOpen: false,
       };
@@ -2312,7 +2311,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     };
 
     const wrapped: React.Dispatch<Action> = (action) => {
-      if (["select", "newTask", "switchTask", "newGroupTask", "switchGroupTask", "showChat", "showTaskCenter", "showRoutines", "showTeamMap", "showFiles", "showWebPanel", "showHealth", "showHome", "showPlatforms", "showPlatform", "showNewPage"].includes(action.type)) selectionRevision.current++;
+      if (["select", "newTask", "switchTask", "newGroupTask", "switchGroupTask", "showChat", "showTaskCenter", "showRoutines", "showTeamMap", "showFiles", "showWebPanel", "showHealth", "showHome", "showMusic", "showPlatforms", "showPlatform", "showNewPage"].includes(action.type)) selectionRevision.current++;
       // Pin before any await or optimistic state change.
       action = pinBotThreadAction(action, stateRef.current.bots);
       if (action.type === "taskSwitched") action = { ...action, bot: withTaskWrites(action.bot) as Bot };

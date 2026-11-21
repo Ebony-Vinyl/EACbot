@@ -985,7 +985,7 @@ export const PiDriver: ProviderDriver<PiConfig> = {
           phoneMcp: true,
           customMcp: true,
           browserMcp: true,
-          dataMcp: true, emailMcp: true, deviceMcp: true, healthMcp: true, homeMcp: true,
+          dataMcp: true, emailMcp: true, deviceMcp: true, healthMcp: true, homeMcp: true, musicMcp: true,
           localComputerMcp: true,
           images: true,
           nativeImageInput: true,

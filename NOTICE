@@ -17,6 +17,12 @@ public-only SOCKS5 proxy for HTML previews and the Linux listener-ownership
 scan of its preview port scanner, Copyright 2026 T3 Tools Inc., used under the
 MIT License (third_party/t3-code/LICENSE).
 
+The Kugou protocol layer (server/music/kugou/) ports the request signing, play-url
+parameter set, login endpoints and KRC decode chain of KugouMusic.NET, Copyright
+the KugouMusic.NET contributors, used under the MIT License. Its now-playing view
+structure (the five main pages, the playlist groups, the six themes and the desktop
+lyric strip) is reimplemented on this project's own design tokens.
+
 Prompt-cache keep-warm (server/cache-keepwarm.ts and
 server/drivers/claude-keepwarm.ts) ports the design of Cache Tax,
 https://github.com/karanb192/claude-code-mods, Copyright (c) 2026 Karan
@@ -103,3 +109,7 @@ The iOS companion app bundles a prebuilt WebRTC library for Live calls
 (stasel/WebRTC), built from the WebRTC project, Copyright (c) 2011, The WebRTC
 project authors, used under the BSD 3-Clause License. WebRTC includes
 third-party components under their own licenses, listed with the library.
+
+The workspace navigation uses Tabler Icons React 3.52.0,
+https://github.com/tabler/tabler-icons, Copyright (c) 2020-2026 Paweł Kuna,
+used under the MIT License (third_party/tabler-icons/LICENSE).

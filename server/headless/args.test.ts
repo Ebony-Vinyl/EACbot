@@ -43,7 +43,7 @@ describe("parseCommand", () => {
     for (const verb of ["send", "run", "interrupt", "team apply", "engine set", "token create", "token revoke"]) expect(MUTATING_VERBS.has(verb), verb).toBe(true);
     for (const verb of ["doctor", "bots", "wait", "messages", "export", "events", "team export", "engine list"]) expect(MUTATING_VERBS.has(verb), verb).toBe(false);
     expect([...HEADLESS_VERBS].sort()).toEqual(["bots", "channels", "connect", "doctor", "edit", "engine", "events", "export", "interrupt", "mcp",
-      "messages", "models", "new-bot", "new-channel", "run", "send", "send-channel", "set-model", "team", "token", "wait"]);
+      "messages", "models", "music", "new-bot", "new-channel", "run", "send", "send-channel", "set-model", "team", "token", "wait"]);
   });
 });
 

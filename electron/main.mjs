@@ -11,8 +11,7 @@ import { buildErrorPage, desktopViewerErrorPage } from "./error-pages.mjs";
 import { startCua, stopCua, registerCuaIpc, requestComputerUse, setCuaStateListener, grantLocalComputer } from "./cua.mjs";
 import { createAndroidDeviceController } from "./android-device.mjs";
 import { finishSpeech, speechBusy, startSpeech, stopSpeech } from "./speech.mjs";
-import { installTalk, isTalkPanel } from "./talk-main.mjs";
-import { openBlankTerminal } from "./terminal-launch.mjs";
+import { installTalk, isTalkPanel } from "./talk-main.mjs"; import { installMusic } from "./music-main.mjs"; import { openBlankTerminal } from "./terminal-launch.mjs";
 import { linuxDisablesGpu } from "./linux-gpu.mjs";
 import { pasteMenuItem } from "./paste-menu-item.mjs";
 import { attachUpdaterWindow, startUpdater, registerUpdaterIpc, sendUpdaterState, reopenedOutOfSight, quietSignals } from "./updater.mjs";
@@ -101,6 +100,7 @@ import { installCloudPlanIpc } from "./cloud-plan-ipc.mjs";
 import { cloudLinkOpensSheet, colorDotIcons, createCloudLook, createCloudReadyNotice, installCloudBuy, lookFile } from "./cloud-buy.mjs";
 import { createTrialNotices } from "./cloud-trial-notice.mjs";
 import { createDesktopText, DESKTOP_PORTS, jsonFile, registerDesktopPrefs, relabelDesktop } from "./desktop-prefs.mjs";
+import { createMusicShortcuts } from "./music-shortcuts.mjs";
 import { createDesktopIncludedX } from "./included-x.mjs"; import { createDesktopIncludedPages } from "./included-pages.mjs";
 import { cloudPageSenderAllowed, cloudPlanDisk, cloudUnreachableText, createCloudPowerGate, isCloudHomeEntry, myCloudOrigin, rememberedCloudHome, savedCloudHomeOrigin, signInCloudSession, withCloudHome } from "./cloud-home.mjs";
 import { installCloudFiles } from "./cloud-sync-main.mjs";
@@ -2416,7 +2416,7 @@ ipcMain.handle("desktop:relaunch", localOnly("desktop:relaunch", (event) => {
   return true;
 }));
 
-const talk = installTalk({ ipcMain, localOnly, localOrHome, BrowserWindow, appleSpeech: nativeActions.appleSpeech,
+const musicWindows = installMusic({ ipcMain, localOnly, BrowserWindow, screen, userDataPath: app.getPath("userData"), log: slog, setTrayMusic: (state) => desktopTray?.setMusic(state) }); const talk = installTalk({ ipcMain, localOnly, localOrHome, BrowserWindow, appleSpeech: nativeActions.appleSpeech,
   speech: { start: startSpeech, stop: stopSpeech, finish: finishSpeech, busy: speechBusy }, packaged: app.isPackaged, devUrl: DEV_URL, nativeImage, iconPath: APP_ICON, openLink: queueChatLink, reveal: revealForLink, log: slog, t: nativeT });
 
 ipcMain.handle("companion:state", localOnly("companion:state", () => desktopCompanionState()));
@@ -2537,7 +2537,7 @@ ipcMain.handle("task-core:connect", localWorkspaceOnly("task-core:connect", asyn
   if (desktopRemoteAccess || event.senderFrame !== event.sender.mainFrame) throw new Error("本机任务服务仅供桌面主窗口使用");
   return taskCore.connect(await commandPath());
 }));
-app.on("before-quit", () => taskCore.stop());
+app.on("before-quit", () => { taskCore.stop(); musicWindows.destroy(); });
 
 // No renderer-supplied address, token, paid flag or callback can choose an account or activate Pro.
 for (const method of ["state", "begin", "signInAgain", "reopen", "cancel", "refresh", "signOut", "openDashboard", "offer"]) {
@@ -2898,7 +2898,7 @@ app.whenReady().then(async () => {
     try {
       desktopTray = createSystemTray({
         Tray, Menu, nativeImage, iconPath: APP_ICON, t: nativeT,
-        getWindow: () => startupScreen?.window ?? mainWindow ?? (openWindowForLink?.(), mainWindow),
+        getWindow: () => startupScreen?.window ?? mainWindow ?? (openWindowForLink?.(), mainWindow), onMusicCommand: (command) => { try { mainWindow?.webContents.send("music:tray-command", command); } catch {} }, // the player lives in the page
         onQuit: () => app.quit(),
       });
     } catch (error) {
@@ -3037,7 +3037,7 @@ app.whenReady().then(async () => {
     },
     onLanguage: language => { if (nativeText.set(language)) { applyNativeLanguage(); talk.relabel(); } }, onShown: (language, sender) => { if (sender === mainWindow?.webContents && nativeText.follow(language)) { applyNativeLanguage(); talk.relabel(); } },
     page: event => senderIsLocal(event) ? "local" : cloudPageAsking(event) ?? (workspaceSenderAllowed(event, mainWindow?.webContents, environmentsState, rendererOrigin()) ? "server" : null) });
-  talk.start({ globalShortcut, screen, prefs: desktopPrefs, remote: () => Boolean(desktopRemoteAccess), away: () => homeWindow.current().kind !== "computer", starting: () => !serverReady, localRequest: localServerRequest, dataDir: () => runningDataDir });
+  talk.start({ globalShortcut, screen, prefs: desktopPrefs, remote: () => Boolean(desktopRemoteAccess), away: () => homeWindow.current().kind !== "computer", starting: () => !serverReady, localRequest: localServerRequest, dataDir: () => runningDataDir }); const musicShortcuts = createMusicShortcuts({ globalShortcut, prefs: desktopPrefs, available: () => !desktopRemoteAccess, onCommand: (command) => { try { mainWindow?.webContents.send("music:shortcut-command", command); } catch {} } }); ipcMain.handle("music:shortcut-state", localOnly("music:shortcut-state", () => musicShortcuts.state())); ipcMain.handle("music:shortcut-set", localOnly("music:shortcut-set", (_event, change) => musicShortcuts.set(change)));
   // Before the window, so the harness has the CUA descriptor on first render.
   cuaReady =
     !desktopRemoteAccess && (process.platform === "darwin" || process.platform === "linux" || process.platform === "win32")

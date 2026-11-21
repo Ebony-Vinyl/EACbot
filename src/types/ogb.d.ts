@@ -326,6 +326,18 @@ const __APP_VERSION__: string;
       speechStop(): Promise<void>;
       /** Finish capture and emit the recognizer's final transcript. */
       speechFinish?(): Promise<void>;
+      /** This computer's page only: the desktop lyric strip the music player drives. */
+      musicLyrics?: {
+        show(state: { lines: Array<{ text: string }>; index: number }): Promise<{ shown: boolean; locked?: boolean; layout?: "horizontal" | "vertical" }>;
+        hide(): Promise<{ shown: boolean }>;
+        state(): Promise<{ locked: boolean; layout: "horizontal" | "vertical" }>;
+        lock(locked: boolean): Promise<{ locked: boolean }>;
+        layout(layout: "horizontal" | "vertical"): Promise<{ layout: "horizontal" | "vertical" }>;
+        clickThrough(through: boolean): Promise<{ clickThrough: boolean }>;
+        /** What the tray menu shows; null clears its music section. */
+        trayState(state: { title: string; artists: string; playing: boolean } | null): Promise<{ shown: boolean }>;
+        onTrayCommand(cb: (command: "play-pause" | "next" | "previous") => void): () => void;
+      };
       /** This computer's page only: Settings → General's talk shortcut. */
       talkShortcut?: import("../../electron/talk-shortcut.mjs").TalkShortcutBridge;
       /** A call holds the microphone, so the talk shortcut waits. */

@@ -824,7 +824,7 @@ export function ChatView({ bot: profile }: { bot: Bot }) {
   const advanced = useAdvancedMode();
   const phone = useMediaQuery(PHONE_LAYOUT);
   const phoneMenu = phone && !remoteClient;
-  const headerAvatarSize = phone ? 24 : 69;
+  const headerAvatarSize = 24;
   const simpleHead = !advanced && !remoteClient;
   const canWrite = useCanWriteIn(bot.threadId, bot.yourAccess);
   const computerStarting = computerStartLine(state.computerStarts[bot.id], bot.name); useScreensWhile(Boolean(computerStarting));
@@ -1011,7 +1011,7 @@ export function ChatView({ bot: profile }: { bot: Bot }) {
       {/* z-[25]: above the room set-up card (z-20), below the CallOverlay (z-30). */}
       <GlassBar edge="top" fade={!remoteClient} className="z-[25]">
       <div
-        {...headerDragProps}
+        data-conversation-header {...headerDragProps}
         className={cn(
           // A container query never matches the container itself, so the row that wraps is the child below.
           "@container/chathead",
@@ -1113,7 +1113,7 @@ export function ChatView({ bot: profile }: { bot: Bot }) {
           <ThreadContextWarning bot={bot} messages={messages} />
           {phone && <UsageAlert engine={bot.modelSelection?.instanceId} />}
           {/* The model and the bot's computer stay in view in both modes; Simple mode moves only ⋯ into the bot panel. */}
-          {!phone && <ModelPicker key={bot.threadId} bot={bot} threadId={bot.threadId} />}
+          <ModelPicker key={bot.threadId} bot={bot} threadId={bot.threadId} className="workspace-header-model" size={phone ? "sm" : "md"} />
           <LiveCallChip currentBotId={bot.id} onOpen={(botId, threadId) => openThread(dispatch, { botId, threadId }, state, showThreads)} />
           {!phoneMenu && <button
             data-tour="computer"

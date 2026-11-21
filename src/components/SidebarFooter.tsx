@@ -25,7 +25,7 @@ export function SidebarPlaceStatus({ place, className }: { place: WorkspacePlace
   return null;
 }
 
-function SimpleSidebarFooter({ owner, archived }: { owner: string | null; archived?: ArchivedBots }) {
+export function SimpleSidebarFooter({ owner, archived }: { owner: string | null; archived?: ArchivedBots }) {
   const { state } = useStore();
   const place = useSimplePlace();
   const account = useSimpleAccount(place, owner, archived);
@@ -41,7 +41,7 @@ function SimpleSidebarFooter({ owner, archived }: { owner: string | null; archiv
       <AccountMoveStatus kind={move.kind} place={move.place} retry={move.retry} onOpen={openAccount} className="ps-1" />
       <div className="flex items-center gap-2 not-first:mt-2">
         <SidebarProfileMenu simple={account} />
-        <SidebarConnectApps />
+        <div className="flex min-w-0 flex-1"><SidebarConnectApps /></div>
         <UpdateIndicator className="size-9" />
       </div>
     </div>

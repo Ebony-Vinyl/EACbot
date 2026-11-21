@@ -277,6 +277,7 @@ export async function launchVerificationServer(
   boatFixtureApi?: string,
   /** Programmatic web UI qualification against the fixture's static server. */
   staticDir?: string,
+  startup: { timeoutMs?: number; note?: (phase: string) => void } = {},
 ): Promise<VerificationServer> {
   if (boatFixtureApi) {
     if (!/^http:\/\/127\.0\.0\.1:[1-9]\d{0,4}$/.test(boatFixtureApi)) {
@@ -365,8 +366,12 @@ export async function launchVerificationServer(
     cwd: ROOT,
     env: childEnv,
     stdio: ["ignore", log, log],
+    windowsHide: true,
   });
   closeSync(log);
+  let spawnError: Error | undefined;
+  child.once("error", (error) => { spawnError = error; });
+  startup.note?.(`Waiting for health at ${url} (pid=${child.pid ?? "unknown"}, log=${logPath})`);
 
   // A CI runner's temporary folder goes with the runner, so a failed start carries the end of the server's log.
   const logTail = () => {
@@ -376,12 +381,13 @@ export async function launchVerificationServer(
       return "";
     }
   };
-  const deadline = Date.now() + hostTimeout(20_000);
+  const deadline = Date.now() + (startup.timeoutMs ?? hostTimeout(20_000));
   try {
     for (;;) {
       if (signal?.aborted) throw new ControlOmbError("verification launch cancelled");
+      if (spawnError) throw new Error(`verification server failed to spawn: ${spawnError.message}; see ${logPath}${logTail()}`);
       if (child.exitCode !== null || child.signalCode !== null) {
-        throw new Error(`verification server exited before it was ready; see ${logPath}${logTail()}`);
+        throw new Error(`verification server exited before it was ready (${child.exitCode ?? child.signalCode}); see ${logPath}${logTail()}`);
       }
       try {
         const timeout = AbortSignal.timeout(1_000);
@@ -396,13 +402,14 @@ export async function launchVerificationServer(
       await new Promise((resolve) => setTimeout(resolve, 150));
     }
   } catch (error) {
-    await waitForExit(child, { signal: "SIGTERM" });
+    if (child.pid) await waitForExit(child, { signal: "SIGTERM" });
     await removeTempDir(dataDir);
     throw error;
   }
 
   // Pinned: the random starter name shares a pool with names e2e suites plan.
   try {
+    startup.note?.(`Health ready at ${url}; pinning the starter bot`);
     // First-run filesystem work can exceed a second on Windows.
     const timeout = AbortSignal.timeout(Math.max(1, deadline - Date.now()));
     const list = await fetch(`${url}/api/bots`, {

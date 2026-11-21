@@ -54,6 +54,8 @@ function parse(raw) {
     ...(updatesConsent ? { updatesConsent } : {}),
     ...(typeof record.talkShortcut === "boolean" ? { talkShortcut: record.talkShortcut } : {}),
     ...(isTalkKey(record.talkKey) ? { talkKey: record.talkKey } : {}),
+    ...(typeof record.musicShortcuts === "boolean" ? { musicShortcuts: record.musicShortcuts } : {}),
+    ...(record.musicShortcutKeys && typeof record.musicShortcutKeys === "object" ? { musicShortcutKeys: record.musicShortcutKeys } : {}),
     ...(typeof record.railHidden === "boolean" ? { railHidden: record.railHidden } : {}),
     ...(typeof record.windowFrame === "boolean" ? { windowFrame: record.windowFrame } : {}),
     ...(Object.keys(quickAsks).length ? { quickAsks } : {}) };
@@ -115,6 +117,10 @@ export function createDesktopPrefs({ read, write }) {
     },
     talkShortcut: () => current().talkShortcut ?? true,
     setTalkShortcut(enabled) { save({ ...current(), talkShortcut: enabled === true }); },
+    musicShortcutsEnabled: () => current().musicShortcuts ?? true,
+    setMusicShortcutsEnabled(enabled) { save({ ...current(), musicShortcuts: enabled === true }); },
+    musicShortcutKey: (id) => current().musicShortcutKeys?.[id],
+    setMusicShortcutKey(id, accelerator) { save({ ...current(), musicShortcutKeys: { ...current().musicShortcutKeys, [id]: String(accelerator).slice(0, 60) } }); },
     talkKey: () => current().talkKey ?? DEFAULT_TALK_KEY,
     setTalkKey(id) {
       if (!isTalkKey(id)) return false;

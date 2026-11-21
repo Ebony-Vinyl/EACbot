@@ -1,7 +1,7 @@
 import { Children, createElement, isValidElement, type KeyboardEvent, type MemoExoticComponent, type MouseEvent, type ReactElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { initialState, type AppState, type Bot, type Group } from "@/state/store";
+import { formatTime, initialState, type AppState, type Bot, type Group } from "@/state/store";
 import type { SidebarDensity } from "@/lib/sidebar-preferences";
 
 const fixture = vi.hoisted(() => ({ advanced: false, showThreads: true, admin: true as boolean | null, state: {} as Partial<AppState>, dispatch: vi.fn() }));
@@ -68,6 +68,19 @@ beforeEach(() => {
 afterEach(() => { vi.unstubAllGlobals(); });
 
 describe("bot-first sidebar", () => {
+  it.each([false, true])("shows a workspace row portrait, role, preview and time with Advanced mode %s", (advanced) => {
+    fixture.advanced = advanced;
+    fixture.showThreads = advanced;
+    const at = new Date(2026, 10, 21, 9, 21).getTime();
+    const candidate: Bot = { ...quiet, title: "Team lead", tasks: [], projects: [], messages: [{ id: "reply", role: "bot", kind: "text", text: "Ready to launch", at }] };
+    const markup = renderToStaticMarkup(createElement(BotListItem, { ...rowProps("comfortable", candidate), workspace: true }));
+    expect(markup).toContain('width="44px" height="44px"');
+    expect(markup).toContain('data-testid="bot-role"');
+    expect(markup).toContain("Team lead");
+    expect(markup).toContain("Ready to launch");
+    expect(markup).toContain(`<span class="shrink-0 text-[12px] tabular-nums text-ink-secondary transition-opacity">${formatTime(at)}</span>`);
+  });
+
   it.each([false, true])("uses the selected mode for bot and room tool previews (advanced: %s)", (advanced) => {
     fixture.advanced = advanced;
     fixture.showThreads = false;

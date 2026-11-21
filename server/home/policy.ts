@@ -14,6 +14,13 @@ export type HomeAccessLevel = (typeof HOME_ACCESS_LEVELS)[number];
 
 export type HomeRefusalCode = "access_off" | "read_only" | "unsupported_action" | "unavailable" | "sensitive" | "zone_not_allowed";
 
+/** One bot's home policy: what it may do, which zones, and whether a sensitive command can be answered here.
+ * A turn the person is present for can confirm; a routine's or a peer's cannot. */
+export function homePolicyForBot(bot: { homeAccess?: HomeAccessLevel; homeZones?: readonly string[] } | null | undefined, fallback: HomeAccessLevel): HomePolicy {
+  const access = bot?.homeAccess ?? fallback;
+  return { access, ...(bot?.homeZones?.length ? { zones: bot.homeZones } : {}), canConfirmSensitive: access === "full" };
+}
+
 export interface HomePolicy {
   access: HomeAccessLevel;
   /** Zones a bot may touch; null means every zone. A sensitive zone should be named here or left out. */

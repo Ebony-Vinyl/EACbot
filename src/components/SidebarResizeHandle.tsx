@@ -31,13 +31,13 @@ export function nextEdgeDrag(drag: EdgeDrag, wanted: number, from: number): Edge
 
 export type SidebarSizing = ReturnType<typeof useSidebarWidth>;
 
-export function useSidebarWidth({ simple, sidePanelOpen, sidebarRef }: {
+export function useSidebarWidth({ simple, sidePanelOpen, sidebarRef, defaultWidth = sidebarDefaultWidth(simple) }: {
   simple: boolean;
   sidePanelOpen: boolean;
   sidebarRef: RefObject<HTMLElement | null>;
+  defaultWidth?: number;
 }) {
   const key = simple ? SIMPLE_SIDEBAR_WIDTH_KEY : SIDEBAR_WIDTH_KEY;
-  const defaultWidth = sidebarDefaultWidth(simple);
   const cap = simple ? 400 : 480;
   const maxWidth = sidePanelOpen ? defaultWidth : Math.min(cap, window.innerWidth - 320);
   const [savedWidth, setSavedWidth] = useState<number | null>(() => loadSidebarWidth(undefined, key));

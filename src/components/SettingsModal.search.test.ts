@@ -54,7 +54,8 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-const dialog = () => host.querySelector<HTMLElement>('[role="dialog"]')!;
+const workspace = () => host.querySelector<HTMLElement>("[data-settings-workspace]")!;
+const title = () => host.querySelector<HTMLElement>("#app-settings-title")!;
 const search = () => host.querySelector<HTMLInputElement>("[data-settings-search]")!;
 const type = (value: string) => {
   Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(search(), value);
@@ -62,11 +63,61 @@ const type = (value: string) => {
 };
 
 describe("Settings search in Simple mode", () => {
-  it("opens on the dialog itself, and a typed letter moves into search", () => {
-    expect(document.activeElement).toBe(dialog());
-    flushSync(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "f", bubbles: true, cancelable: true })));
+  it("opens on the page heading without trapping document focus, and typed letters move into search", () => {
+    expect(workspace().tagName).toBe("SECTION");
+    expect(document.activeElement).toBe(title());
+    expect(host.querySelector("[role=dialog]")).toBeNull();
+    flushSync(() => title().dispatchEvent(new KeyboardEvent("keydown", { key: "f", bubbles: true, cancelable: true })));
     expect(document.activeElement).toBe(search());
     expect(search().value).toBe("f");
+
+    const outside = document.createElement("button");
+    document.body.append(outside);
+    flushSync(() => outside.focus());
+    flushSync(() => outside.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab", bubbles: true, cancelable: true })));
+    expect(document.activeElement).toBe(outside);
+    outside.remove();
+  });
+
+  it("clears a query before closing and gives one Escape to a visible nested dialog", () => {
+    type("provider");
+    flushSync(() => search().dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true })));
+    expect(search().value).toBe("");
+
+    const nested = document.createElement("div");
+    nested.setAttribute("role", "dialog");
+    const dismiss = document.createElement("button");
+    dismiss.textContent = "Close editor";
+    nested.append(dismiss);
+    workspace().append(nested);
+    flushSync(() => dismiss.focus());
+    flushSync(() => dismiss.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true })));
+    expect(fixture.dispatch).not.toHaveBeenCalledWith({ type: "toggleAppSettings", open: false });
+
+    nested.remove();
+    flushSync(() => search().focus());
+    flushSync(() => search().dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true })));
+    expect(fixture.dispatch.mock.calls.filter(([action]) => action.type === "toggleAppSettings" && action.open === false)).toHaveLength(1);
+  });
+
+  it("returns focus to the opening control after the workspace closes", async () => {
+    const { SettingsModal } = await import("./SettingsModal");
+    const opener = document.createElement("button");
+    document.body.append(opener);
+    flushSync(() => opener.focus());
+
+    flushSync(() => root.unmount());
+    root = createRoot(host);
+    flushSync(() => root.render(createElement(SettingsModal)));
+    expect(document.activeElement).toBe(title());
+
+    flushSync(() => title().dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true })));
+    expect(fixture.dispatch.mock.calls.filter(([action]) => action.type === "toggleAppSettings" && action.open === false)).toHaveLength(1);
+    flushSync(() => root.unmount());
+    await Promise.resolve();
+    expect(document.activeElement).toBe(opener);
+    opener.remove();
+    root = createRoot(host);
   });
 
   it("lists a builder control as Advanced and, when chosen, opens General at the Advanced mode row", () => {

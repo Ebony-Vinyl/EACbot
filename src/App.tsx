@@ -1,5 +1,6 @@
-import { Theme } from "@neutral-reference/ui";
 import { WorkspaceHeader, WorkspaceNavigation } from "@/components/shell/NeutralWorkspace";
+import { MobileConversationStrip } from "@/components/shell/MobileConversationStrip";
+import { ConversationSidebar } from "@/components/shell/ConversationSidebar";
 import { readSkin, skinColorScheme, subscribeSkin } from "@/lib/skins";
 import { TaskCenter } from "@/features/tasks/TaskCenter";
 import { CommandPageView } from "@/next/pages/CommandPageView";
@@ -7,7 +8,7 @@ import { NEW_PAGES, type NewPage } from "@/state/store";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { PluginUiHost } from "@/components/PluginUiHost";
 import { Live2dOverlay } from "@/components/Live2dOverlay";
-import { ChevronLeft, Loader2, Menu } from "lucide-react";
+import { Loader2, PanelLeft, X } from "lucide-react";
 import { CLOUD_LINK_SETTINGS, openBot, StoreProvider, useStore } from "@/state/store";
 import { nextShortcutBot, shortcutBots, shownBotIds } from "@/lib/sidebar-shortcut-order";
 import { useShowThreads } from "@/lib/thread-preferences";
@@ -27,7 +28,7 @@ import { GroupView } from "@/components/GroupView";
 import { SIDEBAR_AND_PANEL_FIT, SIDEBAR_INLINE, TWO_SIDE_PANELS_FIT, useMediaQuery } from "@/lib/use-media-query";
 import { preloadConnectedApps } from "@/lib/connected-apps";
 import {
-  ActivityPanel, BotSettingsDialog, CloudAddDialog, ComputerPanel, FilesView, HealthPage, HomePage, InspectorPanel, KeyboardShortcutsModal, LocalVmWorkspace,
+  ActivityPanel, BotSettingsDialog, CloudAddDialog, ComputerPanel, FilesView, HealthPage, HomePage, InspectorPanel, KeyboardShortcutsModal, LocalVmWorkspace, MusicPage,
   PlatformCenter, PlatformDashboard, PluginsPanel, preloadScreens, RemoteAgentSettingsPanel, RemoteDesktopPanel, RoomPanel, SettingsModal, TeamMapPage, TriggersPage,
 } from "@/components/lazy-screens";
 import { useAdvancedMode } from "@/lib/interface-mode";
@@ -56,10 +57,9 @@ import { InboxPanel } from "@/components/inbox/InboxPanel";
 import { PlacesRail } from "@/components/PlacesRail";
 import { NewLocalFromMenu } from "@/components/PlaceAddSheet";
 import { CloudHowTo } from "@/components/CloudHowTo";
-import { DesktopCapabilitiesProvider, useCaptionChrome, useDesktopCapabilities, WindowDragStrip, windowFramed } from "@/components/DesktopCapabilities";
+import { DesktopCapabilitiesProvider, useDesktopCapabilities, WindowDragStrip, windowFramed } from "@/components/DesktopCapabilities";
 import { WindowCaptionButtons } from "@/components/WindowCaptionButtons";
 import { WindowFrameBar } from "@/components/WindowFrameBar";
-import { cn } from "@/lib/cn";
 import { NoEngines } from "@/components/NoEngines";
 import { CloudEngineSignIn } from "@/components/CloudEngineSignIn";
 import { CloudIntent } from "@/components/CloudIntent";
@@ -87,6 +87,16 @@ import { useChiefStepOpen } from "@/lib/default-bot";
 import { useSessionEnded } from "@/lib/session-ended";
 import { PairPage } from "./pair/PairPage";
 import { WebPanelPage } from "@/components/WebPanelPage";
+import { MiniPlayer } from "@/components/music/mini/MiniPlayer";
+
+/** The music bar, mounted once outside the page switch: it is the reason music keeps playing across pages. */
+function PersistentMiniPlayer() {
+  const { dispatch } = useStore();
+  return <MiniPlayer
+    onOpenMusic={() => dispatch({ type: "showMusic" })}
+    onOpenNowPlaying={() => dispatch({ type: "showMusic" })}
+  />;
+}
 
 function Shell({ viewer }: { viewer: WelcomeViewer | null }) {
   const { state, dispatch } = useStore();
@@ -103,7 +113,6 @@ function Shell({ viewer }: { viewer: WelcomeViewer | null }) {
   useAiSwitchKeeper({ bots: state.bots, dispatch });
   const showThreads = useShowThreads();
   const { capabilities } = useDesktopCapabilities();
-  const captionChrome = useCaptionChrome();
   const unreadCount =
     state.bots.filter((bot) => !bot.hidden).reduce((sum, bot) => sum + botUnreadCount(bot), 0) +
     state.groups.filter((group) => group.unread).length;
@@ -327,6 +336,13 @@ function Shell({ viewer }: { viewer: WelcomeViewer | null }) {
   }, [dispatch]);
 
   const framed = windowFramed(capabilities);
+  const captionVisible = capabilities.windowChrome === "win-caption" && Boolean(window.ogb?.windowControls) && state.activeView !== "music";
+  const showConversations = conversationView && !calendarFocus && !state.appSettingsOpen;
+  const mobileListOpen = drawerOpen && !sidebarInline && showConversations;
+  const closeConversationList = () => {
+    setDrawerOpen(false);
+    menuButtonRef.current?.focus();
+  };
   const strips = <>
     <UpdateBanner sidebarIndicator={framed || (!calendarFocus && (sidebarInline || drawerOpen))} />
     <AnnouncementsStrip />
@@ -337,62 +353,52 @@ function Shell({ viewer }: { viewer: WelcomeViewer | null }) {
     <AppNotices quiet={paletteOpen || drawerOpen || Boolean(localVmWorkspaceBotId)} viewer={viewer} />
   </>;
   return (
-    <Theme theme={neutralTheme} data-neutral-shell className={cn("neutral-shell flex h-full flex-col", framed && "bg-frame")}>
+    <div data-workspace data-window-caption={captionVisible || undefined}
+      data-window-inset={capabilities.windowChrome === "mac-inset" || undefined} className="workspace-shell">
       <AppBackground />
       <WindowFrameBar notifications={notificationTray} />
-      <WorkspaceHeader theme={neutralTheme} />
+      {!framed && <WindowDragStrip />}
       <BotLimitPopup />
       {!framed && strips}
-      <div className="neutral-workspace-body relative flex min-h-0 flex-1">
-      <WorkspaceNavigation />
-      {conversationView && !calendarFocus && <button
-        type="button"
-        ref={menuButtonRef}
-        aria-label={t("app.openBotList")}
-        aria-expanded={drawerOpen}
-        onClick={() => setDrawerOpen(open => !open)}
-        className="companion-chats absolute left-3 top-3 z-30 rounded-md p-1.5 text-ink-secondary hover:bg-raised hover:text-ink max-md:flex max-md:size-9 max-md:items-center max-md:justify-center max-md:rounded-full max-md:border max-md:border-hairline max-md:bg-card max-md:p-0 max-md:text-ink md:hidden"
-      >
-        <Menu size={15} className="max-md:hidden" /><span className="hidden md:inline">{t("neutral.chat")}</span>
-        <ChevronLeft size={20} aria-hidden="true" className="hidden max-md:block" />
-      </button>}
-      {drawerOpen && !calendarFocus && (
-        <div
-          aria-hidden
-          onMouseDown={(e) => e.target === e.currentTarget && setDrawerOpen(false)}
-          className="absolute inset-0 z-30 bg-black/50 md:hidden"
-        />
-      )}
-      {!calendarFocus && <PlacesRail />}
+      <div className="workspace-body">
+      {/* The music surface is upstream's own window: it covers the rail instead of sitting beside it. */}
+      {!calendarFocus && state.activeView !== "music" && <PlacesRail />}
       <NewLocalFromMenu />
-      {/* A framed window shows the app, its sidebar and the chat or page, as one square pane under the top bar and beside
-          the window's rail, running to the window's right and bottom edges. */}
+      <WorkspaceNavigation theme={neutralTheme} framed={framed} />
       <div data-window-card={framed ? "" : undefined}
-        className={framed ? "relative flex min-w-0 flex-1 flex-col overflow-hidden bg-app" : "contents"}>
+        className="workspace-surface">
       {framed && strips}
-      <div className={framed ? "relative flex min-h-0 flex-1" : "contents"}>
-      {/* The list of bots and the board take the same place: one shows at a time, so a person swaps rather than
-          stacking. Both are the left-hand card. The swap is a cross-fade with a small slide, so the two surfaces read
-          as one card changing its contents instead of two panes cutting in and out. */}
-      {conversationView && !calendarFocus && (drawerOpen || !sidebarInline) && (
+      <WorkspaceHeader theme={neutralTheme} onOpenNavigation={() => setDrawerOpen(false)} conversations={showConversations && (
+        <button type="button" ref={menuButtonRef} className="workspace-icon-button" aria-label={t("app.openBotList")}
+          aria-expanded={mobileListOpen} onClick={() => setDrawerOpen((open) => !open)}>
+          {mobileListOpen ? <X size={20} aria-hidden="true" /> : <PanelLeft size={20} aria-hidden="true" />}
+        </button>
+      )}>
+        {showConversations && <MobileConversationStrip onSelect={mobileListOpen ? closeConversationList : undefined} />}
+      </WorkspaceHeader>
+      {state.appSettingsOpen && <SettingsModal />}
+      <div className="workspace-route" data-conversation-route={conversationView || undefined} hidden={state.appSettingsOpen} inert={state.appSettingsOpen}>
+      {mobileListOpen && <div className="workspace-conversations-scrim" aria-hidden="true" onClick={closeConversationList} />}
+      {conversationView && !calendarFocus && (
+        <ConversationSidebar mobile={!sidebarInline} open={mobileListOpen} onClose={closeConversationList}>
         <SidebarSwap>
-          {shellView === "board" ? <TaskBoardCard /> : <Sidebar
-            onOpenTasks={() => { dispatch({ type: "showTaskCenter" }); setDrawerOpen(false); }}
+          {shellView === "board" ? <TaskBoardCard /> : <Sidebar workspace
             collapseToIcons={collapseSidebar}
-            open={drawerOpen}
-            onClose={() => {
-              setDrawerOpen(false);
-              menuButtonRef.current?.focus();
-            }}
+            open={mobileListOpen}
+            onClose={closeConversationList}
           />}
         </SidebarSwap>
+        </ConversationSidebar>
       )}
+      <div className="workspace-content" inert={mobileListOpen}>
       {isNewPage(state.activeView) ? (
         <CommandPageView page={state.activeView} onBackToChat={() => dispatch({ type: "showChat" })} />
       ) : tasksOpen ? <TaskCenter onClose={() => dispatch({ type: "showChat" })} /> : state.activeView === "health" ? (
         <HealthPage />
       ) : state.activeView === "home" ? (
         <HomePage />
+      ) : state.activeView === "music" ? (
+        <MusicPage onBack={() => dispatch({ type: "showChat" })} />
       ) : state.activeView === "platforms" ? (
         <PlatformCenter onOpen={(platform) => dispatch({ type: "showPlatform", platform })} onConnect={() => dispatch({ type: "togglePlugins", open: true })} />
       ) : state.activeView === "platform" && state.platformId ? (
@@ -478,7 +484,8 @@ function Shell({ viewer }: { viewer: WelcomeViewer | null }) {
       </>}
       </div>
       </div>
-      {state.appSettingsOpen && <SettingsModal />}
+      <PersistentMiniPlayer />
+      </div>
       {cloudAddOpened.current && <CloudAddDialog />}
       <CloudHowTo />
       <CloudSetup viewer={viewer} welcomeShown={welcomeOnScreen} />
@@ -492,19 +499,12 @@ function Shell({ viewer }: { viewer: WelcomeViewer | null }) {
       )}
       {/* After the modals: same z-50 tier, so DOM order keeps the palette on top. */}
       <CommandPalette onOpenChange={setPaletteOpen} />
-      {/* Blink resolves -webkit-app-region in DOM order, so this no-drag twin after the headers cuts the drawer button back out. */}
-      {!calendarFocus && <span
-        aria-hidden
-        data-drawer-button-no-drag
-        style={captionChrome.noDragStyle}
-        className="pointer-events-none absolute left-3 top-3 size-[30px] md:hidden"
-      />}
       </div>
       {/* Last child on purpose: Blink resolves -webkit-app-region in DOM order, so no-drag buttons must follow every drag region. */}
       <WindowCaptionButtons
-        visible={capabilities.windowChrome === "win-caption" && Boolean(window.ogb?.windowControls)}
+        visible={captionVisible}
       />
-    </Theme>
+    </div>
   );
 }
 

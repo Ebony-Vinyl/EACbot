@@ -199,6 +199,8 @@ export interface SendTurnInput {
     health?: { command: string; args: string[]; env: Record<string, string> };
     /** The home tools' MCP proxy: the harness holds the adapters, the policy and the audit trail. */
     home?: { command: string; args: string[]; env: Record<string, string> };
+    /** The music tools' MCP proxy: the harness holds the account token, the queue and the playback truth. */
+    music?: { command: string; args: string[]; env: Record<string, string> };
     /** dweb daemon tools; `url` is the dweb HTTP base. */
     dweb?: { url: string };
     /** The user's MCP servers, mounted without any pre-allow; a driver skips a kind it cannot speak. */
@@ -272,6 +274,8 @@ export interface ProviderAdapter {
     healthMcp?: boolean;
     /** The driver can mount the home MCP. */
     homeMcp?: boolean;
+    /** The driver can mount the music MCP. */
+    musicMcp?: boolean;
     /** The engine accepts images in the prompt (gates composer paste). */
     images?: boolean;
     /** sendTurn consumes `images` as structured input, so dispatch strips the attachment path from `text`. */

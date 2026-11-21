@@ -106,7 +106,8 @@ import { removeRetiredAppFiles } from "./retired-apps.ts"; import { createEmailR
 import { createHealthHost, HEALTH_INTERNAL_MCP_PATH } from "./health/host.ts";
 import type { HealthOwner } from "./health/audience.ts";
 import { createHomeHost, HOME_INTERNAL_MCP_PATH } from "./home/host.ts";
-import type { HomePolicy } from "./home/policy.ts";
+import { homePolicyForBot } from "./home/policy.ts";
+import { createMusicHost, MUSIC_INTERNAL_MCP_PATH } from "./music/host.ts";
 import { createPhones } from "./host/phones.ts";
 import { NOT_THE_OWNER } from "./phones/owner.ts";
 import { PHONE_INTERNAL_MCP_PATH } from "./phones/rpc.ts";
@@ -893,18 +894,6 @@ function threadPersonKey(threadId: string): string | undefined {
   return linePersonKey(request) ?? threadStarters.get(threadId);
 }
 
-/** One bot's home policy: what it may do, which zones, and whether a sensitive command can be answered here.
- * A turn that the person is present for can confirm; a routine's or a peer's cannot. */
-function homePolicyForBot(bot: Pick<WireBot, "homeAccess" | "homeZones"> | null | undefined, fallback: HomePolicy["access"]): HomePolicy {
-  const access = bot?.homeAccess ?? fallback;
-  return {
-    access,
-    ...(bot?.homeZones?.length ? { zones: bot.homeZones } : {}),
-    // Only `full` lets a bot ask; the confirmation itself still comes from the person on the other side of the turn.
-    canConfirmSensitive: access === "full",
-  };
-}
-
 /** From the harness's own records, never from model text. */
 function turnOrigin(capability: Pick<InternalCapability, "threadId" | "generation" | "roomHandoffId" | "externalRuntime">): WorkOrigin {
   if (capability.externalRuntime) return OUTSIDE;
@@ -1621,7 +1610,7 @@ type InternalCapability = {
   threadId: string;
   generation: string;
   depth: number;
-  kind: "agents" | "connectors" | "computer" | "browser" | "hooks" | "phone" | "data" | "email" | "device" | "health" | "home" | "lent" | "plugins";
+  kind: "agents" | "connectors" | "computer" | "browser" | "hooks" | "phone" | "data" | "email" | "device" | "health" | "home" | "music" | "lent" | "plugins";
   skillAuthoring: boolean;
   createdBots: number;
   createdRooms?: number;
@@ -2914,6 +2903,7 @@ const homeHost = createHomeHost({
   harnessUrl: `http://127.0.0.1:${PORT}`,
   now: () => new Date().toISOString(),
 });
+const musicHost = createMusicHost({ dataDir: DATA_DIR, config: () => cfg.music, botAccess: (botId) => (store.bot(botId) as { musicAccess?: "off" | "read" | "control" } | null)?.musicAccess ?? cfg.music?.botAccess ?? "read", active: (turn) => internalCapabilityIsActive(turn as InternalCapability), ownerOrAdmin, mint: (turn) => mintInternalCapability({ ...turn, kind: "music", depth: 0, skillAuthoring: false, createdBots: 0, openedThreads: 0 }), harnessUrl: `http://127.0.0.1:${PORT}`, broadcast: (frame) => broadcast(frame as Parameters<typeof broadcast>[0]), now: () => new Date().toISOString() });
 const cloudPlanTier = createCloudPlanTier({ dataDir: DATA_DIR, cloudHome: Boolean(CLOUD_HOME), changed: () => broadcast({ kind: "config", ...configStatus() }) }); const botLimit = createBotLimit({ starter: () => cloudPlanTier.starter(), bots: () => store.bots }); let cloudPower: CloudPower | null = null; // The sleep handshake of a plan that sleeps (server/cloud-power.ts), made just before the server listens.
 const { cloudHealth, cloudSigned } = createCloudSignedHost({ cloudHome: CLOUD_HOME, sessions, power: () => cloudPower, box: () => botBox.report(), teamAdmin: teamAdminHost(), policyChanged: nudgeCloudTeamPolicy, plan: (cancelled) => routineHolds?.plan(cancelled), planTier: (tier) => cloudPlanTier.set(tier), memberLeft: (email) => leaveTeam ? leaveTeam(email).then((result) => { botApi.manager.revokeMintedBy(personKey({ id: "", email })); teamOwners.left(email); teamMessages.inbox.forget(personKey({ id: "", email })); forgetSetupPresser(store, personKey({ id: "", email })); devsReports.forget(personKey({ id: "", email })); return result; }) : Promise.reject(new Error("not a team")), health: { store, bus, dataDir: DATA_DIR, eventsDir: EVENTS_DIR, version: serverVersion(), image: process.env.EAC_CLOUD_IMAGE,
   engines: () => registry.instances().map((instance) => ({ instanceId: instance.instanceId, driverKind: instance.driverKind, snapshot: registry.knownSnapshot(instance.instanceId) })),
@@ -8449,6 +8439,7 @@ async function beginTurn(
         const home = homeHost.integration({ botId: liveBot.id, threadId, generation: dispatchClaimId });
         if (home) integrations.home = home;
       }
+      if (liveBot && instance.adapter.capabilities.musicMcp === true) musicHost.mount(integrations, { botId: liveBot.id, threadId, generation: dispatchClaimId });
       const mountedComputer = surfaceOfComputerKind(computerKind);
       if (
         liveBot &&
@@ -8524,6 +8515,7 @@ async function beginTurn(
         }),
         ...healthHost.parts({ botId: bot.id, threadId, generation: dispatchClaimId }, bot.id),
         ...homeHost.parts({ botId: bot.id, threadId, generation: dispatchClaimId }, bot.id),
+        ...musicHost.parts({ botId: bot.id, threadId, generation: dispatchClaimId }, bot.id),
         { id: "coordination", label: "Team and who is speaking", text: PROVENANCE_PROMPT + (coordinationPrompt && !apiFenced ? ` ${coordinationPrompt}` : "") },
         { id: "assignment", label: "Teammate task", text: coordinationNode?.parentId ? `\n${coordinationSystemInstructions()}` : "" },
         { id: "outstanding", label: "Outstanding teammate work", text: teammatePrompts.outstanding(threadId) },
@@ -10154,6 +10146,7 @@ async function runClaimedGroupMemberTurn(
     const home = homeHost.integration({ botId: readyBot.id, threadId, generation: internalGeneration });
     if (home) integrations.home = home;
   }
+  if (instance.adapter.capabilities.musicMcp === true) musicHost.mount(integrations, { botId: readyBot.id, threadId, generation: internalGeneration });
   if (roomPlan.browser && !(roomPlan.computer === undefined && roomTeamComputer)) {
     const selectedProfile = readyBot.browserProfile;
     const browser = await browserIntegration(readyBot.id, selectedProfile, { threadId, generation: internalGeneration });
@@ -11933,6 +11926,8 @@ function configStatus() {
     vps: { configured: Boolean(vpsSshAlias(cfg)), sshAlias: vpsSshAlias(cfg) ?? "" },
     opencodeGo: { ...keyStatus(cfg.opencodeGo?.apiKey), providerKeys: Object.keys(openCodeProviderKeys(cfg)) },
     tts: tts.describeVoice(cfg),
+    music: musicHost.status(),
+
     decider: describeDecider(cfg), helpers: describeHelpers(cfg),
     imageGen: avatarImageStatus(cfg), savedKeys: nestedKeyStatus(cfg),
     live: liveSettingsFor(cfg),
@@ -12345,7 +12340,7 @@ ROUTES.push(createBotLifecycleRoutes({
 ROUTES.push(createBotSkillsRoutes({ store, cfg, listBotSkills, readBotSkillFile, stagedSkillListing }));
 ROUTES.push(createEmailRoutes({ service: emailService }));
 ROUTES.push(phones.routes);
-ROUTES.push(healthHost.routes, homeHost.routes);
+ROUTES.push(healthHost.routes, homeHost.routes, musicHost.routes);
 ROUTES.push(createSkillShareRoutes({ enabled: () => skillsHost.mode() !== "off", botExists: (id) => Boolean(store.bot(id)),
   cardRefusal: (auth, threadId, requestId) => cardAnswerRefusal(auth, threadId, requestId, "allow"), shareFromReceipt: skillsHost.shareFromReceipt, shareFromBot: skillsHost.shareFromBot }));
 ROUTES.push(createTeamContextRoutes({ store, teamMemory }));
@@ -13147,6 +13142,7 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
         ? "device"
         : path === HEALTH_INTERNAL_MCP_PATH ? "health"
         : path === HOME_INTERNAL_MCP_PATH ? "home"
+        : path === MUSIC_INTERNAL_MCP_PATH ? "music"
         : path === PLUGINS_INTERNAL_MCP_PATH ? "plugins" : isLentMcpPath(path) ? "lent"
         : path === "/api/internal/phone/claim"
         ? "phone"
@@ -13411,6 +13407,8 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
       if (method === "POST" && path === HOME_INTERNAL_MCP_PATH) {
         return json(res, 200, { result: await homeHost.handle(await readInternalBody(), internalCapability, requireActiveInternalCapability) });
       }
+      // The account token and the queue stay here; the agent process holds only the turn's capability.
+      if (method === "POST" && path === MUSIC_INTERNAL_MCP_PATH) return json(res, 200, { result: await musicHost.handle(await readInternalBody(), internalCapability, requireActiveInternalCapability) });
       if (method === "POST" && path === "/api/internal/phone/claim") {
         requireActiveInternalCapability();
         if (!claimTurnResource(internalCapability, "computer:phone")) {

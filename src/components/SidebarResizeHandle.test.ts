@@ -14,17 +14,17 @@ const LEFT = 36;
 let host: HTMLDivElement, root: Root | null = null;
 let seen: boolean[];
 
-function Harness({ avatars: startAvatars }: { avatars: boolean }) {
+function Harness({ avatars: startAvatars, defaultWidth }: { avatars: boolean; defaultWidth?: number }) {
   const sidebarRef = useRef<HTMLElement>(null);
   const [avatars, setAvatars] = useState(startAvatars);
-  const sizing = useSidebarWidth({ simple: false, sidePanelOpen: false, sidebarRef });
+  const sizing = useSidebarWidth({ simple: false, sidePanelOpen: false, sidebarRef, defaultWidth });
   return createElement("aside", { ref: sidebarRef, "data-sidebar": "", style: { "--sidebar-width": `${sizing.width}px` } },
     createElement(SidebarResizeHandle, { sizing, sidebarRef, avatars, avatarsWidth: 80, onAvatars: (next: boolean) => { seen.push(next); setAvatars(next); } }));
 }
 
-async function mount(avatars = false) {
+async function mount(avatars = false, defaultWidth?: number) {
   root = createRoot(host);
-  await act(async () => root!.render(createElement(Harness, { avatars })));
+  await act(async () => root!.render(createElement(Harness, { avatars, defaultWidth })));
 }
 const sidebar = () => host.querySelector<HTMLElement>("[data-sidebar]")!;
 const edge = () => host.querySelector<HTMLElement>("[data-sidebar-resize]")!;
@@ -55,6 +55,28 @@ afterEach(async () => {
 });
 
 describe("a drag of the sidebar's edge", () => {
+  it("uses the workspace default and persists real keyboard resizing", async () => {
+    await mount(false, 280);
+    expect(width()).toBe("280px");
+    expect(edge().getAttribute("aria-valuenow")).toBe("280");
+    await key("ArrowRight");
+    expect(width()).toBe("296px");
+    expect(edge().getAttribute("aria-valuenow")).toBe("296");
+    expect(localStorage.getItem(SIDEBAR_WIDTH_KEY)).toBe("296");
+    await act(async () => root!.unmount());
+    root = null;
+    await mount(false, 280);
+    expect(width()).toBe("296px");
+  });
+
+  it("keeps an existing width when the workspace supplies a different default", async () => {
+    localStorage.setItem(SIDEBAR_WIDTH_KEY, "348");
+    await mount(false, 280);
+    expect(width()).toBe("348px");
+    expect(edge().getAttribute("aria-valuenow")).toBe("348");
+    expect(localStorage.getItem(SIDEBAR_WIDTH_KEY)).toBe("348");
+  });
+
   it("is the column of avatars below its threshold, and open above it: at the width it had until the pointer reaches that edge", () => {
     const open = { avatars: false, following: true };
     expect(nextEdgeDrag(open, 300, 320)).toEqual(open);

@@ -5,9 +5,10 @@ import type { AppSettingsSection } from "@/state/store";
 import { SettingsModal } from "./SettingsModal";
 
 // These pin the card as always offered; the server decides who may act.
-const fixture = vi.hoisted(() => ({ section: "companion" as AppSettingsSection, config: undefined as { cloudHome?: boolean } | undefined, phonePairing: 0 }));
+const fixture = vi.hoisted(() => ({ section: "companion" as AppSettingsSection, config: undefined as { cloudHome?: boolean } | undefined, phonePairing: 0, ownerOrAdmin: true }));
 // Pinned to Advanced: these cover the Advanced rail; Simple has its own suite.
 vi.mock("@/lib/interface-mode", () => ({ useAdvancedMode: () => true, setAdvancedMode: () => {} }));
+vi.mock("@/lib/use-owner-or-admin", () => ({ useOwnerOrAdmin: () => fixture.ownerOrAdmin }));
 vi.mock("./DesktopCapabilities", () => ({ useDesktopCapabilities: () => ({ capabilities: {} }) }));
 
 vi.mock("@/state/store", async (importOriginal) => ({
@@ -25,6 +26,7 @@ beforeEach(() => {
   fixture.section = "companion";
   fixture.config = undefined;
   fixture.phonePairing = 0;
+  fixture.ownerOrAdmin = true;
   vi.stubGlobal("document", { documentElement: { dataset: {} } });
 });
 
@@ -52,11 +54,11 @@ describe("Settings → Remote access: server pairing card visibility", () => {
 
   it("on an OMB Cloud home, which is personal, tells the card so and offers no People section to invite anyone", () => {
     vi.stubGlobal("window", {});
-    expect(render()).toContain(">People<");
+    expect(render()).toContain('data-settings-section="people"');
     fixture.config = { cloudHome: true };
     const html = render();
     expect(html).toContain("SERVER_PAIRING_CARD_MARKER cloud");
-    expect(html).not.toContain(">People<");
+    expect(html).not.toContain('data-settings-section="people"');
   });
 });
 

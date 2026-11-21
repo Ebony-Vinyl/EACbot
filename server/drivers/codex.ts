@@ -1686,7 +1686,7 @@ export const CodexDriver: ProviderDriver<CodexConfig> = {
       customMcp: true,
         phoneMcp: true,
         browserMcp: true,
-        dataMcp: true, emailMcp: true, deviceMcp: true, healthMcp: true, homeMcp: true,
+        dataMcp: true, emailMcp: true, deviceMcp: true, healthMcp: true, homeMcp: true, musicMcp: true,
         images: true,
         nativeImageInput: true,
         effortLevels: ["low", "medium", "high", "xhigh", "max"],
